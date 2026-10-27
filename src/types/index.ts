@@ -157,7 +157,11 @@ export interface SupportIssue {
   review: Record<Language, ReviewStatus>;
 }
 
-export type SupportOutcome = 'open' | 'resolved' | 'escalated';
+/**
+ * `blocked`: the student was at the open-request limit, so no ticket could be created.
+ * It is a finished case, like `resolved`, and it has no ticket.
+ */
+export type SupportOutcome = 'open' | 'resolved' | 'escalated' | 'blocked';
 
 /**
  * The number on the red tag on the student's Chromebook, exactly as they typed it.
@@ -214,7 +218,7 @@ export interface NotificationDraft {
 export interface CaseHistoryEntry {
   at: string;
   by: string;
-  action: 'case_started' | 'issue_added' | 'tag_recorded' | 'resolved' | 'escalated' | 'disposition_recorded';
+  action: 'case_started' | 'issue_added' | 'tag_recorded' | 'resolved' | 'escalated' | 'blocked' | 'disposition_recorded';
   detail?: string;
 }
 

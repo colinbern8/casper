@@ -172,7 +172,17 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     // Same policy as POST /api/tickets, checked first so a blocked attempt does not use up the allowance.
     if (v.userRole === 'student') {
       const open = store.openStudentTickets(user.email);
-      if (open.length >= config.studentOpenTicketLimit) return res.status(429).json(openTicketLimitBody(open));
+      if (open.length >= config.studentOpenTicketLimit) {
+        // No ticket is created. Close the case as `blocked` so it is not left open forever.
+        const reason = typeof req.body?.reason === 'string' ? req.body.reason.slice(0, 40) : 'not given';
+        const body = openTicketLimitBody(open);
+        cases.save({
+          ...found,
+          outcome: 'blocked',
+          history: [...found.history, { at: new Date().toISOString(), by: user.name, action: 'blocked', detail: `at request limit (${body.openTicketNumbers.join(', ')}); reason: ${reason}` }],
+        });
+        return res.status(429).json(body);
+      }
     }
     // Same limits as POST /api/tickets, so this path cannot be used to get around them.
     const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);

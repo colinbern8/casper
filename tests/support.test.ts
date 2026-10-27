@@ -265,11 +265,44 @@ test('request limit applies when escalating from the student chat too, and a tec
   assert.equal(blocked.status, 429);
   assert.equal(blocked.body.error, 'OPEN_TICKET_LIMIT');
   assert.deepEqual(blocked.body.openTicketNumbers, [first.body.ticket.ticketNumber]);
-  assert.equal((await call('GET', `${S}/${b.id}`, undefined, alex)).body.outcome, 'open'); // nothing half-done
+  // The refused case is closed as `blocked` (no ticket), so it is not left open forever.
+  assert.equal((await call('GET', `${S}/${b.id}`, undefined, alex)).body.outcome, 'blocked');
+  assert.equal((await call('POST', `${S}/${b.id}/escalate`, {}, alex)).status, 409);
 
   await call('PATCH', `/api/tickets/${first.body.ticket.id}`, { allowAnother: true }, tech);
-  const second = await call('POST', `${S}/${b.id}/escalate`, {}, alex);
+  // After the technician's release the student starts a fresh case, and it goes through.
+  const c = (await call('POST', S, { language: 'en', issueId: 'other', description: 'Loaner will not charge' }, alex)).body;
+  const second = await call('POST', `${S}/${c.id}/escalate`, {}, alex);
   assert.equal(second.status, 201);
+});
+
+test('at the limit: self-help can still resolve a case, a failed one is closed as blocked with no ticket, and the burst allowance is untouched', async () => {
+  const { call, login, store } = await start({ DEMO_MODE: 'true', STUDENT_OPEN_TICKET_LIMIT: '1' });
+  const alex = await login('demo.student@d.test');
+  const d = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
+  const open = await call('POST', `${S}/${d.id}/escalate`, {}, alex);
+  assert.equal(open.status, 201);
+  const ticketsBefore = store.list().length;
+
+  // A fixed problem is still recorded as a resolved case (and still no ticket).
+  const fixed = (await call('POST', S, { language: 'en', issueId: 'wifi' }, alex)).body;
+  const worked = await call('POST', `${S}/${fixed.id}/attempts`, { stepId: 'wifi-restart', result: 'worked' }, alex);
+  assert.equal(worked.body.outcome, 'resolved');
+
+  // Steps that did not work: sending is refused, the answer names the open ticket, and the case is closed.
+  for (let i = 0; i < 4; i++) {
+    const c = (await call('POST', S, { language: 'es', issueId: 'power' }, alex)).body;
+    await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-charger', result: 'not_worked' }, alex);
+    const refused = await call('POST', `${S}/${c.id}/escalate`, { reason: 'steps_not_worked' }, alex);
+    assert.equal(refused.status, 429);
+    assert.equal(refused.body.error, 'OPEN_TICKET_LIMIT'); // never TICKET_LIMIT_EXCEEDED: refused attempts use no allowance
+    assert.deepEqual(refused.body.openTicketNumbers, [open.body.ticket.ticketNumber]);
+    const after = await call('GET', `${S}/${c.id}`, undefined, alex);
+    assert.equal(after.body.outcome, 'blocked');
+    assert.equal(after.body.ticketId, undefined);
+    assert.equal((await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-hold', result: 'worked' }, alex)).status, 409); // closed
+  }
+  assert.equal(store.list().length, ticketsBefore); // no ticket was created by any of it
 });
 
 test('limit check: a student at the limit is told up front, and it clears when a technician resolves or allows another', async () => {

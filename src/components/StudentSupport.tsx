@@ -9,7 +9,6 @@ import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/s
 type Phase =
   | 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff'
   | 'addMore' | 'addIssue' | 'addDetails'
-  | 'blocked' // at the request limit: the conversation ends and cannot be restarted from here
   | 'done';
 type Kind = 'plain' | 'info' | 'success' | 'handoff' | 'notice';
 
@@ -55,6 +54,11 @@ const initialMessages = (): Msg[] => [{ id: 0, from: 'bot', text: LANGUAGE_PROMP
  * The student-support demo as a conversation: tap a choice or type. There is no AI.
  * Typed text is matched to a common problem by keywords (src/data/supportMatch.ts);
  * everything the bot says is fixed, reviewed text.
+ *
+ * "Limit mode": a student who already has as many open requests as allowed can still try the
+ * self-help steps, but nothing is ever sent. Instead of a technician request the bot shows who to
+ * contact. The conversation is never cleared in this mode (there is no "Change language" or
+ * "Start another request"), so the open request number stays on screen.
  */
 export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated, onUseClassicChat }) => {
   const [lang, setLang] = useState<Language | null>(null);
@@ -68,6 +72,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Open request numbers when the student is at the request limit (limit mode); null otherwise. */
+  const [limit, setLimit] = useState<string[] | null>(null);
   const nextId = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +86,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
   }, [messages, phase, busy]);
 
-  const inputEnabled = !busy && phase !== 'language' && phase !== 'done' && phase !== 'blocked';
+  const inputEnabled = !busy && phase !== 'language' && phase !== 'done';
   useEffect(() => {
     if (inputEnabled) inputRef.current?.focus();
   }, [inputEnabled, phase]);
@@ -102,6 +108,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     setStepIndex(0);
     setInput('');
     setError(null);
+    setLimit(null);
   };
 
   const run = async (work: () => Promise<void>) => {
@@ -111,9 +118,12 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       await work();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'OPEN_TICKET_LIMIT') {
-        // The student already has as many open requests as allowed: tell them who to contact.
-        push('bot', t.limitReached((err.details?.openTicketNumbers as string[] | undefined) ?? []), 'notice');
-        setPhase('blocked');
+        // The server refused (and closed the case as `blocked`): tell them who to contact. This also
+        // covers the limit being reached mid-conversation, for example from a second tab.
+        const nums = (err.details?.openTicketNumbers as string[] | undefined) ?? [];
+        setLimit(nums);
+        push('bot', t.limitContact(nums), 'notice');
+        setPhase('done');
       } else if (err instanceof ApiError) setError((err.code && t.errors[err.code]) || err.message);
       else setError(t.genericError);
     } finally {
@@ -127,12 +137,12 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     setLang(l);
     push('user', l === 'en' ? 'English' : 'Español');
     void run(async () => {
-      // A student who already has as many open requests as allowed is told now, before any questions.
+      // A student who already has as many open requests as allowed is told now, before any questions,
+      // and can still try the self-help steps.
       const { atLimit, openTicketNumbers } = await getSupportLimit();
       if (atLimit) {
-        push('bot', STRINGS[l].limitReached(openTicketNumbers), 'notice');
-        setPhase('blocked');
-        return;
+        setLimit(openTicketNumbers);
+        push('bot', STRINGS[l].limitIntro(openTicketNumbers), 'notice');
       }
       push('bot', STRINGS[l].greeting);
       setPhase('issue');
@@ -158,13 +168,28 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       setIssue(i);
       setPendingText(undefined);
       if (matched) push('bot', STRINGS[l].thisLooksLike(i.title[l]));
+      if (limit) {
+        // Nothing will be sent, so there is no red tag to collect: go straight to the steps.
+        showFirstStep(i, l);
+        return;
+      }
       push('bot', STRINGS[l].askTag);
       setPhase('tag');
     });
 
+  /** Limit mode, for a problem that has no steps: say who to contact. No case is created. */
+  const showContact = (nums: string[], l: Language) => {
+    push('bot', STRINGS[l].limitContact(nums), 'notice');
+    setPhase('done');
+  };
+
   const pickIssue = (i: SupportIssue) => {
     if (!lang) return;
     push('user', i.title[lang]);
+    if (limit && i.escalateOnly) {
+      showContact(limit, lang);
+      return;
+    }
     if (i.id === 'other' && !pendingText) {
       push('bot', t.askDetails);
       setPhase('details');
@@ -220,6 +245,16 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
         return;
       }
       const n = stepIndex + 1;
+      if (limit && n >= issue.steps.length) {
+        // Out of steps in limit mode: the server refuses and closes the case as `blocked`. Look first, in
+        // case a technician has allowed another request in the meantime, so nothing is sent unasked.
+        const now = await getSupportLimit();
+        if (now.atLimit) {
+          await escalateNow(view.id, idsOf(view), 'steps_not_worked');
+          return;
+        }
+        setLimit(null);
+      }
       setStepIndex(n);
       if (n < issue.steps.length) push('bot', `${t.stepOf(n + 1, issue.steps.length)}\n${issue.steps[n].text[lang]}`);
       else push('bot', t.noMoreSteps);
@@ -229,9 +264,9 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
   const reasonNow = () => (issue?.escalateOnly ? 'no_steps_for_issue' : step ? 'student_requested' : 'steps_not_worked');
 
   /** Sends the request: one ticket that lists every problem on it. */
-  const escalateNow = async (caseId: string, ids: SupportIssueId[]) => {
+  const escalateNow = async (caseId: string, ids: SupportIssueId[], reason = reasonNow()) => {
     if (!lang) return;
-    const res = await escalateSupportCase(caseId, reasonNow());
+    const res = await escalateSupportCase(caseId, reason);
     setCurrent(res.case);
     onTicketCreated(res.ticket);
     const includes = ids.length > 1 ? `\n${t.requestIncludes(ids.map(id => findSupportIssue(id)!.title[lang]))}` : '';
@@ -248,6 +283,11 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
   const requestTechnician = () => {
     if (!current || !lang) return;
     push('user', t.askTechnician);
+    if (limit) {
+      // The server refuses at the limit and closes the case as `blocked`; the reply names the open request.
+      sendRequest();
+      return;
+    }
     if (listedIds.length >= MAX_REPORTED_ISSUES) {
       sendRequest();
       return;
@@ -292,10 +332,14 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     switch (phase) {
       case 'issue': {
         const id = matchIssue(text);
-        if (id) void beginCase(lang, findSupportIssue(id)!, text, true);
+        const found = id ? findSupportIssue(id) : undefined;
+        if (found && limit && found.escalateOnly) {
+          push('bot', t.thisLooksLike(found.title[lang]));
+          showContact(limit, lang);
+        } else if (found) void beginCase(lang, found, text, true);
         else {
           setPendingText(text);
-          push('bot', t.notSure);
+          push('bot', limit ? t.notSureLimited : t.notSure);
         }
         break;
       }
@@ -364,12 +408,28 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
         ];
       case 'addDetails':
         return [{ key: 'add-skip', label: t.skip }];
-      case 'blocked':
-        return [];
       case 'done':
-        return [{ key: 'again', label: t.startAnother, primary: true }];
+        return limit
+          ? [{ key: 'another', label: t.tryAnother, primary: true }]
+          : [{ key: 'again', label: t.startAnother, primary: true }];
     }
   })();
+
+  /** Limit mode: back to the problem menu without clearing the conversation (the open request stays on screen). */
+  const tryAnother = () => {
+    push('user', t.tryAnother);
+    void run(async () => {
+      // Ask again: a technician may have allowed another request since. Then the normal flow applies.
+      const now = await getSupportLimit();
+      setLimit(now.atLimit ? now.openTicketNumbers : null);
+      setIssue(null);
+      setCurrent(null);
+      setStepIndex(0);
+      setPendingText(undefined);
+      push('bot', t.anotherPrompt);
+      setPhase('issue');
+    });
+  };
 
   const onChip = (key: string) => {
     if (key === 'lang:en') pickLanguage('en');
@@ -391,6 +451,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     }
     else if (key === 'add-skip') { push('user', t.skip); push('bot', t.addMoreAsk(MAX_REPORTED_ISSUES - listedIds.length)); setPhase('addMore'); }
     else if (key === 'again') reset();
+    else if (key === 'another') tryAnother();
   };
 
   const placeholder =
@@ -402,7 +463,6 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     : phase === 'addMore' || phase === 'addIssue' ? t.placeholderAddIssue
     : phase === 'addDetails' ? t.placeholderDetails
     : phase === 'done' ? t.placeholderDone
-    : phase === 'blocked' ? t.placeholderBlocked
     : t.placeholderSteps;
 
   return (
@@ -412,7 +472,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
           <h2 className="text-base font-semibold text-gray-900 leading-tight">Greg Bot</h2>
           <p className="text-xs text-gray-500">{t.headerTitle}</p>
         </div>
-        {phase === 'blocked' ? null : lang ? (
+        {limit ? null : lang ? (
           <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
         ) : (
           <button type="button" onClick={onUseClassicChat} className="text-sm text-gray-600 underline hover:text-gray-900">{STRINGS.en.classicChat}</button>

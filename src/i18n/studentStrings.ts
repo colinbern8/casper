@@ -24,7 +24,6 @@ export interface StudentStrings {
   placeholderConfirm: string;
   placeholderSteps: string;
   placeholderDone: string;
-  placeholderBlocked: string;
   tapChoice: string;
   addMoreAsk: (remaining: number) => string;
   addMoreYes: string;
@@ -34,7 +33,13 @@ export interface StudentStrings {
   alreadyListed: (issueTitle: string) => string;
   maxReached: string;
   requestIncludes: (issueTitles: string[]) => string;
-  limitReached: (ticketNumbers: string[]) => string;
+  /** Shown first when the student already has an open request. */
+  limitIntro: (ticketNumbers: string[]) => string;
+  /** Shown instead of sending: names the open request and says who to contact. */
+  limitContact: (ticketNumbers: string[]) => string;
+  notSureLimited: string;
+  anotherPrompt: string;
+  tryAnother: string;
   placeholderAddIssue: string;
   stepOf: (n: number, total: number) => string;
   fixed: string;
@@ -82,7 +87,6 @@ export const STRINGS: Record<Language, StudentStrings> = {
     placeholderConfirm: 'Tap a choice, or type the number again...',
     placeholderSteps: 'Tap a choice above...',
     placeholderDone: 'This request is finished',
-    placeholderBlocked: 'Request limit reached',
     tapChoice: 'To keep going, please tap one of the choices below. If you want a person to help, tap "Ask for a technician".',
     addMoreAsk: n => `Is there anything else wrong? You can add up to ${n} more ${n === 1 ? 'problem' : 'problems'} to this same request.`,
     addMoreYes: 'Add another problem',
@@ -92,8 +96,13 @@ export const STRINGS: Record<Language, StudentStrings> = {
     alreadyListed: title => `"${title}" is already on this request. Pick a different problem, or tap "No, send it".`,
     maxReached: 'That is the most we can put in one request. Sending it now.',
     requestIncludes: titles => `This request includes: ${titles.join('; ')}.`,
-    limitReached: nums =>
-      `Request limit reached. You already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. To send another one, please contact the main office or a technician.`,
+    limitIntro: nums =>
+      `You already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. I can still try some quick fixes, but I can't send a new request. If they don't work, please contact the main office or a technician.`,
+    limitContact: nums =>
+      `I can't send a new request because you already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. Please contact the main office or a technician.`,
+    notSureLimited: 'I am not sure which one that is. Pick the closest one below.',
+    anotherPrompt: 'OK. Which problem do you want to try? Tap one below, or type it.',
+    tryAnother: 'Try another problem',
     placeholderAddIssue: 'Type another problem...',
     stepOf: (n, total) => `Step ${n} of ${total}`,
     fixed: 'This fixed it',
@@ -138,7 +147,6 @@ export const STRINGS: Record<Language, StudentStrings> = {
     placeholderConfirm: 'Toca una opción, o escribe el número otra vez...',
     placeholderSteps: 'Toca una opción de arriba...',
     placeholderDone: 'Esta solicitud ya terminó',
-    placeholderBlocked: 'Se alcanzó el límite de solicitudes',
     tapChoice: 'Para continuar, por favor toca una de las opciones de abajo. Si quieres que te ayude una persona, toca "Pedir un técnico".',
     addMoreAsk: n => `¿Hay algo más que esté mal? Puedes agregar hasta ${n} ${n === 1 ? 'problema más' : 'problemas más'} a esta misma solicitud.`,
     addMoreYes: 'Agregar otro problema',
@@ -148,8 +156,13 @@ export const STRINGS: Record<Language, StudentStrings> = {
     alreadyListed: title => `"${title}" ya está en esta solicitud. Elige otro problema, o toca "No, enviarla".`,
     maxReached: 'Ese es el máximo que cabe en una solicitud. La enviamos ahora.',
     requestIncludes: titles => `Esta solicitud incluye: ${titles.join('; ')}.`,
-    limitReached: nums =>
-      `Se alcanzó el límite de solicitudes. Ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Para enviar otra, por favor comunícate con la oficina principal o con un técnico.`,
+    limitIntro: nums =>
+      `Ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Todavía puedo probar algunas soluciones rápidas, pero no puedo enviar una solicitud nueva. Si no funcionan, por favor comunícate con la oficina principal o con un técnico.`,
+    limitContact: nums =>
+      `No puedo enviar una solicitud nueva porque ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Por favor, comunícate con la oficina principal o con un técnico.`,
+    notSureLimited: 'No estoy seguro de cuál es. Elige la más parecida de abajo.',
+    anotherPrompt: 'Está bien. ¿Qué problema quieres probar? Toca una opción de abajo o escríbelo.',
+    tryAnother: 'Probar otro problema',
     placeholderAddIssue: 'Escribe otro problema...',
     stepOf: (n, total) => `Paso ${n} de ${total}`,
     fixed: 'Esto lo arregló',
