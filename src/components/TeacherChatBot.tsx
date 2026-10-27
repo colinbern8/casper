@@ -592,7 +592,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
         sender: 'bot',
         content: (isStudent
           ? "Troubleshooting steps for your Chromebook:\n\n1. Check the power light: Plug in the charger and verify the indicator light turns on.\n2. Hardware refresh: Hold the circular refresh key and press the power button once.\n3. Need a loaner? Visit the Media Center Tech Desk for a replacement."
-          : `Troubleshooting steps for ${userContext.room}:\n\n1. Check the display cable: Ensure the HDMI cord is connected firmly between your laptop and the wall plate.\n2. Display setting: Press Windows + P and select "Duplicate".\n3. If unresolved, submit a request for an on-campus technician visit.`) + `\n\n(The assistant is unreachable right now, so these are general steps.)`,
+          : `Troubleshooting steps for ${userContext.room}:\n\n1. Check the display cable: Ensure the HDMI cord is connected firmly between your laptop and the wall plate.\n2. Display setting: Press Windows + P and select "Duplicate".\n3. If unresolved, submit a request for an on-campus technician visit.`) + `\n\n(Greg Bot could not reach the help desk server, so these are general steps.)`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: [
           'Issue resolved',
@@ -967,7 +967,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                 <strong>Student Loaner Passes:</strong> Students are limited to 2 loaner ticket submissions per 15 minutes.
               </p>
               <p>
-                <strong>Privacy:</strong> Do not enter passwords or confidential student records. Free-text questions are processed by an AI service; your name and email are not sent to it.
+                <strong>Privacy:</strong> Do not enter passwords or confidential student records. Free-text questions are answered from built-in help text on the help desk server. Nothing you type is sent to an outside service.
               </p>
             </div>
 

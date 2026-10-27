@@ -10,7 +10,6 @@ import { createApp } from '../server/app';
 import { TicketStore } from '../server/store';
 import { CaseStore } from '../server/cases';
 import { UserStore } from '../server/users';
-import { ChatService } from '../server/chat';
 import { SlidingWindowLimiter } from '../server/rateLimit';
 import { checkDevice, DEMO_STUDENTS } from '../server/supportFixtures';
 import { SUPPORT_ISSUES } from '../src/data/supportContent';
@@ -33,7 +32,6 @@ async function start(env: Record<string, string> = { DEMO_MODE: 'true' }) {
     config,
     store,
     users,
-    chat: new ChatService(undefined, config.geminiModel),
     cases: new CaseStore(null),
     limiter: new SlidingWindowLimiter(),
   });

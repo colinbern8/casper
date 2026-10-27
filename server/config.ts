@@ -6,8 +6,6 @@ dotenv.config();
 export interface Config {
   port: number;
   isProduction: boolean;
-  geminiApiKey?: string;
-  geminiModel: string;
   /** Everyone must sign in with a Google Workspace account in this domain. */
   domain: string;
   /** Shown in headers and printed slips. */
@@ -24,7 +22,6 @@ export interface Config {
   dataDir: string;
   notifyWebhookUrl?: string;
   trustProxy: number | false;
-  dailyChatLimit: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -51,8 +48,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: Number(env.PORT) || 3000,
     isProduction,
-    geminiApiKey: env.GEMINI_API_KEY?.trim() || undefined,
-    geminiModel: env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
     domain: (env.DISTRICT_DOMAIN || 'htsdnj.org').trim().toLowerCase(),
     districtName: env.DISTRICT_NAME?.trim().slice(0, 80) || 'Hamilton Township School District',
     ticketPrefix: prefix,
@@ -65,6 +60,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dataDir: env.DATA_DIR || './data',
     notifyWebhookUrl: env.NOTIFY_WEBHOOK_URL?.trim() || undefined,
     trustProxy: Number.isInteger(trust) && trust > 0 ? trust : false,
-    dailyChatLimit: Number(env.DAILY_CHAT_LIMIT) || 2000,
   };
 }

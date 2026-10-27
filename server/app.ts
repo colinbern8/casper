@@ -8,7 +8,7 @@ import { SlidingWindowLimiter } from './rateLimit';
 import { screenMessage } from './safety';
 import { TicketStore } from './store';
 import { parseTicketInput, parseTicketUpdate } from './tickets';
-import { ChatService, fallbackReply, normalizeHistory, type ChatContext } from './chat';
+import { builtInReply, normalizeHistory, type ChatContext } from './chat';
 import { notifyUrgentTicket } from './notify';
 import { CaseStore } from './cases';
 import { createSupportRouter } from './supportRoutes';
@@ -19,7 +19,6 @@ export interface AppDeps {
   config: Config;
   store: TicketStore;
   users: UserStore;
-  chat: ChatService;
   /** Verifies a Google sign-in token. Absent when GOOGLE_CLIENT_ID is not configured. */
   verifyGoogle?: GoogleVerifier;
   /** Student-support demo cases. Defaults to an in-memory store. */
@@ -30,7 +29,7 @@ export interface AppDeps {
 const FIFTEEN_MIN = 15 * 60_000;
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
-export function createApp({ config, store, users, chat, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter() }: AppDeps) {
+export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter() }: AppDeps) {
   const app = express();
   const sessions = createSessions(config.sessionSecret, config.isProduction);
 
@@ -48,14 +47,6 @@ export function createApp({ config, store, users, chat, verifyGoogle, cases = ne
   });
   app.use('/api', sameOriginForWrites);
   app.use('/api', attachUser(sessions, users, config));
-
-  // Daily cap on model calls so a bug or abuse cannot run up a bill.
-  let daily = { day: '', count: 0 };
-  const underDailyCap = (): boolean => {
-    const day = new Date().toISOString().slice(0, 10);
-    if (daily.day !== day) daily = { day, count: 0 };
-    return daily.count < config.dailyChatLimit;
-  };
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
@@ -248,66 +239,49 @@ export function createApp({ config, store, users, chat, verifyGoogle, cases = ne
   });
 
   // ---- Chat ------------------------------------------------------------
-  app.post('/api/chat', requireRole('student'), async (req, res, next) => {
-    try {
-      const user = req.user!;
-      const history = normalizeHistory(req.body?.messages);
-      if (!history) {
-        res.status(400).json({ error: 'INVALID_MESSAGES', text: 'Please send a message.' });
-        return;
-      }
-      const uc = req.body?.userContext && typeof req.body.userContext === 'object' ? req.body.userContext : {};
+  // Free-text questions get a built-in answer. There is no AI behind this route.
+  app.post('/api/chat', requireRole('student'), (req, res) => {
+    const user = req.user!;
+    const history = normalizeHistory(req.body?.messages);
+    if (!history) {
+      res.status(400).json({ error: 'INVALID_MESSAGES', text: 'Please send a message.' });
+      return;
+    }
+    const uc = req.body?.userContext && typeof req.body.userContext === 'object' ? req.body.userContext : {};
 
-      // Schools share one public IP, so the per-IP ceiling is generous; the per-user limit is the tight one.
-      const ipCheck = limiter.hit(`chat-ip:${req.ip || 'unknown'}`, 120, 60_000);
-      const userCheck = limiter.hit(`chat-user:${user.email}`, 5, 30_000);
-      if (!ipCheck.allowed || !userCheck.allowed) {
-        const wait = Math.max(1, Math.ceil(Math.max(ipCheck.retryAfterMs, userCheck.retryAfterMs) / 1000));
-        res.status(429).json({
-          text: `Please wait ${wait} seconds before sending another message.`,
+    // Schools share one public IP, so the per-IP ceiling is generous; the per-user limit is the tight one.
+    const ipCheck = limiter.hit(`chat-ip:${req.ip || 'unknown'}`, 120, 60_000);
+    const userCheck = limiter.hit(`chat-user:${user.email}`, 5, 30_000);
+    if (!ipCheck.allowed || !userCheck.allowed) {
+      const wait = Math.max(1, Math.ceil(Math.max(ipCheck.retryAfterMs, userCheck.retryAfterMs) / 1000));
+      res.status(429).json({
+        text: `Please wait ${wait} seconds before sending another message.`,
+        isSafetyBlocked: true,
+        cooldownSeconds: wait,
+      });
+      return;
+    }
+
+    const isStudent = user.role === 'student';
+
+    for (const turn of history) {
+      if (turn.role !== 'user') continue;
+      const screen = screenMessage(turn.content);
+      if (screen.blocked) {
+        res.json({
+          text: screen.message,
           isSafetyBlocked: true,
-          cooldownSeconds: wait,
+          needsEscalation: false,
+          suggestedActions: isStudent
+            ? ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login']
+            : ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers'],
         });
         return;
       }
-
-      const isStudent = user.role === 'student';
-      const isActiveClass = !isStudent && uc.role === 'teacher_active';
-
-      for (const turn of history) {
-        if (turn.role !== 'user') continue;
-        const screen = screenMessage(turn.content);
-        if (screen.blocked) {
-          res.json({
-            text: screen.message,
-            isSafetyBlocked: true,
-            needsEscalation: false,
-            suggestedActions: isStudent
-              ? ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login']
-              : ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers'],
-          });
-          return;
-        }
-      }
-
-      const ctx: ChatContext = {
-        isStudent,
-        isActiveClass,
-        school: uc.school,
-        room: uc.room,
-        deviceType: uc.deviceType,
-        assetTag: uc.assetTag,
-      };
-
-      if (!chat.hasModel || !underDailyCap()) {
-        res.json(fallbackReply(ctx, history[history.length - 1].content));
-        return;
-      }
-      daily.count += 1;
-      res.json(await chat.reply(history, ctx));
-    } catch (err) {
-      next(err);
     }
+
+    const ctx: ChatContext = { isStudent, deviceType: typeof uc.deviceType === 'string' ? uc.deviceType : '' };
+    res.json(builtInReply(ctx, history[history.length - 1].content));
   });
 
   // ---- Student-support prototype (demo mode only) -------------------------

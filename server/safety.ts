@@ -1,5 +1,5 @@
-// Defense-in-depth only. The real boundaries are the system prompt, the
-// server-side limits, and the fact that the model has no tools or data access.
+// Screens free-text chat before it gets a built-in answer. Pattern-based and
+// English-only, so it is a courtesy filter for students, not a security boundary.
 
 export const MAX_MESSAGE_LENGTH = 1000;
 
@@ -57,15 +57,4 @@ export function screenMessage(text: string): ScreenResult {
     };
   }
   return { blocked: false };
-}
-
-/** Make a user-controlled string safe to embed in a prompt as a single-line value. */
-export function sanitizeField(value: unknown, maxLen = 80): string {
-  if (typeof value !== 'string') return '';
-  return value.replace(/[\u0000-\u001f\u007f<>`{}]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLen);
-}
-
-const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu;
-export function stripEmoji(text: string): string {
-  return text.replace(EMOJI, '').replace(/[ \t]+\n/g, '\n').trim();
 }
