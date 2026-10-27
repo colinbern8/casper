@@ -81,6 +81,8 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn }) => {
 
   const demoAccounts = [
     ['Student', `demo.student@${config.domain}`],
+    ['Student (Spanish)', `demo.estudiante@${config.domain}`],
+    ['Student 2', `demo.student2@${config.domain}`],
     ['Teacher', `demo.teacher@${config.domain}`],
     ['Technician', `demo.tech@${config.domain}`],
     ['Admin', `demo.admin@${config.domain}`],

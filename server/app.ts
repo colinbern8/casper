@@ -10,6 +10,8 @@ import { TicketStore } from './store';
 import { parseTicketInput, parseTicketUpdate } from './tickets';
 import { ChatService, fallbackReply, normalizeHistory, type ChatContext } from './chat';
 import { notifyUrgentTicket } from './notify';
+import { CaseStore } from './cases';
+import { createSupportRouter } from './supportRoutes';
 import { HELP_DESK } from '../src/data/schools';
 import type { PublicConfig } from '../src/types';
 
@@ -20,13 +22,15 @@ export interface AppDeps {
   chat: ChatService;
   /** Verifies a Google sign-in token. Absent when GOOGLE_CLIENT_ID is not configured. */
   verifyGoogle?: GoogleVerifier;
+  /** Student-support demo cases. Defaults to an in-memory store. */
+  cases?: CaseStore;
   limiter?: SlidingWindowLimiter;
 }
 
 const FIFTEEN_MIN = 15 * 60_000;
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
-export function createApp({ config, store, users, chat, verifyGoogle, limiter = new SlidingWindowLimiter() }: AppDeps) {
+export function createApp({ config, store, users, chat, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter() }: AppDeps) {
   const app = express();
   const sessions = createSessions(config.sessionSecret, config.isProduction);
 
@@ -304,6 +308,9 @@ export function createApp({ config, store, users, chat, verifyGoogle, limiter = 
       next(err);
     }
   });
+
+  // ---- Student-support prototype (demo mode only) -------------------------
+  app.use('/api/support', createSupportRouter({ config, store, cases, limiter }));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Unknown API route.' });

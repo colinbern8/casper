@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Ticket, TicketPriority, TicketStatus, TicketUpdateInput, IssueCategory } from '../types';
 import { allTechs } from '../data/schools';
+import { CaseDetailPanel } from './CaseDetailPanel';
 
 interface TechnicianConsoleProps {
   tickets: Ticket[];
@@ -492,6 +493,9 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         </button>
                       </div>
                     </div>
+
+                    {/* Student-support demo case (only on tickets escalated from one) */}
+                    {ticket.caseId && <CaseDetailPanel caseId={ticket.caseId} />}
 
                     {/* Quick Reassign Technician */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200">
