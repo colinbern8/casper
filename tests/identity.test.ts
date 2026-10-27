@@ -49,3 +49,11 @@ test('public config exposes the district name for the client', async () => {
   const res = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/config`);
   assert.equal((await res.json() as any).districtName, 'Example Schools');
 });
+
+test('config: the student open-request limit defaults to one and rejects nonsense', () => {
+  assert.equal(loadConfig({} as NodeJS.ProcessEnv).studentOpenTicketLimit, 1);
+  assert.equal(loadConfig({ STUDENT_OPEN_TICKET_LIMIT: '3' } as NodeJS.ProcessEnv).studentOpenTicketLimit, 3);
+  for (const bad of ['0', '11', '1.5', 'many', '-1']) {
+    assert.throws(() => loadConfig({ STUDENT_OPEN_TICKET_LIMIT: bad } as NodeJS.ProcessEnv), /STUDENT_OPEN_TICKET_LIMIT/, bad);
+  }
+});

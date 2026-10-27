@@ -25,6 +25,16 @@ export interface StudentStrings {
   placeholderSteps: string;
   placeholderDone: string;
   tapChoice: string;
+  addMoreAsk: (remaining: number) => string;
+  addMoreYes: string;
+  addMoreNo: string;
+  addPrompt: string;
+  issueAdded: (issueTitle: string) => string;
+  alreadyListed: (issueTitle: string) => string;
+  maxReached: string;
+  requestIncludes: (issueTitles: string[]) => string;
+  limitReached: (ticketNumbers: string[]) => string;
+  placeholderAddIssue: string;
   stepOf: (n: number, total: number) => string;
   fixed: string;
   notFixed: string;
@@ -72,6 +82,17 @@ export const STRINGS: Record<Language, StudentStrings> = {
     placeholderSteps: 'Tap a choice above...',
     placeholderDone: 'This request is finished',
     tapChoice: 'To keep going, please tap one of the choices below. If you want a person to help, tap "Ask for a technician".',
+    addMoreAsk: n => `Is there anything else wrong? You can add up to ${n} more ${n === 1 ? 'problem' : 'problems'} to this same request.`,
+    addMoreYes: 'Add another problem',
+    addMoreNo: 'No, send it',
+    addPrompt: 'Tap another problem, or type it.',
+    issueAdded: title => `Added: ${title}.`,
+    alreadyListed: title => `"${title}" is already on this request. Pick a different problem, or tap "No, send it".`,
+    maxReached: 'That is the most we can put in one request. Sending it now.',
+    requestIncludes: titles => `This request includes: ${titles.join('; ')}.`,
+    limitReached: nums =>
+      `Request limit reached. You already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. To send another one, please contact the main office or a technician.`,
+    placeholderAddIssue: 'Type another problem...',
     stepOf: (n, total) => `Step ${n} of ${total}`,
     fixed: 'This fixed it',
     notFixed: 'It did not work',
@@ -116,6 +137,17 @@ export const STRINGS: Record<Language, StudentStrings> = {
     placeholderSteps: 'Toca una opción de arriba...',
     placeholderDone: 'Esta solicitud ya terminó',
     tapChoice: 'Para continuar, por favor toca una de las opciones de abajo. Si quieres que te ayude una persona, toca "Pedir un técnico".',
+    addMoreAsk: n => `¿Hay algo más que esté mal? Puedes agregar hasta ${n} ${n === 1 ? 'problema más' : 'problemas más'} a esta misma solicitud.`,
+    addMoreYes: 'Agregar otro problema',
+    addMoreNo: 'No, enviarla',
+    addPrompt: 'Toca otro problema, o escríbelo.',
+    issueAdded: title => `Agregado: ${title}.`,
+    alreadyListed: title => `"${title}" ya está en esta solicitud. Elige otro problema, o toca "No, enviarla".`,
+    maxReached: 'Ese es el máximo que cabe en una solicitud. La enviamos ahora.',
+    requestIncludes: titles => `Esta solicitud incluye: ${titles.join('; ')}.`,
+    limitReached: nums =>
+      `Se alcanzó el límite de solicitudes. Ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Para enviar otra, por favor comunícate con la oficina principal o con un técnico.`,
+    placeholderAddIssue: 'Escribe otro problema...',
     stepOf: (n, total) => `Paso ${n} de ${total}`,
     fixed: 'Esto lo arregló',
     notFixed: 'No funcionó',

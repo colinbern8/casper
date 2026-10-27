@@ -22,6 +22,8 @@ export interface Config {
   dataDir: string;
   notifyWebhookUrl?: string;
   trustProxy: number | false;
+  /** Unresolved requests one student may have at once. A technician can allow another. */
+  studentOpenTicketLimit: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -43,6 +45,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const prefix = (env.TICKET_PREFIX || 'HTSD').trim().toUpperCase();
   if (!/^[A-Z0-9]{2,8}$/.test(prefix)) throw new Error('TICKET_PREFIX must be 2 to 8 letters or digits.');
 
+  const openLimit = env.STUDENT_OPEN_TICKET_LIMIT?.trim() ? Number(env.STUDENT_OPEN_TICKET_LIMIT) : 1;
+  if (!Number.isInteger(openLimit) || openLimit < 1 || openLimit > 10) {
+    throw new Error('STUDENT_OPEN_TICKET_LIMIT must be a whole number from 1 to 10.');
+  }
+
   const trust = Number(env.TRUST_PROXY);
 
   return {
@@ -60,5 +67,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dataDir: env.DATA_DIR || './data',
     notifyWebhookUrl: env.NOTIFY_WEBHOOK_URL?.trim() || undefined,
     trustProxy: Number.isInteger(trust) && trust > 0 ? trust : false,
+    studentOpenTicketLimit: openLimit,
   };
 }

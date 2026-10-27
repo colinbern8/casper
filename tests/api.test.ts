@@ -172,7 +172,7 @@ test('tickets: identity and role come from the session, never the request', asyn
 });
 
 test('tickets: validates school and required fields; students limited to 2 per 15 minutes', async () => {
-  const { call, login } = await start();
+  const { call, login } = await start({ STUDENT_OPEN_TICKET_LIMIT: '10' }); // isolate the burst limit from the open-request limit
   const c = await login('kid@d.test');
   assert.equal((await call('POST', '/api/tickets', ticketBody({ school: 'Made Up Academy' }), c)).status, 400);
   assert.equal((await call('POST', '/api/tickets', ticketBody({ title: '' }), c)).status, 400);
@@ -183,6 +183,83 @@ test('tickets: validates school and required fields; students limited to 2 per 1
   const third = await call('POST', '/api/tickets', ticketBody(), c);
   assert.equal(third.status, 429);
   assert.equal(third.body.error, 'TICKET_LIMIT_EXCEEDED');
+});
+
+test('student request limit: one open request at a time, an automatic message, freed by a technician', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  users.set('teacher@d.test', 'staff', 'test');
+  const kid = await login('kid@d.test');
+  const other = await login('other@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+  const teacher = await login('teacher@d.test');
+
+  const first = await call('POST', '/api/tickets', ticketBody(), kid);
+  assert.equal(first.status, 201);
+
+  // A second request is refused with an automatic message that names the open request.
+  for (let i = 0; i < 4; i++) {
+    const blocked = await call('POST', '/api/tickets', ticketBody({ title: `Again ${i}` }), kid);
+    assert.equal(blocked.status, 429);
+    assert.equal(blocked.body.error, 'OPEN_TICKET_LIMIT');
+    assert.match(blocked.body.message, /Request limit reached/);
+    assert.match(blocked.body.message, /contact the main office or a technician/);
+    assert.deepEqual(blocked.body.openTicketNumbers, [first.body.ticketNumber]);
+  }
+  assert.equal((await call('GET', '/api/tickets/mine', undefined, kid)).body.length, 1);
+  // The limit is per student, and staff are not limited.
+  assert.equal((await call('POST', '/api/tickets', ticketBody(), other)).status, 201);
+  for (let i = 0; i < 3; i++) assert.equal((await call('POST', '/api/tickets', ticketBody(), teacher)).status, 201);
+
+  // Resolving the open request frees the slot. Blocked attempts did not use up the rate allowance.
+  await call('PATCH', `/api/tickets/${first.body.id}`, { status: 'resolved' }, tech);
+  assert.equal((await call('POST', '/api/tickets', ticketBody({ title: 'New problem' }), kid)).status, 201);
+  assert.equal((await call('POST', '/api/tickets', ticketBody(), kid)).status, 429);
+});
+
+test('student request limit: a technician can allow another request (for example a loaner problem), and withdraw it', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  users.set('teacher@d.test', 'staff', 'test');
+  const kid = await login('kid@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+  const teacher = await login('teacher@d.test');
+
+  const first = (await call('POST', '/api/tickets', ticketBody(), kid)).body;
+  assert.equal((await call('POST', '/api/tickets', ticketBody(), kid)).status, 429);
+
+  assert.equal((await call('PATCH', `/api/tickets/${first.id}`, { allowAnother: 'yes' }, tech)).status, 400);
+  assert.equal((await call('PATCH', `/api/tickets/${first.id}`, { allowAnother: true }, kid)).status, 403); // students cannot release themselves
+  const granted = await call('PATCH', `/api/tickets/${first.id}`, { allowAnother: true, status: 'hardware_swap' }, tech);
+  assert.equal(granted.status, 200);
+  assert.equal(granted.body.allowsAnother, true);
+  assert.match(granted.body.techNotes, /Tina Tech\] Allowed the student to send another request/);
+
+  const second = await call('POST', '/api/tickets', ticketBody({ title: 'Loaner is faulty' }), kid);
+  assert.equal(second.status, 201);
+  assert.equal((await call('POST', '/api/tickets', ticketBody(), kid)).status, 429); // the new one is open and not released
+
+  // Withdrawing permission puts the first request back in the count.
+  const withdrawn = await call('PATCH', `/api/tickets/${first.id}`, { allowAnother: false }, tech);
+  assert.equal(withdrawn.body.allowsAnother, false);
+  assert.match(withdrawn.body.techNotes, /Withdrew permission/);
+
+  // Only student requests can be released.
+  const staffTicket = (await call('POST', '/api/tickets', ticketBody(), teacher)).body;
+  const bad = await call('PATCH', `/api/tickets/${staffTicket.id}`, { allowAnother: true }, tech);
+  assert.equal(bad.status, 400);
+  assert.equal(bad.body.error, 'NOT_A_STUDENT_TICKET');
+});
+
+test('student request limit: the number of open requests is configurable', async () => {
+  const { call, login } = await start({ STUDENT_OPEN_TICKET_LIMIT: '2' });
+  const kid = await login('kid@d.test');
+  assert.equal((await call('POST', '/api/tickets', ticketBody(), kid)).status, 201);
+  assert.equal((await call('POST', '/api/tickets', ticketBody(), kid)).status, 201);
+  const third = await call('POST', '/api/tickets', ticketBody(), kid);
+  assert.equal(third.status, 429);
+  assert.equal(third.body.error, 'OPEN_TICKET_LIMIT');
+  assert.match(third.body.message, /2 open requests/);
 });
 
 test('"mine" is tied to the account: your tickets on any device, nobody else\'s', async () => {

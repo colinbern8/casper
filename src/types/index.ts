@@ -78,6 +78,8 @@ export interface Ticket {
   resolvedAt?: string;
   /** Set when the ticket was escalated from a student-support demo case. */
   caseId?: string;
+  /** A technician has let this student send another request while this one is still open. */
+  allowsAnother?: boolean;
 }
 
 /**
@@ -106,6 +108,8 @@ export interface TicketUpdateInput {
   /** Appended (with a timestamp) to the ticket's notes by the server. */
   addNote?: string;
   priority?: TicketPriority;
+  /** Student tickets only: let the student send another request while this one is open. */
+  allowAnother?: boolean;
 }
 
 export interface PublicConfig {
@@ -165,6 +169,15 @@ export interface RedTag {
   recordedAt: string;
 }
 
+/** One problem the student reported. A request can list several. */
+export interface ReportedIssue {
+  issueId: SupportIssueId;
+  description?: string;
+}
+
+/** The most problems one request can list: the first one plus four more. */
+export const MAX_REPORTED_ISSUES = 5;
+
 export interface SupportAttempt {
   stepId: string;
   result: 'worked' | 'not_worked';
@@ -201,7 +214,7 @@ export interface NotificationDraft {
 export interface CaseHistoryEntry {
   at: string;
   by: string;
-  action: 'case_started' | 'tag_recorded' | 'resolved' | 'escalated' | 'disposition_recorded';
+  action: 'case_started' | 'issue_added' | 'tag_recorded' | 'resolved' | 'escalated' | 'disposition_recorded';
   detail?: string;
 }
 
@@ -213,7 +226,9 @@ export interface SupportCase {
   language: Language;
   student: { email: string; displayName: string; school: string; room: string; onRoster: boolean };
   /** What the student said, as entered. */
-  reported: { issueId: SupportIssueId; description?: string };
+  reported: ReportedIssue;
+  /** Further problems the student added before sending. Only the first problem has troubleshooting steps. */
+  additionalIssues?: ReportedIssue[];
   redTag?: RedTag;
   attempts: SupportAttempt[];
   outcome: SupportOutcome;

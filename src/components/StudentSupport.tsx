@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Info, Send } from 'lucide-react';
-import type { Language, StudentCaseView, SupportIssue, Ticket } from '../types';
-import { ApiError, createSupportCase, escalateSupportCase, recordRedTag, recordSupportAttempt } from '../api';
+import { MAX_REPORTED_ISSUES, type Language, type StudentCaseView, type SupportIssue, type SupportIssueId, type Ticket } from '../types';
+import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, recordRedTag, recordSupportAttempt } from '../api';
 import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
 
-type Phase = 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff' | 'done';
-type Kind = 'plain' | 'info' | 'success' | 'handoff';
+type Phase =
+  | 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff'
+  | 'addMore' | 'addIssue' | 'addDetails'
+  | 'done';
+type Kind = 'plain' | 'info' | 'success' | 'handoff' | 'notice';
 
 interface Msg {
   id: number;
@@ -33,7 +36,11 @@ const BUBBLE: Record<Kind | 'user', string> = {
   info: 'bg-blue-50 border border-blue-200 text-gray-900',
   success: 'bg-emerald-50 border border-emerald-200 text-gray-900',
   handoff: 'bg-blue-50 border border-blue-200 text-gray-900',
+  notice: 'bg-amber-50 border border-amber-300 text-gray-900',
 };
+
+/** Every problem on a request, the first one first. */
+const idsOf = (c: StudentCaseView): SupportIssueId[] => [c.reported.issueId, ...(c.additionalIssues ?? []).map(i => i.issueId)];
 
 /** The same tidy-up the server applies, so the student confirms exactly what will be saved. */
 const tidyTag = (raw: string): string => raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -66,6 +73,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
 
   const t = STRINGS[lang ?? 'en'];
   const step = issue && !issue.escalateOnly ? issue.steps[stepIndex] : undefined;
+  const listedIds = current ? idsOf(current) : [];
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
@@ -101,7 +109,11 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     try {
       await work();
     } catch (err) {
-      if (err instanceof ApiError) setError((err.code && t.errors[err.code]) || err.message);
+      if (err instanceof ApiError && err.code === 'OPEN_TICKET_LIMIT') {
+        // The student already has as many open requests as allowed: tell them who to contact.
+        push('bot', t.limitReached((err.details?.openTicketNumbers as string[] | undefined) ?? []), 'notice');
+        setPhase('done');
+      } else if (err instanceof ApiError) setError((err.code && t.errors[err.code]) || err.message);
       else setError(t.genericError);
     } finally {
       setBusy(false);
@@ -204,17 +216,62 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     });
   };
 
-  const askTechnician = () => {
+  const reasonNow = () => (issue?.escalateOnly ? 'no_steps_for_issue' : step ? 'student_requested' : 'steps_not_worked');
+
+  /** Sends the request: one ticket that lists every problem on it. */
+  const escalateNow = async (caseId: string, ids: SupportIssueId[]) => {
+    if (!lang) return;
+    const res = await escalateSupportCase(caseId, reasonNow());
+    setCurrent(res.case);
+    onTicketCreated(res.ticket);
+    const includes = ids.length > 1 ? `\n${t.requestIncludes(ids.map(id => findSupportIssue(id)!.title[lang]))}` : '';
+    push('bot', `${t.escalatedTitle}\n${t.escalatedBody}\n${t.ticketNumber}: ${res.ticket.ticketNumber}\n${t.caseNumber}: ${res.case.caseNumber}${includes}`, 'handoff');
+    setPhase('done');
+  };
+
+  const sendRequest = () => {
     if (!current) return;
+    void run(() => escalateNow(current.id, idsOf(current)));
+  };
+
+  /** "Ask for a technician": before sending, offer to add anything else that is wrong. */
+  const requestTechnician = () => {
+    if (!current || !lang) return;
     push('user', t.askTechnician);
-    const reason = issue?.escalateOnly ? 'no_steps_for_issue' : step ? 'student_requested' : 'steps_not_worked';
-    void run(async () => {
-      const res = await escalateSupportCase(current.id, reason);
-      setCurrent(res.case);
-      onTicketCreated(res.ticket);
-      push('bot', `${t.escalatedTitle}\n${t.escalatedBody}\n${t.ticketNumber}: ${res.ticket.ticketNumber}\n${t.caseNumber}: ${res.case.caseNumber}`, 'handoff');
-      setPhase('done');
+    if (listedIds.length >= MAX_REPORTED_ISSUES) {
+      sendRequest();
+      return;
+    }
+    push('bot', t.addMoreAsk(MAX_REPORTED_ISSUES - listedIds.length));
+    setPhase('addMore');
+  };
+
+  const addIssueToRequest = (id: SupportIssueId, words: string | undefined) =>
+    run(async () => {
+      if (!current || !lang) return;
+      const view = await addSupportIssue(current.id, id, words);
+      setCurrent(view);
+      push('bot', t.issueAdded(findSupportIssue(id)!.title[lang]));
+      const left = MAX_REPORTED_ISSUES - idsOf(view).length;
+      if (left <= 0) {
+        push('bot', t.maxReached);
+        await escalateNow(view.id, idsOf(view));
+        return;
+      }
+      push('bot', t.addMoreAsk(left));
+      setPhase('addMore');
     });
+
+  /** Something typed while adding problems: match it to a common problem, or keep it as "Something else". */
+  const addFromText = (text: string) => {
+    if (!lang) return;
+    const id = matchIssue(text) ?? 'other';
+    if (id !== 'other' && listedIds.includes(id)) {
+      push('bot', t.alreadyListed(findSupportIssue(id)!.title[lang]));
+      setPhase('addIssue');
+      return;
+    }
+    void addIssueToRequest(id, text);
   };
 
   const submit = (raw: string) => {
@@ -246,6 +303,19 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
         else askToConfirmTag(text);
         break;
       }
+      case 'addMore':
+      case 'addIssue': {
+        const word = text.toLowerCase().replace(/[.!¡¿?]/g, '').trim();
+        if (NO.has(word) || word === 'nothing' || word === 'nada') sendRequest();
+        else if (phase === 'addMore' && YES.has(word)) {
+          push('bot', t.addPrompt);
+          setPhase('addIssue');
+        } else addFromText(text);
+        break;
+      }
+      case 'addDetails':
+        void addIssueToRequest('other', text);
+        break;
       default:
         push('bot', t.tapChoice);
     }
@@ -275,6 +345,15 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
           : [{ key: 'tech', label: t.askTechnician, primary: true }];
       case 'handoff':
         return [{ key: 'tech', label: t.askTechnician, primary: true }];
+      case 'addMore':
+        return [{ key: 'more-no', label: t.addMoreNo, primary: true }, { key: 'more-yes', label: t.addMoreYes }];
+      case 'addIssue':
+        return [
+          ...SUPPORT_ISSUES.filter(i => i.id === 'other' || !listedIds.includes(i.id)).map(i => ({ key: `addissue:${i.id}`, label: i.title[lang!] })),
+          { key: 'more-no', label: t.addMoreNo, primary: true },
+        ];
+      case 'addDetails':
+        return [{ key: 'add-skip', label: t.skip }];
       case 'done':
         return [{ key: 'again', label: t.startAnother, primary: true }];
     }
@@ -289,7 +368,16 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     else if (key === 'tag-no') { push('user', t.tagNo); rejectTag(); }
     else if (key === 'worked') answer('worked');
     else if (key === 'not_worked') answer('not_worked');
-    else if (key === 'tech') askTechnician();
+    else if (key === 'tech') requestTechnician();
+    else if (key === 'more-yes') { push('user', t.addMoreYes); push('bot', t.addPrompt); setPhase('addIssue'); }
+    else if (key === 'more-no') { push('user', t.addMoreNo); sendRequest(); }
+    else if (key.startsWith('addissue:')) {
+      const id = key.slice(9) as SupportIssueId;
+      push('user', findSupportIssue(id)!.title[lang!]);
+      if (id === 'other') { push('bot', t.askDetails); setPhase('addDetails'); }
+      else void addIssueToRequest(id, undefined);
+    }
+    else if (key === 'add-skip') { push('user', t.skip); push('bot', t.addMoreAsk(MAX_REPORTED_ISSUES - listedIds.length)); setPhase('addMore'); }
     else if (key === 'again') reset();
   };
 
@@ -299,6 +387,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     : phase === 'details' ? t.placeholderDetails
     : phase === 'tag' ? t.placeholderTag
     : phase === 'confirmTag' ? t.placeholderConfirm
+    : phase === 'addMore' || phase === 'addIssue' ? t.placeholderAddIssue
+    : phase === 'addDetails' ? t.placeholderDetails
     : phase === 'done' ? t.placeholderDone
     : t.placeholderSteps;
 

@@ -44,6 +44,12 @@ export class TicketStore {
     return this.data.tickets.find(t => t.id === id);
   }
 
+  /** A student's requests that still count toward their limit: unresolved, and not released by a technician. */
+  openStudentTickets(email: string): Ticket[] {
+    const e = email.toLowerCase();
+    return this.data.tickets.filter(t => t.userEmail === e && t.userRole === 'student' && t.status !== 'resolved' && !t.allowsAnother);
+  }
+
   listByEmail(email: string): Ticket[] {
     const e = email.toLowerCase();
     return this.list().filter(t => t.userEmail === e);

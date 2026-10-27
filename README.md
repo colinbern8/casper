@@ -54,15 +54,16 @@ A prototype of a student-support workflow in English and Spanish, shown as a cha
 
 **Demo accounts** (the sign-in panel appears when `DEV_LOGIN=true`): **Student**, **Teacher**, **Technician** and **Admin**. The Student button signs in as a fictional student, Alex Sample. Language is chosen inside the chat, so there is a single student button.
 
-Type any text as the red tag, for example `R-4821`. Students are limited to 2 tickets per 15 minutes, the same limit as the normal form. To rehearse more than twice, type another fictional address in the sign-in box, such as `demo.estudiante@your-demo-domain` (Sofía Muestra) or `demo.student2@your-demo-domain` (Jordan Sample). Any other address works too, and shows as "not on the demo roster".
+Type any text as the red tag, for example `R-4821`. **Request limit:** to stop one student piling up tickets, a student can have **one open request at a time** (set by `STUDENT_OPEN_TICKET_LIMIT`). A student who reaches it gets an automatic message to contact the main office or a technician, and no ticket is created. The slot frees when a technician resolves the request, or when a technician clicks **Allow another request** on it (for example if the loaner has a problem). Fixed problems never use up a slot. **Several problems:** before sending, the bot asks "Is there anything else wrong?" and the student can add up to four more problems, which all go in the same single ticket. To rehearse more than once, resolve the ticket as a technician, use **Allow another request**, or type another fictional address in the sign-in box, such as `demo.estudiante@your-demo-domain` (Sofía Muestra) or `demo.student2@your-demo-domain` (Jordan Sample). Any other address works too, and shows as "not on the demo roster".
 
 **Five-minute walkthrough**
 
 1. Sign in as **Student** and tap **Español**. Type `mi chromebook no prende`. The bot recognises the problem. Type a red tag number such as `R-4821`, confirm it when the bot repeats it back, and notice that the Spanish text awaits review.
-2. Tap "No funcionó" on both steps, then "Pedir un técnico". You get a ticket number.
-3. Sign out, sign in as **Technician**, and expand that ticket. Record the "Needs in-person check" disposition and read the Spanish draft, which is marked as not sent.
-4. Sign in as **Student** again, tap **English** and the Wi-Fi choice, skip the red tag, and tap "This fixed it" at step 2 to see a resolved case.
-5. Sign in as **Teacher** to confirm the original teacher chat is unchanged.
+2. Tap "No funcionó" on both steps, then "Pedir un técnico". The bot asks if anything else is wrong: tap "Agregar otro problema", pick the Wi-Fi problem, then "No, enviarla". You get one ticket number for both.
+3. Start another request ("Empezar otra solicitud"), pick "Otra cosa", type anything, then ask for a technician. You get the automatic **request limit** message, and no second ticket is created.
+4. Sign out, sign in as **Technician**, and expand that ticket. See both problems and the red tag, record the "Needs in-person check" disposition and read the Spanish draft (marked as not sent), then click **Allow another request**.
+5. Sign in as **Student** again. Now the second request goes through. Also try tapping **English**, the Wi-Fi choice and "This fixed it" at step 2 to see a resolved case.
+6. Sign in as **Teacher** to confirm the original teacher chat is unchanged.
 
 **What is real and what is simulated**
 
@@ -102,6 +103,7 @@ Then run `npm run dev` and open http://localhost:3000. The sign-in page shows de
 | Type-check, build | Verified | `npm run lint`, `npm run build` |
 | Roles, tickets, technician updates, admin tools | Verified | `tests/api.test.ts`, plus manual sign-in and access checks for each role over HTTP |
 | Student-support chat: both languages, tapped and typed input, resolved and escalated outcomes | Verified | `tests/support.test.ts`, `tests/match.test.ts` and a full browser walkthrough |
+| Student request limit (one open at a time, technician can allow another), and several problems in one request | Verified | `tests/api.test.ts`, `tests/support.test.ts` and the browser walkthrough |
 | Keyword matching of typed text | Verified for the phrases in `tests/match.test.ts` only. Real students will type things it does not recognise, and it falls back to the choices. | |
 | Teacher chat and ticket path | Verified, unchanged by the demo work | existing tests, and a ticket filed through the UI |
 | Data survives a restart; demo off hides the demo routes | Verified | real process restarts |
@@ -169,6 +171,7 @@ All settings are in `.env.example`.
 | --- | --- |
 | `DISTRICT_DOMAIN` | Email domain people must sign in with |
 | `DISTRICT_NAME`, `TICKET_PREFIX` | Name shown in headers and slips, and the start of ticket numbers (`PREFIX-2026-0001`) |
+| `STUDENT_OPEN_TICKET_LIMIT` | Open requests one student may have at once (1 to 10, default 1) |
 | `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, `ADMIN_EMAILS` | Required in production |
 | `DEV_LOGIN`, `DEMO_MODE` | Development and demo only. The server refuses to start in production with either on. |
 | `DATA_DIR`, `PORT`, `TRUST_PROXY` | Storage location, port, and reverse-proxy count |
@@ -184,7 +187,7 @@ All settings are in `.env.example`.
 | Roles | Looked up on every request. Students are the default. Admins in `ADMIN_EMAILS` cannot be removed in the app, and admins cannot change their own role. |
 | Tickets | Name, email, role, priority, routing and ticket number come from the server. Technician notes record who wrote them. |
 | Sessions | Signed, HttpOnly, SameSite=Lax cookie, 8 hours. Cross-site writes are refused. |
-| Abuse limits | Tickets: 2 per 15 minutes for students, 3 for staff. Chat: 5 messages per 30 seconds per person and 120 per minute per IP. Sign-in: 30 attempts per 10 minutes per IP. Message length is capped, and a regex deny-list screens chat messages. |
+| Abuse limits | Tickets: one open request per student (a technician can allow another), plus a burst limit of 2 per 15 minutes for students and 3 for staff. Chat: 5 messages per 30 seconds per person and 120 per minute per IP. Sign-in: 30 attempts per 10 minutes per IP. Message length is capped, and a regex deny-list screens chat messages. |
 | Chat content | Free-text questions are answered from built-in text on the server. They are not stored, and they are not sent to any outside service. |
 
 **Known limits**
@@ -196,6 +199,8 @@ All settings are in `.env.example`.
 - **The chat screen is English-only and pattern-based.** It is a courtesy filter for students, not a security boundary, and Spanish free text is not matched by the built-in answers. The student-support demo avoids this by using a menu instead of free text.
 - **Rate limits live in memory** and reset when the server restarts.
 - **Nobody is paged by the app.** Priority 1 tickets rise to the top of the queue and, if a webhook is set, post to Slack or Teams.
+- **A student blocked by the request limit leaves an unfinished case** in `cases.json`. It is harmless, but nothing cleans them up yet.
+- **Loaner follow-ups are approved by a technician, not automatic.** A student with a loaner problem has to contact the main office or a technician unless the open request has been released.
 - **Technicians and admins who open the student or teacher pages** to test create real tickets under their own name.
 
 ## Deploying for real use
@@ -240,13 +245,14 @@ These need decisions from the district, not code:
 Not built yet, roughly in priority order:
 
 1. The pilot prerequisites above.
-2. Buildings, rooms and technician coverage as admin-editable data instead of a source file.
-3. A database instead of JSON files, and less client polling, before any district-wide use.
-4. An audit log, session revocation, and per-building technician scoping.
-5. A technician view of self-resolved student cases (they are stored today but have no screen).
-6. Admin reporting (response times, trends by building).
-7. Offline or installable support for Chromebooks.
-8. Tidying: one source for the troubleshooting text (it exists in three places today), merging duplicate type definitions, and splitting the large `src/components/TeacherChatBot.tsx`.
+2. Decide whether loaner problems should be allowed automatically, for example once a technician marks the swap done, instead of needing a technician to allow each one.
+3. Buildings, rooms and technician coverage as admin-editable data instead of a source file.
+4. A database instead of JSON files, and less client polling, before any district-wide use.
+5. An audit log, session revocation, and per-building technician scoping.
+6. A technician view of self-resolved student cases (they are stored today but have no screen).
+7. Admin reporting (response times, trends by building).
+8. Offline or installable support for Chromebooks.
+9. Tidying: one source for the troubleshooting text (it exists in three places today), merging duplicate type definitions, and splitting the large `src/components/TeacherChatBot.tsx`.
 
 ### Decided against
 

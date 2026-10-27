@@ -177,7 +177,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
 });
 
 test('escalation: damaged devices go straight to a technician; the shared student ticket limit still applies', async () => {
-  const { call, login } = await start();
+  const { call, login } = await start({ DEMO_MODE: 'true', STUDENT_OPEN_TICKET_LIMIT: '10' }); // isolate the burst limit from the open-request limit
   const jordan = await login('demo.student2@d.test');
   const make = async () => (await call('POST', S, { language: 'en', issueId: 'damaged' }, jordan)).body;
 
@@ -208,6 +208,68 @@ test('"something else": goes straight to a technician with the student\'s own wo
   assert.equal(esc.body.ticket.title, 'Student support (demo): Something else');
   assert.match(esc.body.ticket.description, /headphone jack is loose/);
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.reported.description, 'The headphone jack is loose');
+});
+
+test('several problems in one request: added before sending, validated, and listed in one ticket', async () => {
+  const { call, login, users, store } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  const alex = await login('demo.student@d.test');
+  const sofia = await login('demo.estudiante@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+  const c = (await call('POST', S, { language: 'es', issueId: 'wifi', description: 'no hay internet' }, alex)).body;
+  const add = (body: unknown, who = alex) => call('POST', `${S}/${c.id}/issues`, body, who);
+
+  assert.equal((await add({ issueId: 'nope' })).status, 400);
+  assert.equal((await add({ issueId: 'power' }, sofia)).status, 404); // someone else's case
+  assert.equal((await add({ issueId: 'wifi' })).status, 409); // already the first problem
+  assert.equal((await add({ issueId: 'other' })).status, 400); // "something else" needs words
+
+  const two = await add({ issueId: 'power', description: 'tampoco prende' });
+  assert.equal(two.status, 200);
+  assert.deepEqual(two.body.additionalIssues.map((i: any) => i.issueId), ['power']);
+  assert.equal((await add({ issueId: 'power' })).status, 409); // not twice
+  assert.equal((await add({ issueId: 'login' })).status, 200);
+  assert.equal((await add({ issueId: 'other', description: 'el teclado' })).status, 200);
+  assert.equal((await add({ issueId: 'other', description: 'el cargador' })).status, 200); // five in total
+  const sixth = await add({ issueId: 'damaged' });
+  assert.equal(sixth.status, 409);
+  assert.equal(sixth.body.error, 'TOO_MANY_ISSUES');
+
+  const esc = await call('POST', `${S}/${c.id}/escalate`, {}, alex);
+  assert.equal(esc.status, 201);
+  assert.equal(store.size, 1); // one ticket for all five
+  assert.equal(esc.body.ticket.title, 'Student support (demo): My Chromebook will not connect to Wi-Fi (+4 more)');
+  assert.match(esc.body.ticket.description, /Problems reported \(5\):/);
+  assert.match(esc.body.ticket.description, /1\. My Chromebook will not connect to Wi-Fi - "no hay internet"/);
+  assert.match(esc.body.ticket.description, /5\. Something else - "el cargador"/);
+  assert.equal(esc.body.ticket.category, 'network');
+
+  const full = await call('GET', `${S}/${c.id}`, undefined, tech);
+  assert.equal(full.body.additionalIssues.length, 4);
+  assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'issue_added', 'issue_added', 'issue_added', 'issue_added', 'escalated']);
+  assert.equal((await add({ issueId: 'damaged' })).status, 409); // closed cases take no more
+});
+
+test('request limit applies when escalating from the student chat too, and a technician release lets the next one through', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  const alex = await login('demo.student@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+
+  const a = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
+  const first = await call('POST', `${S}/${a.id}/escalate`, {}, alex);
+  assert.equal(first.status, 201);
+
+  const b = (await call('POST', S, { language: 'en', issueId: 'other', description: 'Loaner will not charge' }, alex)).body;
+  const blocked = await call('POST', `${S}/${b.id}/escalate`, {}, alex);
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.body.error, 'OPEN_TICKET_LIMIT');
+  assert.deepEqual(blocked.body.openTicketNumbers, [first.body.ticket.ticketNumber]);
+  assert.equal((await call('GET', `${S}/${b.id}`, undefined, alex)).body.outcome, 'open'); // nothing half-done
+
+  await call('PATCH', `/api/tickets/${first.body.ticket.id}`, { allowAnother: true }, tech);
+  const second = await call('POST', `${S}/${b.id}/escalate`, {}, alex);
+  assert.equal(second.status, 201);
 });
 
 test('access: students only reach their own cases; only technicians record dispositions', async () => {
