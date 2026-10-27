@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Search,
   RefreshCw,
@@ -13,14 +13,14 @@ import {
   ChevronUp,
   Check,
   Send,
-  SlidersHorizontal,
   X
 } from 'lucide-react';
-import { Ticket, TicketPriority, TicketStatus, TicketUpdateInput, IssueCategory } from '../types';
+import { Ticket, TicketPriority, TicketStatus, TicketUpdateInput } from '../types';
 import { allTechs } from '../data/schools';
 import { CaseDetailPanel } from './CaseDetailPanel';
 
 interface TechnicianConsoleProps {
+  districtName: string;
   tickets: Ticket[];
   onRefresh: () => void;
   onUpdateTicket: (id: string, updates: TicketUpdateInput) => Promise<void>;
@@ -28,6 +28,7 @@ interface TechnicianConsoleProps {
 }
 
 export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
+  districtName,
   tickets,
   onRefresh,
   onUpdateTicket,
@@ -51,7 +52,6 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
   // Metrics
   const activeTickets = tickets.filter(t => t.status !== 'resolved');
   const criticalP1Count = tickets.filter(t => t.priority === 'critical' && t.status !== 'resolved').length;
-  const highP2Count = tickets.filter(t => t.priority === 'high' && t.status !== 'resolved').length;
   const studentLoanerCount = tickets.filter(t => t.userRole === 'student' && t.status !== 'resolved').length;
   const resolvedCount = tickets.filter(t => t.status === 'resolved').length;
 
@@ -192,7 +192,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
             </h2>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Hamilton Township School District • Technology Support & Operations
+            {districtName} • Technology Support & Operations
           </p>
         </div>
 

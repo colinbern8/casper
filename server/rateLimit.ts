@@ -19,12 +19,6 @@ export class SlidingWindowLimiter {
     return { allowed: true, retryAfterMs: 0 };
   }
 
-  /** Counts without recording (used to check before doing work). */
-  count(key: string, windowMs: number): number {
-    const t = this.now();
-    return (this.hits.get(key) || []).filter(ts => t - ts < windowMs).length;
-  }
-
   private prune(t: number, windowMs: number) {
     if (t - this.lastPrune < 60_000) return;
     this.lastPrune = t;
@@ -33,31 +27,5 @@ export class SlidingWindowLimiter {
       if (fresh.length === 0) this.hits.delete(key);
       else this.hits.set(key, fresh);
     }
-  }
-}
-
-/** Blocks an IP for a while after repeated failed technician logins. */
-export class LoginThrottle {
-  private fails = new Map<string, { count: number; first: number; blockedUntil: number }>();
-
-  constructor(private now: () => number = Date.now, private maxFails = 5, private windowMs = 10 * 60_000) {}
-
-  blockedFor(key: string): number {
-    const e = this.fails.get(key);
-    const t = this.now();
-    return e && e.blockedUntil > t ? e.blockedUntil - t : 0;
-  }
-
-  fail(key: string) {
-    const t = this.now();
-    let e = this.fails.get(key);
-    if (!e || t - e.first > this.windowMs) e = { count: 0, first: t, blockedUntil: 0 };
-    e.count += 1;
-    if (e.count >= this.maxFails) e.blockedUntil = t + this.windowMs;
-    this.fails.set(key, e);
-  }
-
-  success(key: string) {
-    this.fails.delete(key);
   }
 }

@@ -94,7 +94,7 @@ export function suggestedActionsFor(isStudent: boolean, needsEscalation: boolean
 export class ChatService {
   private ai: GoogleGenAI | null;
 
-  constructor(private apiKey: string | undefined, private model: string) {
+  constructor(apiKey: string | undefined, private model: string) {
     this.ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
   }
 

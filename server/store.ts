@@ -18,7 +18,7 @@ interface StoreFile {
 export class TicketStore {
   private data: StoreFile = { counter: 0, tickets: [] };
 
-  constructor(private file: string | null) {
+  constructor(private file: string | null, private ticketPrefix = 'HTSD') {
     if (file && fs.existsSync(file)) {
       try {
         const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as StoreFile;
@@ -49,18 +49,13 @@ export class TicketStore {
     return this.list().filter(t => t.userEmail === e);
   }
 
-  getMany(ids: string[]): Ticket[] {
-    const wanted = new Set(ids);
-    return this.list().filter(t => wanted.has(t.id));
-  }
-
   create(input: NewTicket, createdAt = new Date()): Ticket {
     this.data.counter += 1;
     const seq = String(this.data.counter).padStart(4, '0');
     const ticket: Ticket = {
       ...input,
       id: crypto.randomUUID(),
-      ticketNumber: input.userRole === 'student' ? `HTSD-STU-${seq}` : `HTSD-${createdAt.getFullYear()}-${seq}`,
+      ticketNumber: input.userRole === 'student' ? `${this.ticketPrefix}-STU-${seq}` : `${this.ticketPrefix}-${createdAt.getFullYear()}-${seq}`,
       createdAt: createdAt.toISOString(),
     };
     this.data.tickets.push(ticket);

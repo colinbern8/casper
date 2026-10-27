@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TeacherChatBot } from './components/TeacherChatBot';
 import { TeacherTicketsDrawer } from './components/TeacherTicketsDrawer';
 import { DispatchSlipModal } from './components/DispatchSlipModal';
@@ -209,7 +209,7 @@ export default function App() {
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">Demo</span>
               )}
             </div>
-            <p className="text-[11px] text-gray-500">Hamilton Township School District</p>
+            <p className="text-[11px] text-gray-500">{config.districtName}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -269,7 +269,7 @@ export default function App() {
         ) : page === 'tech' ? (
           <>
             {techError && <div role="alert" className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded shrink-0">{techError}</div>}
-            <TechnicianConsole tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onViewDispatchSlip={setSelectedTicketForSlip} />
+            <TechnicianConsole districtName={config.districtName} tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onViewDispatchSlip={setSelectedTicketForSlip} />
           </>
         ) : userContext ? (
           <TeacherChatBot
@@ -293,7 +293,7 @@ export default function App() {
         }}
       />
 
-      {selectedTicketForSlip && <DispatchSlipModal ticket={selectedTicketForSlip} onClose={() => setSelectedTicketForSlip(null)} />}
+      {selectedTicketForSlip && <DispatchSlipModal districtName={config.districtName} ticket={selectedTicketForSlip} onClose={() => setSelectedTicketForSlip(null)} />}
 
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">

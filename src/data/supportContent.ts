@@ -1,4 +1,4 @@
-import type { Language, LocalizedText, SupportIssue, SupportIssueId } from '../types';
+import type { SupportIssue } from '../types';
 
 /**
  * Fixed troubleshooting for the bilingual student-support prototype.
@@ -112,8 +112,3 @@ export const SUPPORT_ISSUES: SupportIssue[] = [
 
 export const findSupportIssue = (id: unknown): SupportIssue | undefined =>
   SUPPORT_ISSUES.find(i => i.id === id);
-
-export const issueTitle = (id: SupportIssueId, lang: Language): string =>
-  findSupportIssue(id)?.title[lang] ?? id;
-
-export const localize = (t: LocalizedText, lang: Language): string => t[lang];

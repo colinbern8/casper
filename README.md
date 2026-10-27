@@ -77,7 +77,7 @@ npm run build
 npm start
 ```
 
-The server refuses to start in production without `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, and `ADMIN_EMAILS`, or with `DEV_LOGIN` on. All settings are documented in `.env.example`.
+The server refuses to start in production without `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, and `ADMIN_EMAILS`, or with `DEV_LOGIN` or `DEMO_MODE` on. All settings are documented in `.env.example`.
 
 Checklist before real users:
 
@@ -87,7 +87,7 @@ Checklist before real users:
 4. Put `DATA_DIR` on a persistent disk (it holds `tickets.json` and `users.json`) and run a single instance. Cloud Run's default filesystem is wiped on restart.
 5. Sign in as an admin, import your staff list, and add your technicians.
 6. Replace the placeholder campuses, rooms, lead technicians, and help desk contact in `src/data/schools.ts`. (A later step moves these into the Admin page.)
-7. Leave `DEV_LOGIN` and `DEMO_MODE` off.
+7. Leave `DEV_LOGIN` and `DEMO_MODE` off (the server refuses to start in production if either is on). Set `DISTRICT_NAME` and `TICKET_PREFIX` if you do not want the defaults.
 8. Review the privacy items below with your district.
 
 ## Security model, and what it is not

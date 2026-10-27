@@ -10,6 +10,10 @@ export interface Config {
   geminiModel: string;
   /** Everyone must sign in with a Google Workspace account in this domain. */
   domain: string;
+  /** Shown in headers and printed slips. */
+  districtName: string;
+  /** Starts every ticket number, e.g. HTSD-2026-0001. */
+  ticketPrefix: string;
   googleClientId?: string;
   /** Always admins; cannot be removed in the app. The way the first admin gets in. */
   adminEmails: string[];
@@ -33,10 +37,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
   if (isProduction) {
     if (devLogin) throw new Error('DEV_LOGIN must not be enabled when NODE_ENV=production.');
+    if (env.DEMO_MODE === 'true') throw new Error('DEMO_MODE must not be enabled when NODE_ENV=production.');
     if (!env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID is required when NODE_ENV=production.');
     if (!env.SESSION_SECRET) throw new Error('SESSION_SECRET is required when NODE_ENV=production (use a long random string).');
     if (adminEmails.length === 0) throw new Error('ADMIN_EMAILS is required when NODE_ENV=production (at least one admin).');
   }
+
+  const prefix = (env.TICKET_PREFIX || 'HTSD').trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,8}$/.test(prefix)) throw new Error('TICKET_PREFIX must be 2 to 8 letters or digits.');
 
   const trust = Number(env.TRUST_PROXY);
 
@@ -46,6 +54,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     geminiApiKey: env.GEMINI_API_KEY?.trim() || undefined,
     geminiModel: env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
     domain: (env.DISTRICT_DOMAIN || 'htsdnj.org').trim().toLowerCase(),
+    districtName: env.DISTRICT_NAME?.trim().slice(0, 80) || 'Hamilton Township School District',
+    ticketPrefix: prefix,
     googleClientId: env.GOOGLE_CLIENT_ID?.trim() || undefined,
     adminEmails,
     devLogin,

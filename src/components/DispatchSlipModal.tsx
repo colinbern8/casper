@@ -4,11 +4,12 @@ import { Ticket } from '../types';
 import { HELP_DESK } from '../data/schools';
 
 interface DispatchSlipModalProps {
+  districtName: string;
   ticket: Ticket | null;
   onClose: () => void;
 }
 
-export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ ticket, onClose }) => {
+export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtName, ticket, onClose }) => {
   if (!ticket) return null;
 
   const handlePrint = () => {
@@ -50,7 +51,7 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ ticket, on
         <div className="space-y-4 text-xs text-gray-800">
           <div className="border-b border-gray-300 pb-3">
             <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">
-              Hamilton Township School District • Technology Services
+              {districtName} • Technology Services
             </p>
             <h2 className="text-lg font-bold text-gray-900 mt-0.5">
               {ticket.userRole === 'student' ? 'STUDENT DEVICE LOANER PASS' : 'FIELD TECHNICIAN WORK ORDER'}
@@ -104,7 +105,7 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ ticket, on
 
           <div className="pt-3 border-t border-gray-200 flex items-center justify-between text-[11px] text-gray-500">
             <span>Created: {new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            <span>HTSD IT Services • Phone ext. {HELP_DESK.ext}</span>
+            <span>{districtName} IT Services • Phone ext. {HELP_DESK.ext}</span>
           </div>
         </div>
       </div>
