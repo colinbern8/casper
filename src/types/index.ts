@@ -37,7 +37,6 @@ export type TicketStatus =
   | 'hardware_swap'
   | 'resolved';
 
-export const USER_ROLES: UserRole[] = ['teacher_active', 'teacher_prep', 'staff', 'student'];
 export const ISSUE_CATEGORIES: IssueCategory[] = ['smartboard', 'chromebook', 'audio_video', 'printer', 'network', 'account', 'other'];
 export const TICKET_PRIORITIES: TicketPriority[] = ['critical', 'high', 'medium', 'low'];
 export const TICKET_STATUSES: TicketStatus[] = ['open', 'assigned', 'dispatched', 'in_progress', 'hardware_swap', 'resolved'];
@@ -49,7 +48,6 @@ export interface UserContext {
   school: string;
   room: string;
   phoneOrExt: string;
-  periodOrTime?: string;
   deviceType?: IssueCategory;
   assetTag?: string;
 }

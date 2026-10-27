@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TeacherChatBot } from './components/TeacherChatBot';
 import { TeacherTicketsDrawer } from './components/TeacherTicketsDrawer';
 import { DispatchSlipModal } from './components/DispatchSlipModal';

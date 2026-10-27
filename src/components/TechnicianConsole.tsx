@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Search,
   RefreshCw,
@@ -13,10 +13,9 @@ import {
   ChevronUp,
   Check,
   Send,
-  SlidersHorizontal,
   X
 } from 'lucide-react';
-import { Ticket, TicketPriority, TicketStatus, TicketUpdateInput, IssueCategory } from '../types';
+import { Ticket, TicketPriority, TicketStatus, TicketUpdateInput } from '../types';
 import { allTechs } from '../data/schools';
 import { CaseDetailPanel } from './CaseDetailPanel';
 
@@ -51,7 +50,6 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
   // Metrics
   const activeTickets = tickets.filter(t => t.status !== 'resolved');
   const criticalP1Count = tickets.filter(t => t.priority === 'critical' && t.status !== 'resolved').length;
-  const highP2Count = tickets.filter(t => t.priority === 'high' && t.status !== 'resolved').length;
   const studentLoanerCount = tickets.filter(t => t.userRole === 'student' && t.status !== 'resolved').length;
   const resolvedCount = tickets.filter(t => t.status === 'resolved').length;
 

@@ -49,11 +49,6 @@ export class TicketStore {
     return this.list().filter(t => t.userEmail === e);
   }
 
-  getMany(ids: string[]): Ticket[] {
-    const wanted = new Set(ids);
-    return this.list().filter(t => wanted.has(t.id));
-  }
-
   create(input: NewTicket, createdAt = new Date()): Ticket {
     this.data.counter += 1;
     const seq = String(this.data.counter).padStart(4, '0');
