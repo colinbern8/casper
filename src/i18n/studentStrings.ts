@@ -24,6 +24,7 @@ export interface StudentStrings {
   placeholderConfirm: string;
   placeholderSteps: string;
   placeholderDone: string;
+  placeholderBlocked: string;
   tapChoice: string;
   addMoreAsk: (remaining: number) => string;
   addMoreYes: string;
@@ -81,6 +82,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     placeholderConfirm: 'Tap a choice, or type the number again...',
     placeholderSteps: 'Tap a choice above...',
     placeholderDone: 'This request is finished',
+    placeholderBlocked: 'Request limit reached',
     tapChoice: 'To keep going, please tap one of the choices below. If you want a person to help, tap "Ask for a technician".',
     addMoreAsk: n => `Is there anything else wrong? You can add up to ${n} more ${n === 1 ? 'problem' : 'problems'} to this same request.`,
     addMoreYes: 'Add another problem',
@@ -136,6 +138,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     placeholderConfirm: 'Toca una opción, o escribe el número otra vez...',
     placeholderSteps: 'Toca una opción de arriba...',
     placeholderDone: 'Esta solicitud ya terminó',
+    placeholderBlocked: 'Se alcanzó el límite de solicitudes',
     tapChoice: 'Para continuar, por favor toca una de las opciones de abajo. Si quieres que te ayude una persona, toca "Pedir un técnico".',
     addMoreAsk: n => `¿Hay algo más que esté mal? Puedes agregar hasta ${n} ${n === 1 ? 'problema más' : 'problemas más'} a esta misma solicitud.`,
     addMoreYes: 'Agregar otro problema',

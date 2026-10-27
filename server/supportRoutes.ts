@@ -54,6 +54,13 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     return found;
   };
 
+  // Asked as soon as the student picks a language, so a student who is at the request limit is told
+  // straight away, instead of after walking through the whole conversation.
+  router.get('/limit', (req, res) => {
+    const open = store.openStudentTickets(req.user!.email);
+    res.json({ atLimit: open.length >= config.studentOpenTicketLimit, openTicketNumbers: open.map(t => t.ticketNumber) });
+  });
+
   router.post('/cases', (req, res) => {
     const user = req.user!;
     const { language, issueId } = req.body ?? {};

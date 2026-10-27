@@ -272,6 +272,41 @@ test('request limit applies when escalating from the student chat too, and a tec
   assert.equal(second.status, 201);
 });
 
+test('limit check: a student at the limit is told up front, and it clears when a technician resolves or allows another', async () => {
+  const { call, login, users } = await start({ DEMO_MODE: 'true', STUDENT_OPEN_TICKET_LIMIT: '1' });
+  users.set('tech@d.test', 'tech', 'test');
+  users.set('teacher@d.test', 'staff', 'test');
+  const alex = await login('demo.student@d.test');
+  const sofia = await login('demo.estudiante@d.test');
+  const teacher = await login('teacher@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+
+  assert.equal((await call('GET', '/api/support/limit')).status, 401);
+  assert.deepEqual((await call('GET', '/api/support/limit', undefined, alex)).body, { atLimit: false, openTicketNumbers: [] });
+
+  const c = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
+  const esc = await call('POST', `${S}/${c.id}/escalate`, {}, alex);
+  const at = await call('GET', '/api/support/limit', undefined, alex);
+  assert.deepEqual(at.body, { atLimit: true, openTicketNumbers: [esc.body.ticket.ticketNumber] });
+
+  // It is per student, and staff are never at the limit.
+  assert.equal((await call('GET', '/api/support/limit', undefined, sofia)).body.atLimit, false);
+  assert.equal((await call('GET', '/api/support/limit', undefined, teacher)).body.atLimit, false);
+
+  await call('PATCH', `/api/tickets/${esc.body.ticket.id}`, { allowAnother: true }, tech);
+  assert.equal((await call('GET', '/api/support/limit', undefined, alex)).body.atLimit, false);
+  await call('PATCH', `/api/tickets/${esc.body.ticket.id}`, { allowAnother: false }, tech);
+  assert.equal((await call('GET', '/api/support/limit', undefined, alex)).body.atLimit, true);
+  await call('PATCH', `/api/tickets/${esc.body.ticket.id}`, { status: 'resolved' }, tech);
+  assert.equal((await call('GET', '/api/support/limit', undefined, alex)).body.atLimit, false);
+});
+
+test('limit check does not exist unless DEMO_MODE is on', async () => {
+  const off = await start({});
+  const kid = await off.login('demo.student@d.test');
+  assert.equal((await off.call('GET', '/api/support/limit', undefined, kid)).status, 404);
+});
+
 test('access: students only reach their own cases; only technicians record dispositions', async () => {
   const { call, login, users } = await start();
   users.set('tech@d.test', 'tech', 'test');

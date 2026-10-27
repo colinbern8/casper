@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Info, Send } from 'lucide-react';
 import { MAX_REPORTED_ISSUES, type Language, type StudentCaseView, type SupportIssue, type SupportIssueId, type Ticket } from '../types';
-import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, recordRedTag, recordSupportAttempt } from '../api';
+import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, getSupportLimit, recordRedTag, recordSupportAttempt } from '../api';
 import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
@@ -9,6 +9,7 @@ import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/s
 type Phase =
   | 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff'
   | 'addMore' | 'addIssue' | 'addDetails'
+  | 'blocked' // at the request limit: the conversation ends and cannot be restarted from here
   | 'done';
 type Kind = 'plain' | 'info' | 'success' | 'handoff' | 'notice';
 
@@ -79,7 +80,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
   }, [messages, phase, busy]);
 
-  const inputEnabled = !busy && phase !== 'language' && phase !== 'done';
+  const inputEnabled = !busy && phase !== 'language' && phase !== 'done' && phase !== 'blocked';
   useEffect(() => {
     if (inputEnabled) inputRef.current?.focus();
   }, [inputEnabled, phase]);
@@ -112,7 +113,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       if (err instanceof ApiError && err.code === 'OPEN_TICKET_LIMIT') {
         // The student already has as many open requests as allowed: tell them who to contact.
         push('bot', t.limitReached((err.details?.openTicketNumbers as string[] | undefined) ?? []), 'notice');
-        setPhase('done');
+        setPhase('blocked');
       } else if (err instanceof ApiError) setError((err.code && t.errors[err.code]) || err.message);
       else setError(t.genericError);
     } finally {
@@ -125,8 +126,17 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
   const pickLanguage = (l: Language) => {
     setLang(l);
     push('user', l === 'en' ? 'English' : 'Español');
-    push('bot', STRINGS[l].greeting);
-    setPhase('issue');
+    void run(async () => {
+      // A student who already has as many open requests as allowed is told now, before any questions.
+      const { atLimit, openTicketNumbers } = await getSupportLimit();
+      if (atLimit) {
+        push('bot', STRINGS[l].limitReached(openTicketNumbers), 'notice');
+        setPhase('blocked');
+        return;
+      }
+      push('bot', STRINGS[l].greeting);
+      setPhase('issue');
+    });
   };
 
   const showFirstStep = (i: SupportIssue, l: Language) => {
@@ -354,6 +364,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
         ];
       case 'addDetails':
         return [{ key: 'add-skip', label: t.skip }];
+      case 'blocked':
+        return [];
       case 'done':
         return [{ key: 'again', label: t.startAnother, primary: true }];
     }
@@ -390,6 +402,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     : phase === 'addMore' || phase === 'addIssue' ? t.placeholderAddIssue
     : phase === 'addDetails' ? t.placeholderDetails
     : phase === 'done' ? t.placeholderDone
+    : phase === 'blocked' ? t.placeholderBlocked
     : t.placeholderSteps;
 
   return (
@@ -399,7 +412,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
           <h2 className="text-base font-semibold text-gray-900 leading-tight">Greg Bot</h2>
           <p className="text-xs text-gray-500">{t.headerTitle}</p>
         </div>
-        {lang ? (
+        {phase === 'blocked' ? null : lang ? (
           <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
         ) : (
           <button type="button" onClick={onUseClassicChat} className="text-sm text-gray-600 underline hover:text-gray-900">{STRINGS.en.classicChat}</button>
