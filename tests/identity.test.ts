@@ -6,7 +6,6 @@ import { loadConfig } from '../server/config';
 import { createApp } from '../server/app';
 import { TicketStore } from '../server/store';
 import { UserStore } from '../server/users';
-import { ChatService } from '../server/chat';
 
 const servers: Server[] = [];
 after(() => servers.forEach(s => s.close()));
@@ -44,7 +43,7 @@ test('ticket numbers use the configured prefix and keep the default when none is
 
 test('public config exposes the district name for the client', async () => {
   const config = loadConfig({ DEV_LOGIN: 'true', SESSION_SECRET: 's', DISTRICT_DOMAIN: 'd.test', DISTRICT_NAME: 'Example Schools' } as NodeJS.ProcessEnv);
-  const app = createApp({ config, store: new TicketStore(null), users: new UserStore(null, []), chat: new ChatService(undefined, config.geminiModel) });
+  const app = createApp({ config, store: new TicketStore(null), users: new UserStore(null, []) });
   const server: Server = await new Promise(resolve => { const s = app.listen(0, () => resolve(s)); });
   servers.push(server);
   const res = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/config`);

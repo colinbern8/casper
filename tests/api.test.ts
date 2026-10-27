@@ -6,7 +6,6 @@ import { loadConfig } from '../server/config';
 import { createApp } from '../server/app';
 import { TicketStore } from '../server/store';
 import { UserStore } from '../server/users';
-import { ChatService } from '../server/chat';
 import { SlidingWindowLimiter } from '../server/rateLimit';
 import type { GoogleVerifier } from '../server/google';
 
@@ -26,7 +25,6 @@ async function start(env: Record<string, string> = {}, verifyGoogle?: GoogleVeri
     config,
     store: new TicketStore(null),
     users,
-    chat: new ChatService(undefined, config.geminiModel), // no key: built-in answers only
     verifyGoogle,
     limiter: new SlidingWindowLimiter(),
   });
@@ -297,12 +295,11 @@ test('cross-site writes are refused', async () => {
   assert.equal(evil.body.error, 'BAD_ORIGIN');
 });
 
-test('chat: built-in answers without an API key, and bad input is rejected', async () => {
+test('chat: answers come from built-in text, and bad input is rejected', async () => {
   const { call, login } = await start();
   const c = await login('teacher@d.test');
   const ok = await call('POST', '/api/chat', { messages: [{ role: 'user', content: 'my board says no signal' }], userContext: { role: 'teacher_prep' } }, c);
   assert.equal(ok.status, 200);
-  assert.equal(ok.body.source, 'fallback');
   assert.match(ok.body.text, /HDMI/);
 
   assert.equal((await call('POST', '/api/chat', { messages: 'hi' }, c)).status, 400);

@@ -42,8 +42,8 @@ Identity, role, priority, routing, and ticket numbers always come from the serve
 
 ### What it deliberately does not do
 
-- **AI chat is off by default and out of scope for the pilot.** The code can call Google's Gemini model when `GEMINI_API_KEY` is set, but without a key the app answers from built-in text and makes no model calls. The student-support demo below never calls a model.
-- **It sends nothing outside the app** except an optional Slack/Teams webhook for urgent staff tickets, which is off unless `NOTIFY_WEBHOOK_URL` is set and never carries student tickets.
+- **It contains no AI.** Every troubleshooting step and every chat answer is fixed text written by people, so replies are predictable and reviewable, and nothing a person types goes to a language model. This was a deliberate decision: a paid model is not financially realistic for roughly 14,000 accounts, and a free tier is not appropriate for student data.
+- **It sends nothing outside the app** except an optional Slack/Teams webhook for urgent staff tickets, which is off unless `NOTIFY_WEBHOOK_URL` is set and never carries student tickets. Free-text chat questions are answered on the server by keyword matching.
 - **It does not connect to any district system** (no inventory, no student information system, no directory).
 
 ## Bilingual student-support demo
@@ -115,7 +115,6 @@ Then run `npm run dev` and open http://localhost:3000. The sign-in page shows de
 | Production refuses to start with `DEV_LOGIN` or `DEMO_MODE` on | Verified | `tests/units.test.ts`, `tests/identity.test.ts` |
 | Real Google sign-in | **Not tested.** Only a mock verifier is used in tests. | |
 | HTTPS, the `Secure` cookie flag, `TRUST_PROXY` behind a load balancer | **Not tested** | |
-| Gemini chat | **Not tested live.** Tests use a stubbed model. | |
 | Slack/Teams webhook | **Not tested live.** Tests use a stubbed `fetch`. | |
 | Printing a dispatch slip | Renders on screen. A real print was not tested. | |
 | Managed Chromebooks, district web filters, screen readers | **Not tested** | |
@@ -132,7 +131,7 @@ Browser (React + Vite + Tailwind)            Server (Express + TypeScript, run w
   signs in with Google (or dev login)           |  signed session cookie, role looked up on every request
                                                 |  rate limits (in memory)
                                                 +--> data/tickets.json, users.json, cases.json
-                                                +--> optional: Gemini API, Slack/Teams webhook
+                                                +--> optional: Slack/Teams webhook
 ```
 
 - **Entry point:** `server.ts` loads config, builds the stores, mounts the API, and serves Vite in development or `dist/` in production.
@@ -177,7 +176,6 @@ All settings are in `.env.example`.
 | `DISTRICT_NAME`, `TICKET_PREFIX` | Name shown in headers and slips, and the start of ticket numbers (`PREFIX-2026-0001`) |
 | `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, `ADMIN_EMAILS` | Required in production |
 | `DEV_LOGIN`, `DEMO_MODE` | Development and demo only. The server refuses to start in production with either on. |
-| `GEMINI_API_KEY`, `GEMINI_MODEL`, `DAILY_CHAT_LIMIT` | Optional AI chat and its daily cap. Leave the key unset to run without AI. |
 | `DATA_DIR`, `PORT`, `TRUST_PROXY` | Storage location, port, and reverse-proxy count |
 | `NOTIFY_WEBHOOK_URL` | Optional alert for urgent staff tickets |
 
@@ -192,16 +190,16 @@ All settings are in `.env.example`.
 | Tickets | Name, email, role, priority, routing and ticket number come from the server. Technician notes record who wrote them. |
 | Sessions | Signed, HttpOnly, SameSite=Lax cookie, 8 hours. Cross-site writes are refused. |
 | Abuse limits | Tickets: 2 per 15 minutes for students, 3 for staff. Chat: 5 messages per 30 seconds per person and 120 per minute per IP. Sign-in: 30 attempts per 10 minutes per IP. Message length is capped, and a regex deny-list screens chat messages. |
-| AI (if enabled) | The model has no tools or data access, and names and emails are not sent to it. A daily cap on model calls applies. |
+| Chat content | Free-text questions are answered from built-in text on the server. They are not stored, and they are not sent to any outside service. |
 
 **Known limits**
 
 - **A session lasts 8 hours** even if the Google account is disabled in the meantime. Removing a role applies at once, but blocking a person entirely needs a shorter session or a revocation list.
 - **"Class in session" is self-reported.**
 - **Technicians see every ticket in the district.** Per-building scoping is not built.
-- **Student names and room numbers are stored in tickets.** Review FERPA and COPPA obligations before using real data. If you ever enable AI for students, also review your model provider's data terms and use a tier that does not train on inputs. Do not use a free tier for student data.
-- **The chat screen is English-only and pattern-based.** It is defense in depth, not a boundary. The AI is off by default for this reason.
-- **Rate limits and the daily AI cap live in memory** and reset when the server restarts.
+- **Student names and room numbers are stored in tickets.** Review FERPA and COPPA obligations before using real data.
+- **The chat screen is English-only and pattern-based.** It is a courtesy filter for students, not a security boundary, and Spanish free text is not matched by the built-in answers. The student-support demo avoids this by using a menu instead of free text.
+- **Rate limits live in memory** and reset when the server restarts.
 - **Nobody is paged by the app.** Priority 1 tickets rise to the top of the queue and, if a webhook is set, post to Slack or Teams.
 - **Technicians and admins who open the student or teacher pages** to test create real tickets under their own name.
 
@@ -253,5 +251,8 @@ Not built yet, roughly in priority order:
 5. A technician view of self-resolved student cases (they are stored today but have no screen).
 6. Admin reporting (response times, trends by building).
 7. Offline or installable support for Chromebooks.
-8. A decision on AI chat: privacy review, a paid budget, and a small evaluation set first.
-9. Tidying: one source for the troubleshooting text (it exists in three places today), merging duplicate type definitions, and splitting the large `src/components/TeacherChatBot.tsx`.
+8. Tidying: one source for the troubleshooting text (it exists in three places today), merging duplicate type definitions, and splitting the large `src/components/TeacherChatBot.tsx`.
+
+### Decided against
+
+- **AI chat.** It was removed on purpose, not postponed. At district scale (about 14,000 accounts) a paid model is not financially feasible, a free tier is not appropriate for student data, and fixed text is easier to review and to translate. If the question is reopened, it would need a funded budget, a privacy review, and an evaluation of answer quality first.

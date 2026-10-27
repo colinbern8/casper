@@ -9,7 +9,6 @@ import { UserStore } from './server/users';
 import { createGoogleVerifier } from './server/google';
 import { TicketStore } from './server/store';
 import { CaseStore } from './server/cases';
-import { ChatService } from './server/chat';
 import { seedDemoTickets, seedDemoUsers } from './server/demoData';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -25,11 +24,9 @@ async function main() {
     seedDemoTickets(store, config);
     seedDemoUsers(users, config);
   }
-  const chat = new ChatService(config.geminiApiKey, config.geminiModel);
   const verifyGoogle = config.googleClientId ? createGoogleVerifier(config.googleClientId) : undefined;
-  const app = createApp({ config, store, users, chat, verifyGoogle, cases });
+  const app = createApp({ config, store, users, verifyGoogle, cases });
 
-  if (!config.geminiApiKey) console.warn('GEMINI_API_KEY not set: chat will use built-in answers only.');
   if (!config.googleClientId && !config.devLogin) console.warn('Neither GOOGLE_CLIENT_ID nor DEV_LOGIN is set: nobody can sign in.');
   if (config.devLogin) console.warn('DEV_LOGIN is on: anyone can sign in as any district address. Development only.');
   if (config.adminEmails.length === 0) console.warn('ADMIN_EMAILS not set: nobody can reach the admin page.');
