@@ -8,6 +8,7 @@ import { createApp } from './server/app';
 import { UserStore } from './server/users';
 import { createGoogleVerifier } from './server/google';
 import { TicketStore } from './server/store';
+import { CaseStore } from './server/cases';
 import { ChatService } from './server/chat';
 import { seedDemoTickets, seedDemoUsers } from './server/demoData';
 
@@ -18,6 +19,7 @@ async function main() {
 
   fs.mkdirSync(config.dataDir, { recursive: true });
   const store = new TicketStore(path.join(config.dataDir, 'tickets.json'));
+  const cases = new CaseStore(path.join(config.dataDir, 'cases.json'));
   const users = new UserStore(path.join(config.dataDir, 'users.json'), config.adminEmails);
   if (config.demoMode) {
     seedDemoTickets(store, config);
@@ -25,7 +27,7 @@ async function main() {
   }
   const chat = new ChatService(config.geminiApiKey, config.geminiModel);
   const verifyGoogle = config.googleClientId ? createGoogleVerifier(config.googleClientId) : undefined;
-  const app = createApp({ config, store, users, chat, verifyGoogle });
+  const app = createApp({ config, store, users, chat, verifyGoogle, cases });
 
   if (!config.geminiApiKey) console.warn('GEMINI_API_KEY not set: chat will use built-in answers only.');
   if (!config.googleClientId && !config.devLogin) console.warn('Neither GOOGLE_CLIENT_ID nor DEV_LOGIN is set: nobody can sign in.');

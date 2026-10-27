@@ -11,10 +11,10 @@ import {
 import { MEDIA_CENTER_DESK, findSchool, allTechs } from '../src/data/schools';
 import type { NewTicket } from './store';
 
-const clean = (v: unknown, max: number): string =>
+export const clean = (v: unknown, max: number): string =>
   typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 
-const cleanMultiline = (v: unknown, max: number): string =>
+export const cleanMultiline = (v: unknown, max: number): string =>
   typeof v === 'string' ? v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, max) : '';
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string; message: string };

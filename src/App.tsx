@@ -6,6 +6,7 @@ import { TechnicianConsole } from './components/TechnicianConsole';
 import { ProfileSetup } from './components/ProfileSetup';
 import { AdminPage } from './components/AdminPage';
 import { Login } from './components/Login';
+import { StudentSupport } from './components/StudentSupport';
 import { Phone, FileText, X } from 'lucide-react';
 import type { PublicConfig, Role, SessionUser, Ticket, TicketUpdateInput, UserContext, UserRole } from './types';
 import { HELP_DESK } from './data/schools';
@@ -47,6 +48,7 @@ export default function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedTicketForSlip, setSelectedTicketForSlip] = useState<Ticket | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [classicStudentChat, setClassicStudentChat] = useState(false);
 
   // ---- Boot --------------------------------------------------------------
   const boot = useCallback(async () => {
@@ -150,6 +152,7 @@ export default function App() {
       setTickets([]);
       setMyTickets([]);
       setNotice(null);
+      setClassicStudentChat(false);
       navigate('/', true);
     }
   };
@@ -168,7 +171,9 @@ export default function App() {
   }
 
   const isChatPage = page === 'student' || page === 'teacher';
-  const needsProfile = isChatPage && user && (!profile || editingProfile);
+  // Prototype: in demo mode the student page is the bilingual support flow. Teacher/staff pages are unchanged.
+  const supportDemo = config.demoMode && page === 'student' && !classicStudentChat;
+  const needsProfile = isChatPage && !supportDemo && user && (!profile || editingProfile);
 
   const userContext: UserContext | null =
     user && profile && isChatPage
@@ -220,7 +225,7 @@ export default function App() {
                 </button>
               ))}
 
-            {user && isChatPage && !needsProfile && (
+            {user && isChatPage && !needsProfile && !supportDemo && (
               <button type="button" onClick={() => setEditingProfile(true)} className="hidden sm:inline-flex px-2.5 py-1 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded font-medium">
                 {profile?.room}
               </button>
@@ -257,6 +262,8 @@ export default function App() {
           <Login config={config} notice={notice} onSignedIn={u => { setUser(u); setNotice(null); }} />
         ) : needsProfile ? (
           <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
+        ) : supportDemo ? (
+          <StudentSupport onTicketCreated={handleTicketCreated} onUseClassicChat={() => setClassicStudentChat(true)} />
         ) : page === 'admin' ? (
           <AdminPage user={user} domain={config.domain} />
         ) : page === 'tech' ? (

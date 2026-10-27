@@ -1,4 +1,7 @@
-import type { PublicConfig, SessionUser, Ticket, TicketCreateInput, TicketUpdateInput, UserRecord } from './types';
+import type {
+  DispositionValue, Language, PublicConfig, SessionUser, StudentCaseView, SupportCase, SupportIssueId,
+  Ticket, TicketCreateInput, TicketUpdateInput, UserRecord,
+} from './types';
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) {
@@ -42,3 +45,17 @@ export const setUserRole = (email: string, role: UserRecord['role']) => request<
 export const removeUser = (email: string) => request<{ ok: true }>('DELETE', `/api/admin/users/${encodeURIComponent(email)}`);
 export const importStaff = (text: string) =>
   request<{ added: number; skipped: number; ignoredOutsideDomain: number }>('POST', '/api/admin/users/import', { text });
+
+// ---- Student-support prototype (demo mode only) ---------------------------------
+export const createSupportCase = (input: { language: Language; issueId: SupportIssueId; description?: string }) =>
+  request<StudentCaseView>('POST', '/api/support/cases', input);
+export const checkSupportDevice = (id: string, assetTag: string) =>
+  request<StudentCaseView>('POST', `/api/support/cases/${id}/device-check`, { assetTag });
+export const recordSupportAttempt = (id: string, stepId: string, result: 'worked' | 'not_worked') =>
+  request<StudentCaseView>('POST', `/api/support/cases/${id}/attempts`, { stepId, result });
+export const escalateSupportCase = (id: string, reason: string) =>
+  request<{ case: StudentCaseView; ticket: Ticket }>('POST', `/api/support/cases/${id}/escalate`, { reason });
+/** Technician view: includes the device-check expected tag, history, disposition and draft. */
+export const fetchSupportCase = (id: string) => request<SupportCase>('GET', `/api/support/cases/${id}`);
+export const recordDisposition = (id: string, value: DispositionValue, note?: string) =>
+  request<SupportCase>('POST', `/api/support/cases/${id}/disposition`, { value, note });

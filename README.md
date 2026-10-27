@@ -34,6 +34,33 @@ ADMIN_EMAILS=demo.admin@htsdnj.org
 
 then `npm run dev` and open http://localhost:3000. The sign-in page shows buttons for demo Student, Teacher, Technician, and Admin accounts, with sample tickets already in the queue. `DEV_LOGIN` lets anyone sign in as anyone; the server refuses to start with it on in production.
 
+## Student-support prototype (bilingual demo)
+
+A prototype of a student-support workflow, available only when `DEMO_MODE=true`. It uses fictional data, has no AI, and sends nothing to anyone. With demo mode off, its routes return 404 and `/student` shows the original chat.
+
+Flow: pick English or Spanish, pick an issue (Wi-Fi, will not turn on, sign-in, damaged), optionally enter a Chromebook tag for a **simulated** assignment check, follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. Escalation creates a normal ticket, and the technician queue shows the case: language, the student's own words, the simulated check, the steps tried, a **demo** disposition, an **unsent** draft message and a short decision history.
+
+Demo accounts (sign-in panel, `DEV_LOGIN=true`; the domain is whatever `DISTRICT_DOMAIN` is):
+
+| Button | Fictional student | Assigned tag |
+| --- | --- | --- |
+| Student | Alex Sample | `DEMO-CB-1001` |
+| Student (Spanish) | Sofía Muestra | `DEMO-CB-1002` |
+| Student 2 | Jordan Sample | `DEMO-CB-1003` |
+
+Tags that exist in the demo: `DEMO-CB-1001` to `DEMO-CB-1004` (1004 is an unassigned spare). Any other tag shows "unknown tag". Use a tag that belongs to someone else to see "mismatch".
+
+What is real and what is not:
+
+- **Spanish text is awaiting human review.** Student screens say so. English text is prototype wording with no district sign-off, and nothing cites knowledge-base article numbers.
+- **The device check is a lookup in a fixture file** (`server/supportFixtures.ts`), not a district inventory.
+- **A disposition records a decision only.** It does not approve, order or change anything.
+- **The notification is a stored draft.** Nothing in this app sends it.
+- Students are limited to 2 tickets per 15 minutes, the same limit as the normal ticket form. Rehearse with the three accounts above.
+- Technician and staff screens stay in English.
+
+Code: `src/data/supportContent.ts` (the reviewed steps, both languages), `server/supportRoutes.ts` (API under `/api/support`), `server/cases.ts` (stores `cases.json`), `src/components/StudentSupport.tsx` and `CaseDetailPanel.tsx`. Tests are in `tests/support.test.ts`.
+
 ## Set up Google sign-in (required for real use)
 
 1. In Google Cloud Console (use a project owned by your district), open **APIs & Services > Credentials** and create an **OAuth client ID** of type **Web application**.
@@ -88,7 +115,8 @@ Checklist before real users:
 ```
 server.ts              entry: wires config, stores, chat, Vite/static
 server/                app (routes), auth, session, users (roles), google, config, chat,
-                       rateLimit, safety, store (tickets), tickets (validation/triage), notify
+                       rateLimit, safety, store (tickets), tickets (validation/triage), notify,
+                       supportRoutes, cases, supportFixtures (student-support prototype)
 src/                   React client: App (routing by role), Login, AdminPage, chat, console
 src/data/schools.ts    campuses, lead technicians, help desk contact
 tests/                 node:test suites (API, roles, sessions, integrations)
