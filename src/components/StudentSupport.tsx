@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Info, Send } from 'lucide-react';
 import type { Language, StudentCaseView, SupportIssue, Ticket } from '../types';
-import { ApiError, checkSupportDevice, createSupportCase, escalateSupportCase, recordSupportAttempt } from '../api';
+import { ApiError, createSupportCase, escalateSupportCase, recordRedTag, recordSupportAttempt } from '../api';
 import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
 
-type Phase = 'language' | 'issue' | 'details' | 'tag' | 'steps' | 'handoff' | 'done';
-type Kind = 'plain' | 'check' | 'success' | 'handoff';
+type Phase = 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff' | 'done';
+type Kind = 'plain' | 'info' | 'success' | 'handoff';
 
 interface Msg {
   id: number;
@@ -30,10 +30,16 @@ interface StudentSupportProps {
 const BUBBLE: Record<Kind | 'user', string> = {
   user: 'bg-gray-800 text-white',
   plain: 'bg-gray-50 border border-gray-200 text-gray-800',
-  check: 'bg-blue-50 border border-blue-200 text-gray-900',
+  info: 'bg-blue-50 border border-blue-200 text-gray-900',
   success: 'bg-emerald-50 border border-emerald-200 text-gray-900',
   handoff: 'bg-blue-50 border border-blue-200 text-gray-900',
 };
+
+/** The same tidy-up the server applies, so the student confirms exactly what will be saved. */
+const tidyTag = (raw: string): string => raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+
+const YES = new Set(['yes', 'y', 'yep', 'yeah', 'correct', 'right', 'si', 'sí', 's', 'correcto', 'correcta', 'es correcto']);
+const NO = new Set(['no', 'n', 'nope', 'wrong', 'incorrect', 'incorrecto', 'incorrecta']);
 
 const initialMessages = (): Msg[] => [{ id: 0, from: 'bot', text: LANGUAGE_PROMPT }];
 
@@ -48,6 +54,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
   const [messages, setMessages] = useState<Msg[]>(initialMessages);
   const [issue, setIssue] = useState<SupportIssue | null>(null);
   const [pendingText, setPendingText] = useState<string | undefined>();
+  const [pendingTag, setPendingTag] = useState('');
   const [current, setCurrent] = useState<StudentCaseView | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -81,6 +88,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     setMessages(initialMessages());
     setIssue(null);
     setPendingText(undefined);
+    setPendingTag('');
     setCurrent(null);
     setStepIndex(0);
     setInput('');
@@ -150,14 +158,33 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     else if (issue) showFirstStep(issue, lang);
   };
 
-  const checkTag = (text: string) =>
+  /** The student typed a red tag: repeat it back and ask before anything is saved. */
+  const askToConfirmTag = (text: string) => {
+    const tag = tidyTag(text);
+    if (!tag) {
+      push('bot', t.tagRetype);
+      return;
+    }
+    setPendingTag(tag);
+    push('bot', t.confirmTag(tag));
+    setPhase('confirmTag');
+  };
+
+  const saveTag = () =>
     run(async () => {
       if (!current || !issue || !lang) return;
-      const view = await checkSupportDevice(current.id, text);
+      const view = await recordRedTag(current.id, pendingTag);
       setCurrent(view);
-      push('bot', `${t.deviceCheckTitle}\n${t.deviceResult[view.deviceCheck!.result]}`, 'check');
+      setPendingTag('');
+      push('bot', t.tagSaved(view.redTag!.value), 'info');
       showFirstStep(issue, lang);
     });
+
+  const rejectTag = () => {
+    setPendingTag('');
+    push('bot', t.tagRetype);
+    setPhase('tag');
+  };
 
   const answer = (result: 'worked' | 'not_worked') => {
     if (!current || !issue || !step || !lang) return;
@@ -209,8 +236,16 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
         void beginCase(lang, findSupportIssue('other')!, text, false);
         break;
       case 'tag':
-        void checkTag(text);
+        askToConfirmTag(text);
         break;
+      case 'confirmTag': {
+        // A short "yes" or "no" works like the buttons. Anything else is the student correcting the number.
+        const word = text.toLowerCase().replace(/[.!¡¿?]/g, '').trim();
+        if (YES.has(word)) void saveTag();
+        else if (NO.has(word)) rejectTag();
+        else askToConfirmTag(text);
+        break;
+      }
       default:
         push('bot', t.tapChoice);
     }
@@ -228,6 +263,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       case 'details':
       case 'tag':
         return [{ key: 'skip', label: t.skip }];
+      case 'confirmTag':
+        return [{ key: 'tag-yes', label: t.tagYes, primary: true }, { key: 'tag-no', label: t.tagNo }];
       case 'steps':
         return step
           ? [
@@ -248,6 +285,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     else if (key === 'lang:es') pickLanguage('es');
     else if (key.startsWith('issue:')) pickIssue(findSupportIssue(key.slice(6))!);
     else if (key === 'skip') skip();
+    else if (key === 'tag-yes') { push('user', t.tagYes); void saveTag(); }
+    else if (key === 'tag-no') { push('user', t.tagNo); rejectTag(); }
     else if (key === 'worked') answer('worked');
     else if (key === 'not_worked') answer('not_worked');
     else if (key === 'tech') askTechnician();
@@ -259,6 +298,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     : phase === 'issue' ? t.placeholderIssue
     : phase === 'details' ? t.placeholderDetails
     : phase === 'tag' ? t.placeholderTag
+    : phase === 'confirmTag' ? t.placeholderConfirm
     : phase === 'done' ? t.placeholderDone
     : t.placeholderSteps;
 

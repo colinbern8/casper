@@ -50,24 +50,24 @@ Identity, role, priority, routing, and ticket numbers always come from the serve
 
 A prototype of a student-support workflow in English and Spanish, shown as a chat. It is available only when `DEMO_MODE=true`, uses fictional data, and has no AI. With demo mode off, its routes return 404 and `/student` shows the original chat.
 
-**How it works:** the student chats with Greg Bot. They tap a language, then either tap one of the common problems (Wi-Fi, will not turn on, sign-in, damaged, something else) or type it. Typed text is matched to a common problem by plain keywords in English and Spanish (`src/data/supportMatch.ts`). It is not AI, so it only recognises those words. If nothing matches, the bot says so and shows the choices again, and "Something else" sends what the student typed to a technician. Next they can enter a Chromebook tag for a **simulated** assignment check, follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. Escalating creates an ordinary ticket. The technician then sees the case: language, the student's own words, the simulated check, the steps tried, a **demo** disposition, an **unsent** draft message, and a short decision history.
+**How it works:** the student chats with Greg Bot. They tap a language, then either tap one of the common problems (Wi-Fi, will not turn on, sign-in, damaged, something else) or type it. Typed text is matched to a common problem by plain keywords in English and Spanish (`src/data/supportMatch.ts`). It is not AI, so it only recognises those words. If nothing matches, the bot says so and shows the choices again, and "Something else" sends what the student typed to a technician. Next the student can type the number from the **red tag** on their Chromebook. The bot repeats it back and asks "Is that right?", and nothing is saved until they confirm (or they can type it again to fix a typo). Then they follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. The red tag is saved exactly as typed and is **never looked up**: it is there so the technician reading the request can find that Chromebook, and the student it belongs to, in their own records. Escalating creates an ordinary ticket, with the red tag as its asset tag. The technician sees the case: language, the student's own words, the red tag, the steps tried, a **demo** disposition, an **unsent** draft message, and a short decision history.
 
-**Demo accounts** (the sign-in panel appears when `DEV_LOGIN=true`): **Student**, **Teacher**, **Technician** and **Admin**. The Student button signs in as a fictional student, Alex Sample, whose assigned tag is `DEMO-CB-1001`. Language is chosen inside the chat, so there is a single student button.
+**Demo accounts** (the sign-in panel appears when `DEV_LOGIN=true`): **Student**, **Teacher**, **Technician** and **Admin**. The Student button signs in as a fictional student, Alex Sample. Language is chosen inside the chat, so there is a single student button.
 
-Tags `DEMO-CB-1001` to `DEMO-CB-1004` exist in the demo (1004 is an unassigned spare). Any other tag shows "unknown tag", and a tag that belongs to someone else, for example `DEMO-CB-1003`, shows "mismatch". Students are limited to 2 tickets per 15 minutes, the same limit as the normal form. To rehearse more than twice, type another fictional address in the sign-in box, such as `demo.estudiante@your-demo-domain` (Sofía Muestra, tag `DEMO-CB-1002`) or `demo.student2@your-demo-domain` (Jordan Sample, tag `DEMO-CB-1003`). Any other address works too, and shows as "not on the demo roster".
+Type any text as the red tag, for example `R-4821`. Students are limited to 2 tickets per 15 minutes, the same limit as the normal form. To rehearse more than twice, type another fictional address in the sign-in box, such as `demo.estudiante@your-demo-domain` (Sofía Muestra) or `demo.student2@your-demo-domain` (Jordan Sample). Any other address works too, and shows as "not on the demo roster".
 
 **Five-minute walkthrough**
 
-1. Sign in as **Student** and tap **Español**. Type `mi chromebook no prende`. The bot recognises the problem. Enter tag `demo-cb-1003` and see the simulated "mismatch" result, and the notice that the Spanish text awaits review.
+1. Sign in as **Student** and tap **Español**. Type `mi chromebook no prende`. The bot recognises the problem. Type a red tag number such as `R-4821`, confirm it when the bot repeats it back, and notice that the Spanish text awaits review.
 2. Tap "No funcionó" on both steps, then "Pedir un técnico". You get a ticket number.
 3. Sign out, sign in as **Technician**, and expand that ticket. Record the "Needs in-person check" disposition and read the Spanish draft, which is marked as not sent.
-4. Sign in as **Student** again, tap **English** and the Wi-Fi choice, skip the tag, and tap "This fixed it" at step 2 to see a resolved case.
+4. Sign in as **Student** again, tap **English** and the Wi-Fi choice, skip the red tag, and tap "This fixed it" at step 2 to see a resolved case.
 5. Sign in as **Teacher** to confirm the original teacher chat is unchanged.
 
 **What is real and what is simulated**
 
 - **Spanish text is awaiting human review.** Student and technician screens say so. English is prototype wording with no district sign-off, and nothing cites knowledge-base article numbers.
-- **The device check is a lookup in a fixture file** (`server/supportFixtures.ts`), not a district inventory.
+- **The red tag is not checked.** The app saves what the student typed and shows it to the technician. It does not connect to any inventory or student record system.
 - **A disposition records a decision only.** It does not approve, order, or change anything.
 - **The notification is a stored draft.** Nothing in the app sends it.
 - **Typed text is matched by keywords, not understood.** The bot never answers a question it was not written to answer.

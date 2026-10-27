@@ -7,14 +7,9 @@ import type {
   SupportIssue,
 } from '../src/types';
 
-/** Strip everything a student's own browser should not see (technician fields, the expected tag). */
+/** Strip everything a student's own browser should not see (the technician's decision, draft and history). */
 export function toStudentView(c: SupportCase): StudentCaseView {
-  const { disposition: _d, notificationDraft: _n, history: _h, deviceCheck, ...rest } = c;
-  const view: StudentCaseView = { ...rest };
-  if (deviceCheck) {
-    const { expectedTag: _e, ...safe } = deviceCheck;
-    view.deviceCheck = safe;
-  }
+  const { disposition: _d, notificationDraft: _n, history: _h, ...view } = c;
   return view;
 }
 
@@ -37,7 +32,7 @@ export function buildTicketBody(c: SupportCase, issue: SupportIssue) {
     school: c.student.school,
     room: c.student.room,
     category: issue.category,
-    assetTag: c.deviceCheck?.enteredTag,
+    assetTag: c.redTag?.value,
     title: `Student support (demo): ${issue.title.en}`,
     description: lines.join('\n'),
     troubleshootStepsAttempted: tried,

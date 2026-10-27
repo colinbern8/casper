@@ -49,13 +49,13 @@ export const importStaff = (text: string) =>
 // ---- Student-support prototype (demo mode only) ---------------------------------
 export const createSupportCase = (input: { language: Language; issueId: SupportIssueId; description?: string }) =>
   request<StudentCaseView>('POST', '/api/support/cases', input);
-export const checkSupportDevice = (id: string, assetTag: string) =>
-  request<StudentCaseView>('POST', `/api/support/cases/${id}/device-check`, { assetTag });
+export const recordRedTag = (id: string, tag: string) =>
+  request<StudentCaseView>('POST', `/api/support/cases/${id}/red-tag`, { tag });
 export const recordSupportAttempt = (id: string, stepId: string, result: 'worked' | 'not_worked') =>
   request<StudentCaseView>('POST', `/api/support/cases/${id}/attempts`, { stepId, result });
 export const escalateSupportCase = (id: string, reason: string) =>
   request<{ case: StudentCaseView; ticket: Ticket }>('POST', `/api/support/cases/${id}/escalate`, { reason });
-/** Technician view: includes the device-check expected tag, history, disposition and draft. */
+/** Technician view: includes the red tag, history, disposition and draft. */
 export const fetchSupportCase = (id: string) => request<SupportCase>('GET', `/api/support/cases/${id}`);
 export const recordDisposition = (id: string, value: DispositionValue, note?: string) =>
   request<SupportCase>('POST', `/api/support/cases/${id}/disposition`, { value, note });

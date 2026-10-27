@@ -4,8 +4,8 @@ import { requireRole } from './auth';
 import type { SlidingWindowLimiter } from './rateLimit';
 import type { TicketStore } from './store';
 import type { CaseStore } from './cases';
-import { cleanMultiline, parseTicketInput } from './tickets';
-import { checkDevice, DEMO_SCHOOL, studentFor } from './supportFixtures';
+import { clean, cleanMultiline, parseTicketInput } from './tickets';
+import { DEMO_SCHOOL, studentFor } from './supportFixtures';
 import { buildDraft, buildTicketBody, toStudentView } from './support';
 import { findSupportIssue } from '../src/data/supportContent';
 import { DISPOSITION_VALUES, LANGUAGES, SUPPORT_ISSUE_IDS, type SupportCase } from '../src/types';
@@ -91,18 +91,19 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     res.json(toStudentView(found));
   });
 
-  router.post('/cases/:id/device-check', (req, res) => {
+  // The red tag is recorded exactly as typed, for the technician to read. It is never looked up.
+  router.post('/cases/:id/red-tag', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
     if (limited(res, `support-act:${req.user!.email}`, 60)) return;
-    const tag = req.body?.assetTag;
-    if (typeof tag !== 'string' || !tag.trim()) return bad(res, 'INVALID_TAG', 'Enter the tag on your Chromebook.');
+    const value = clean(req.body?.tag, 40);
+    if (!value) return bad(res, 'INVALID_TAG', 'Enter the number on the red tag.');
 
-    const check = checkDevice(studentFor(found.student.email, config.domain), tag);
+    const at = new Date().toISOString();
     const saved = cases.save({
       ...found,
-      deviceCheck: check,
-      history: [...found.history, { at: check.checkedAt, by: req.user!.name, action: 'device_checked', detail: `simulated: ${check.result}` }],
+      redTag: { value, recordedAt: at },
+      history: [...found.history, { at, by: req.user!.name, action: 'tag_recorded' }],
     });
     res.json(toStudentView(saved));
   });

@@ -11,7 +11,7 @@ import { TicketStore } from '../server/store';
 import { CaseStore } from '../server/cases';
 import { UserStore } from '../server/users';
 import { SlidingWindowLimiter } from '../server/rateLimit';
-import { checkDevice, DEMO_STUDENTS } from '../server/supportFixtures';
+import { DEMO_STUDENTS } from '../server/supportFixtures';
 import { SUPPORT_ISSUES } from '../src/data/supportContent';
 import { SUPPORT_ISSUE_IDS } from '../src/types';
 
@@ -91,21 +91,30 @@ test('case: language and issue are validated; roster students get fixture detail
   assert.equal(off.body.student.displayName, 'Some Kid');
 });
 
-test('device check is simulated: match, mismatch, unknown tag, no assignment; expected tag never reaches the student', async () => {
-  const { call, login } = await start();
+test('red tag: recorded exactly as typed for the technician, never looked up or judged', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
   const alex = await login('demo.student@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
   const c = (await call('POST', S, { language: 'en', issueId: 'power' }, alex)).body;
 
-  assert.equal((await call('POST', `${S}/${c.id}/device-check`, { assetTag: '  ' }, alex)).status, 400);
-  const match = await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'demo-cb-1001' }, alex);
-  assert.equal(match.body.deviceCheck.result, 'match');
-  assert.equal(match.body.deviceCheck.simulated, true);
-  const mismatch = await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-1003' }, alex);
-  assert.equal(mismatch.body.deviceCheck.result, 'mismatch');
-  assert.equal(mismatch.body.deviceCheck.expectedTag, undefined);
-  assert.equal((await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-9999' }, alex)).body.deviceCheck.result, 'unknown_tag');
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: '  ' }, alex)).status, 400);
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, {}, alex)).status, 400);
 
-  assert.equal(checkDevice(undefined, 'DEMO-CB-1001').result, 'no_assignment');
+  // Any text is accepted: there is no list to check it against, so nothing is a "match" or a "mismatch".
+  const first = await call('POST', `${S}/${c.id}/red-tag`, { tag: ' r-4821 ' }, alex);
+  assert.equal(first.status, 200);
+  assert.equal(first.body.redTag.value, 'r-4821'); // trimmed, case kept
+  assert.equal(first.body.deviceCheck, undefined);
+  assert.equal(JSON.stringify(first.body).includes('expectedTag'), false);
+
+  // Typing it again replaces it; control characters are dropped and the length is capped.
+  const again = await call('POST', `${S}/${c.id}/red-tag`, { tag: 'A\u0000B\n' + 'x'.repeat(100) }, alex);
+  assert.ok(again.body.redTag.value.length <= 40);
+  assert.ok(!/[\u0000-\u001f]/.test(again.body.redTag.value));
+
+  assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.redTag.value, again.body.redTag.value);
+  assert.deepEqual((await call('GET', `${S}/${c.id}`, undefined, tech)).body.history.map((h: any) => h.action), ['case_started', 'tag_recorded', 'tag_recorded']);
 });
 
 test('resolved path: a working step closes the case with no ticket; closed cases refuse more changes', async () => {
@@ -133,7 +142,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   const tech = await login('tech@d.test', 'Tina Tech');
 
   const c = (await call('POST', S, { language: 'es', issueId: 'power', description: 'No prende desde ayer' }, sofia)).body;
-  await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-1003' }, sofia);
+  await call('POST', `${S}/${c.id}/red-tag`, { tag: 'R-4821' }, sofia);
   await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-charger', result: 'not_worked' }, sofia);
   await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-hold', result: 'not_worked' }, sofia);
 
@@ -144,7 +153,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   assert.equal(esc.body.ticket.userRole, 'student');
   assert.equal(esc.body.ticket.priority, 'medium'); // client-supplied priority/role ignored
   assert.equal(esc.body.ticket.assignedTech, 'Media Center Tech Desk');
-  assert.equal(esc.body.ticket.assetTag, 'DEMO-CB-1003');
+  assert.equal(esc.body.ticket.assetTag, 'R-4821'); // the red tag becomes the ticket's asset tag
   assert.match(esc.body.ticket.description, /Spanish/);
   assert.match(esc.body.ticket.description, /No prende desde ayer/);
   assert.equal(esc.body.ticket.title, 'Student support (demo): My Chromebook will not turn on');
@@ -158,13 +167,12 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   assert.equal(full.status, 200);
   assert.equal(full.body.language, 'es');
   assert.equal(full.body.reported.description, 'No prende desde ayer');
-  assert.equal(full.body.deviceCheck.result, 'mismatch');
-  assert.equal(full.body.deviceCheck.expectedTag, 'DEMO-CB-1002');
-  assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'device_checked', 'escalated']);
+  assert.equal(full.body.redTag.value, 'R-4821');
+  assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'tag_recorded', 'escalated']);
 
   const own = await call('GET', `${S}/${c.id}`, undefined, sofia);
   assert.equal(own.status, 200);
-  assert.equal(own.body.deviceCheck.expectedTag, undefined);
+  assert.equal(own.body.redTag.value, 'R-4821'); // students see their own entry
   assert.equal(own.body.history, undefined);
 });
 
@@ -213,7 +221,7 @@ test('access: students only reach their own cases; only technicians record dispo
 
   const c = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, sofia)).status, 404);
-  assert.equal((await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-1001' }, sofia)).status, 404);
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: 'R-1' }, sofia)).status, 404);
   assert.equal((await call('POST', `${S}/${c.id}/attempts`, { stepId: 'x', result: 'worked' }, sofia)).status, 404);
   assert.equal((await call('POST', `${S}/${c.id}/escalate`, {}, tech)).status, 404); // not even a technician can act as the student
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, teacher)).status, 404);

@@ -1,4 +1,4 @@
-import type { DeviceCheckResult, Language } from '../types';
+import type { Language } from '../types';
 
 /**
  * Student-facing chat text only. Technician screens and staff notifications stay in English.
@@ -21,6 +21,7 @@ export interface StudentStrings {
   placeholderIssue: string;
   placeholderDetails: string;
   placeholderTag: string;
+  placeholderConfirm: string;
   placeholderSteps: string;
   placeholderDone: string;
   tapChoice: string;
@@ -29,8 +30,11 @@ export interface StudentStrings {
   notFixed: string;
   askTechnician: string;
   noMoreSteps: string;
-  deviceCheckTitle: string;
-  deviceResult: Record<DeviceCheckResult, string>;
+  confirmTag: (tag: string) => string;
+  tagYes: string;
+  tagNo: string;
+  tagRetype: string;
+  tagSaved: (tag: string) => string;
   resolvedTitle: string;
   resolvedBody: string;
   escalatedTitle: string;
@@ -48,7 +52,7 @@ export const PLACEHOLDER_CHOOSE_LANGUAGE = 'Choose a language first / Elige un i
 
 export const STRINGS: Record<Language, StudentStrings> = {
   en: {
-    demoBanner: 'DEMO with fictional data. The device check is simulated and nothing is sent to anyone.',
+    demoBanner: 'DEMO with fictional data. Nothing you enter is sent to anyone.',
     reviewBanner: null,
     headerTitle: 'Student help',
     changeLanguage: 'Change language',
@@ -57,13 +61,14 @@ export const STRINGS: Record<Language, StudentStrings> = {
     thisLooksLike: title => `This looks like: ${title}.`,
     notSure: 'I am not sure which one that is. Pick the closest one below, or choose "Something else" and a technician will look at it.',
     askDetails: 'Tell us what is wrong in a few words, or tap Skip.',
-    askTag: 'Do you know the tag number on your Chromebook? Type it here (for example DEMO-CB-0000), or tap Skip.',
+    askTag: 'Look for the red tag on your Chromebook. Type the number on it here, or tap Skip.',
     skip: 'Skip',
     send: 'Send',
     working: 'Working...',
     placeholderIssue: 'Type your problem, or tap a choice...',
     placeholderDetails: 'Type what is wrong...',
-    placeholderTag: 'Type your Chromebook tag...',
+    placeholderTag: 'Type the red tag number...',
+    placeholderConfirm: 'Tap a choice, or type the number again...',
     placeholderSteps: 'Tap a choice above...',
     placeholderDone: 'This request is finished',
     tapChoice: 'To keep going, please tap one of the choices below. If you want a person to help, tap "Ask for a technician".',
@@ -72,13 +77,11 @@ export const STRINGS: Record<Language, StudentStrings> = {
     notFixed: 'It did not work',
     askTechnician: 'Ask for a technician',
     noMoreSteps: 'We are out of steps to try. A technician can help from here.',
-    deviceCheckTitle: 'Device check (simulated demo)',
-    deviceResult: {
-      match: 'This tag matches the Chromebook assigned to you.',
-      mismatch: 'This tag does not match the Chromebook assigned to you. You can keep going; a technician will look at it.',
-      unknown_tag: 'We could not find that tag in the demo list. You can keep going.',
-      no_assignment: 'No Chromebook is on file for you in this demo. You can keep going.',
-    },
+    confirmTag: tag => `You typed: ${tag}\nPlease check that it matches the number on the red tag on your Chromebook. Is that right?`,
+    tagYes: 'Yes, that is right',
+    tagNo: 'No, type it again',
+    tagRetype: 'No problem. Type the number on the red tag again, or tap Skip.',
+    tagSaved: tag => `Thanks. We saved red tag ${tag}. A technician will use it to find your Chromebook.`,
     resolvedTitle: 'Glad it is fixed!',
     resolvedBody: 'We saved that this was fixed. You do not need to do anything else.',
     escalatedTitle: 'A technician will help.',
@@ -93,7 +96,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     genericError: 'Something went wrong. Please try again.',
   },
   es: {
-    demoBanner: 'DEMOSTRACIÓN con datos ficticios. La verificación del dispositivo es simulada y no se envía nada a nadie.',
+    demoBanner: 'DEMOSTRACIÓN con datos ficticios. Nada de lo que escribas se envía a nadie.',
     reviewBanner: 'Texto en español pendiente de revisión humana.',
     headerTitle: 'Ayuda para estudiantes',
     changeLanguage: 'Cambiar idioma',
@@ -102,13 +105,14 @@ export const STRINGS: Record<Language, StudentStrings> = {
     thisLooksLike: title => `Esto parece ser: ${title}.`,
     notSure: 'No estoy seguro de cuál es. Elige la más parecida de abajo, o elige "Otra cosa" y un técnico lo revisará.',
     askDetails: 'Cuéntanos qué pasa en pocas palabras, o toca Omitir.',
-    askTag: '¿Sabes el número de etiqueta de tu Chromebook? Escríbelo aquí (por ejemplo DEMO-CB-0000), o toca Omitir.',
+    askTag: 'Busca la etiqueta roja de tu Chromebook. Escribe aquí el número que tiene, o toca Omitir.',
     skip: 'Omitir',
     send: 'Enviar',
     working: 'Procesando...',
     placeholderIssue: 'Escribe tu problema, o toca una opción...',
     placeholderDetails: 'Escribe qué pasa...',
-    placeholderTag: 'Escribe la etiqueta de tu Chromebook...',
+    placeholderTag: 'Escribe el número de la etiqueta roja...',
+    placeholderConfirm: 'Toca una opción, o escribe el número otra vez...',
     placeholderSteps: 'Toca una opción de arriba...',
     placeholderDone: 'Esta solicitud ya terminó',
     tapChoice: 'Para continuar, por favor toca una de las opciones de abajo. Si quieres que te ayude una persona, toca "Pedir un técnico".',
@@ -117,13 +121,11 @@ export const STRINGS: Record<Language, StudentStrings> = {
     notFixed: 'No funcionó',
     askTechnician: 'Pedir un técnico',
     noMoreSteps: 'Ya no tenemos más pasos para probar. Un técnico puede ayudarte desde aquí.',
-    deviceCheckTitle: 'Verificación del dispositivo (demostración simulada)',
-    deviceResult: {
-      match: 'Esta etiqueta coincide con la Chromebook asignada a ti.',
-      mismatch: 'Esta etiqueta no coincide con la Chromebook asignada a ti. Puedes seguir; un técnico lo revisará.',
-      unknown_tag: 'No encontramos esa etiqueta en la lista de la demostración. Puedes seguir.',
-      no_assignment: 'No hay una Chromebook registrada para ti en esta demostración. Puedes seguir.',
-    },
+    confirmTag: tag => `Escribiste: ${tag}\nPor favor, revisa que sea igual al número de la etiqueta roja de tu Chromebook. ¿Es correcto?`,
+    tagYes: 'Sí, es correcto',
+    tagNo: 'No, escribirlo otra vez',
+    tagRetype: 'No hay problema. Escribe otra vez el número de la etiqueta roja, o toca Omitir.',
+    tagSaved: tag => `Gracias. Guardamos la etiqueta roja ${tag}. Un técnico la usará para encontrar tu Chromebook.`,
     resolvedTitle: '¡Qué bueno que se arregló!',
     resolvedBody: 'Guardamos que esto se arregló. No necesitas hacer nada más.',
     escalatedTitle: 'Un técnico te ayudará.',

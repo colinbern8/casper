@@ -1,15 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import type { DeviceCheckResult, DispositionValue, SupportCase } from '../types';
+import type { DispositionValue, SupportCase } from '../types';
 import { DISPOSITION_VALUES } from '../types';
 import { ApiError, fetchSupportCase, recordDisposition } from '../api';
 import { findSupportIssue } from '../data/supportContent';
-
-const RESULT_LABELS: Record<DeviceCheckResult, string> = {
-  match: 'Match: tag is the one assigned to this student',
-  mismatch: 'Mismatch: tag is not the one assigned to this student',
-  unknown_tag: 'Unknown tag: not in the demo device list',
-  no_assignment: 'No assignment: student has no device on the demo roster',
-};
 
 const DISPOSITION_LABELS: Record<DispositionValue, string> = {
   loaner_approved: 'Loaner approved',
@@ -65,7 +58,6 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
   if (!data) return <p className="text-gray-500">Loading student-support case...</p>;
 
   const issue = findSupportIssue(data.reported.issueId);
-  const check = data.deviceCheck;
 
   return (
     <div className="space-y-2 border border-blue-200 bg-blue-50/40 rounded p-2.5" data-testid="case-panel">
@@ -86,11 +78,11 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
         </p>
       </Section>
 
-      <Section title="Device-assignment check" tag="Simulated, not a real inventory lookup">
-        {check ? (
+      <Section title="Chromebook red tag" tag="Entered by the student, not looked up">
+        {data.redTag ? (
           <>
-            <p className="text-gray-800">{RESULT_LABELS[check.result]}</p>
-            <p className="text-gray-600 font-mono text-[11px]">Entered: {check.enteredTag || 'none'} · Fixture says assigned: {check.expectedTag ?? 'none'}</p>
+            <p className="text-lg font-mono font-semibold text-gray-900 break-all">{data.redTag.value}</p>
+            <p className="text-gray-600">Use this number to find the Chromebook, and the student it belongs to, in your own records. This app does not check it.</p>
           </>
         ) : (
           <p className="text-gray-400">The student did not enter a tag.</p>
