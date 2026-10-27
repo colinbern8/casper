@@ -18,7 +18,7 @@ async function main() {
   const config = loadConfig();
 
   fs.mkdirSync(config.dataDir, { recursive: true });
-  const store = new TicketStore(path.join(config.dataDir, 'tickets.json'));
+  const store = new TicketStore(path.join(config.dataDir, 'tickets.json'), config.ticketPrefix);
   const cases = new CaseStore(path.join(config.dataDir, 'cases.json'));
   const users = new UserStore(path.join(config.dataDir, 'users.json'), config.adminEmails);
   if (config.demoMode) {
@@ -33,7 +33,6 @@ async function main() {
   if (!config.googleClientId && !config.devLogin) console.warn('Neither GOOGLE_CLIENT_ID nor DEV_LOGIN is set: nobody can sign in.');
   if (config.devLogin) console.warn('DEV_LOGIN is on: anyone can sign in as any district address. Development only.');
   if (config.adminEmails.length === 0) console.warn('ADMIN_EMAILS not set: nobody can reach the admin page.');
-  if (config.isProduction && config.demoMode) console.warn('DEMO_MODE is on in production: demo personas and sample tickets are enabled.');
 
   if (!config.isProduction) {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });

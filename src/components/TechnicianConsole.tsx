@@ -20,6 +20,7 @@ import { allTechs } from '../data/schools';
 import { CaseDetailPanel } from './CaseDetailPanel';
 
 interface TechnicianConsoleProps {
+  districtName: string;
   tickets: Ticket[];
   onRefresh: () => void;
   onUpdateTicket: (id: string, updates: TicketUpdateInput) => Promise<void>;
@@ -27,6 +28,7 @@ interface TechnicianConsoleProps {
 }
 
 export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
+  districtName,
   tickets,
   onRefresh,
   onUpdateTicket,
@@ -190,7 +192,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
             </h2>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Hamilton Township School District • Technology Support & Operations
+            {districtName} • Technology Support & Operations
           </p>
         </div>
 

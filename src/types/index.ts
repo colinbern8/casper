@@ -114,6 +114,7 @@ export interface PublicConfig {
   devLogin: boolean;
   demoMode: boolean;
   domain: string;
+  districtName: string;
 }
 
 // ---- Student-support demo (bilingual prototype) ---------------------------------

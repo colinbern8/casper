@@ -67,6 +67,7 @@ export function createApp({ config, store, users, chat, verifyGoogle, cases = ne
       devLogin: config.devLogin,
       demoMode: config.demoMode,
       domain: config.domain,
+      districtName: config.districtName,
     };
     res.json(body);
   });
