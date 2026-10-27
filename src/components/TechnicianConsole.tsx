@@ -497,6 +497,27 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     {/* Student-support demo case (only on tickets escalated from one) */}
                     {ticket.caseId && <CaseDetailPanel caseId={ticket.caseId} />}
 
+                    {/* Student request limit: only on a student's request that is still open */}
+                    {ticket.userRole === 'student' && ticket.status !== 'resolved' && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded border border-gray-200">
+                        <div>
+                          <span className="font-semibold text-gray-700 block">Student request limit</span>
+                          <span className="text-gray-600">
+                            {ticket.allowsAnother
+                              ? 'This student may send another request while this one is open.'
+                              : 'This student cannot send another request until this one is resolved.'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateTicket(ticket.id, { allowAnother: !ticket.allowsAnother })}
+                          className="px-3 py-1 text-xs font-medium text-gray-800 bg-white border border-gray-400 hover:bg-gray-50 rounded"
+                        >
+                          {ticket.allowsAnother ? 'Withdraw permission' : 'Allow another request'}
+                        </button>
+                      </div>
+                    )}
+
                     {/* Quick Reassign Technician */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200">
                       <div className="flex items-center gap-2">

@@ -10,6 +10,7 @@ import {
 } from '../src/types';
 import { MEDIA_CENTER_DESK, findSchool, allTechs } from '../src/data/schools';
 import type { NewTicket } from './store';
+import type { Ticket } from '../src/types';
 
 export const clean = (v: unknown, max: number): string =>
   typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
@@ -115,6 +116,21 @@ export function parseTicketUpdate(body: any): ParseResult<TicketUpdateInput> {
     if (!note) return fail('INVALID_NOTE', 'Note cannot be empty.');
     out.addNote = note;
   }
+  if (body.allowAnother !== undefined) {
+    if (typeof body.allowAnother !== 'boolean') return fail('INVALID_ALLOW', 'allowAnother must be true or false.');
+    out.allowAnother = body.allowAnother;
+  }
   if (Object.keys(out).length === 0) return fail('NO_CHANGES', 'Nothing to update.');
   return { ok: true, value: out };
+}
+
+/** The automatic reply when a student already has as many open requests as they are allowed. */
+export function openTicketLimitBody(open: Ticket[]) {
+  const numbers = open.map(t => t.ticketNumber);
+  const have = numbers.length === 1 ? `an open request (${numbers[0]})` : `${numbers.length} open requests (${numbers.join(', ')})`;
+  return {
+    error: 'OPEN_TICKET_LIMIT',
+    message: `Request limit reached: you already have ${have}. To send another one, please contact the main office or a technician.`,
+    openTicketNumbers: numbers,
+  };
 }

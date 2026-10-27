@@ -1,44 +1,47 @@
+import { findSupportIssue } from '../src/data/supportContent';
 import type {
   DispositionValue,
   Language,
   NotificationDraft,
   StudentCaseView,
   SupportCase,
-  SupportIssue,
 } from '../src/types';
 
-/** Strip everything a student's own browser should not see (technician fields, the expected tag). */
+/** Strip everything a student's own browser should not see (the technician's decision, draft and history). */
 export function toStudentView(c: SupportCase): StudentCaseView {
-  const { disposition: _d, notificationDraft: _n, history: _h, deviceCheck, ...rest } = c;
-  const view: StudentCaseView = { ...rest };
-  if (deviceCheck) {
-    const { expectedTag: _e, ...safe } = deviceCheck;
-    view.deviceCheck = safe;
-  }
+  const { disposition: _d, notificationDraft: _n, history: _h, ...view } = c;
   return view;
 }
 
 /**
  * Body for the existing ticket validator. Always English: technicians read it.
  * Identity, role, priority and routing are still decided by parseTicketInput.
+ * Only the first problem has troubleshooting steps, so only its steps are listed.
  */
-export function buildTicketBody(c: SupportCase, issue: SupportIssue) {
+export function buildTicketBody(c: SupportCase) {
+  const primary = findSupportIssue(c.reported.issueId)!;
+  const all = [c.reported, ...(c.additionalIssues ?? [])].map(r => ({ issue: findSupportIssue(r.issueId)!, words: r.description }));
   const tried = c.attempts.map(a => {
-    const step = issue.steps.find(s => s.id === a.stepId);
+    const step = primary.steps.find(s => s.id === a.stepId);
     return `${step?.label ?? a.stepId} (${a.result === 'worked' ? 'worked' : 'did not work'})`;
   });
-  const lines = [
-    `Student support case ${c.caseNumber} (prototype demo, fictional data).`,
-    `Issue: ${issue.title.en}.`,
-    `Student language: ${c.language === 'es' ? 'Spanish' : 'English'}.`,
-  ];
-  if (c.reported.description) lines.push(`Student's own words: ${c.reported.description}`);
+
+  const lines = [`Student support case ${c.caseNumber} (prototype demo, fictional data).`];
+  if (all.length === 1) {
+    lines.push(`Issue: ${primary.title.en}.`);
+    if (all[0].words) lines.push(`Student's own words: ${all[0].words}`);
+  } else {
+    lines.push(`Problems reported (${all.length}):`);
+    all.forEach((p, i) => lines.push(`${i + 1}. ${p.issue.title.en}${p.words ? ` - "${p.words.slice(0, 150)}"` : ''}`));
+  }
+  lines.push(`Student language: ${c.language === 'es' ? 'Spanish' : 'English'}.`);
+
   return {
     school: c.student.school,
     room: c.student.room,
-    category: issue.category,
-    assetTag: c.deviceCheck?.enteredTag,
-    title: `Student support (demo): ${issue.title.en}`,
+    category: primary.category,
+    assetTag: c.redTag?.value,
+    title: `Student support (demo): ${primary.title.en}${all.length > 1 ? ` (+${all.length - 1} more)` : ''}`,
     description: lines.join('\n'),
     troubleshootStepsAttempted: tried,
     teacherAvailability: 'Will visit the Media Center',

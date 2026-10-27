@@ -4,11 +4,11 @@ import { requireRole } from './auth';
 import type { SlidingWindowLimiter } from './rateLimit';
 import type { TicketStore } from './store';
 import type { CaseStore } from './cases';
-import { cleanMultiline, parseTicketInput } from './tickets';
-import { checkDevice, DEMO_SCHOOL, studentFor } from './supportFixtures';
+import { clean, cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
+import { DEMO_SCHOOL, studentFor } from './supportFixtures';
 import { buildDraft, buildTicketBody, toStudentView } from './support';
 import { findSupportIssue } from '../src/data/supportContent';
-import { DISPOSITION_VALUES, LANGUAGES, SUPPORT_ISSUE_IDS, type SupportCase } from '../src/types';
+import { DISPOSITION_VALUES, LANGUAGES, MAX_REPORTED_ISSUES, SUPPORT_ISSUE_IDS, type SupportCase } from '../src/types';
 import { HELP_DESK } from '../src/data/schools';
 
 export interface SupportDeps {
@@ -91,18 +91,47 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     res.json(toStudentView(found));
   });
 
-  router.post('/cases/:id/device-check', (req, res) => {
+  // The red tag is recorded exactly as typed, for the technician to read. It is never looked up.
+  router.post('/cases/:id/red-tag', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
     if (limited(res, `support-act:${req.user!.email}`, 60)) return;
-    const tag = req.body?.assetTag;
-    if (typeof tag !== 'string' || !tag.trim()) return bad(res, 'INVALID_TAG', 'Enter the tag on your Chromebook.');
+    const value = clean(req.body?.tag, 40);
+    if (!value) return bad(res, 'INVALID_TAG', 'Enter the number on the red tag.');
 
-    const check = checkDevice(studentFor(found.student.email, config.domain), tag);
+    const at = new Date().toISOString();
     const saved = cases.save({
       ...found,
-      deviceCheck: check,
-      history: [...found.history, { at: check.checkedAt, by: req.user!.name, action: 'device_checked', detail: `simulated: ${check.result}` }],
+      redTag: { value, recordedAt: at },
+      history: [...found.history, { at, by: req.user!.name, action: 'tag_recorded' }],
+    });
+    res.json(toStudentView(saved));
+  });
+
+  // Lets a student list another problem in the same request. Only the first problem gets troubleshooting steps.
+  router.post('/cases/:id/issues', (req, res) => {
+    const found = ownOpenCase(req, res);
+    if (!found) return;
+    if (limited(res, `support-act:${req.user!.email}`, 60)) return;
+    const { issueId } = req.body ?? {};
+    if (!SUPPORT_ISSUE_IDS.includes(issueId)) return bad(res, 'INVALID_ISSUE', 'Choose an issue from the list.');
+
+    const extras = found.additionalIssues ?? [];
+    if (1 + extras.length >= MAX_REPORTED_ISSUES) {
+      return bad(res, 'TOO_MANY_ISSUES', `One request can list at most ${MAX_REPORTED_ISSUES} problems.`, 409);
+    }
+    // "Something else" may be listed more than once (each has its own words); the rest only once.
+    if (issueId !== 'other' && [found.reported, ...extras].some(r => r.issueId === issueId)) {
+      return bad(res, 'ALREADY_LISTED', 'That problem is already on this request.', 409);
+    }
+    const description = cleanMultiline(req.body?.description, 500) || undefined;
+    if (issueId === 'other' && !description) return bad(res, 'DESCRIPTION_REQUIRED', 'Say what is wrong.');
+
+    const at = new Date().toISOString();
+    const saved = cases.save({
+      ...found,
+      additionalIssues: [...extras, { issueId, description }],
+      history: [...found.history, { at, by: req.user!.name, action: 'issue_added', detail: issueId }],
     });
     res.json(toStudentView(saved));
   });
@@ -130,11 +159,14 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     const found = ownOpenCase(req, res);
     if (!found) return;
     const user = req.user!;
-    const issue = findSupportIssue(found.reported.issueId)!;
-
-    const parsed = parseTicketInput(buildTicketBody(found, issue), user);
+    const parsed = parseTicketInput(buildTicketBody(found), user);
     if (!parsed.ok) return bad(res, parsed.error, parsed.message);
     const v = parsed.value;
+    // Same policy as POST /api/tickets, checked first so a blocked attempt does not use up the allowance.
+    if (v.userRole === 'student') {
+      const open = store.openStudentTickets(user.email);
+      if (open.length >= config.studentOpenTicketLimit) return res.status(429).json(openTicketLimitBody(open));
+    }
     // Same limits as POST /api/tickets, so this path cannot be used to get around them.
     const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);
     const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, 60, FIFTEEN_MIN);

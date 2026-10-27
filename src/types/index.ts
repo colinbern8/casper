@@ -78,6 +78,8 @@ export interface Ticket {
   resolvedAt?: string;
   /** Set when the ticket was escalated from a student-support demo case. */
   caseId?: string;
+  /** A technician has let this student send another request while this one is still open. */
+  allowsAnother?: boolean;
 }
 
 /**
@@ -106,6 +108,8 @@ export interface TicketUpdateInput {
   /** Appended (with a timestamp) to the ticket's notes by the server. */
   addNote?: string;
   priority?: TicketPriority;
+  /** Student tickets only: let the student send another request while this one is open. */
+  allowAnother?: boolean;
 }
 
 export interface PublicConfig {
@@ -155,17 +159,24 @@ export interface SupportIssue {
 
 export type SupportOutcome = 'open' | 'resolved' | 'escalated';
 
-export type DeviceCheckResult = 'match' | 'mismatch' | 'unknown_tag' | 'no_assignment';
-
-/** SIMULATED lookup against a fictional fixture. Not connected to any district system. */
-export interface DeviceCheck {
-  simulated: true;
-  enteredTag: string;
-  result: DeviceCheckResult;
-  /** Technician-only: the tag the fixture says is assigned to this student. */
-  expectedTag?: string;
-  checkedAt: string;
+/**
+ * The number on the red tag on the student's Chromebook, exactly as they typed it.
+ * The app never looks it up or judges it: it only shows it to the technician, who
+ * uses it to find the Chromebook (and the student it belongs to) in their own records.
+ */
+export interface RedTag {
+  value: string;
+  recordedAt: string;
 }
+
+/** One problem the student reported. A request can list several. */
+export interface ReportedIssue {
+  issueId: SupportIssueId;
+  description?: string;
+}
+
+/** The most problems one request can list: the first one plus four more. */
+export const MAX_REPORTED_ISSUES = 5;
 
 export interface SupportAttempt {
   stepId: string;
@@ -203,7 +214,7 @@ export interface NotificationDraft {
 export interface CaseHistoryEntry {
   at: string;
   by: string;
-  action: 'case_started' | 'device_checked' | 'resolved' | 'escalated' | 'disposition_recorded';
+  action: 'case_started' | 'issue_added' | 'tag_recorded' | 'resolved' | 'escalated' | 'disposition_recorded';
   detail?: string;
 }
 
@@ -215,8 +226,10 @@ export interface SupportCase {
   language: Language;
   student: { email: string; displayName: string; school: string; room: string; onRoster: boolean };
   /** What the student said, as entered. */
-  reported: { issueId: SupportIssueId; description?: string };
-  deviceCheck?: DeviceCheck;
+  reported: ReportedIssue;
+  /** Further problems the student added before sending. Only the first problem has troubleshooting steps. */
+  additionalIssues?: ReportedIssue[];
+  redTag?: RedTag;
   attempts: SupportAttempt[];
   outcome: SupportOutcome;
   ticketId?: string;
@@ -226,7 +239,5 @@ export interface SupportCase {
   history: CaseHistoryEntry[];
 }
 
-/** What the student's own browser may see: no technician fields, no expected tag. */
-export type StudentCaseView = Omit<SupportCase, 'disposition' | 'notificationDraft' | 'history' | 'deviceCheck'> & {
-  deviceCheck?: Omit<DeviceCheck, 'expectedTag'>;
-};
+/** What the student's own browser may see: no technician fields. */
+export type StudentCaseView = Omit<SupportCase, 'disposition' | 'notificationDraft' | 'history'>;

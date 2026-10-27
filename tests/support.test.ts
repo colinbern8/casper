@@ -11,7 +11,7 @@ import { TicketStore } from '../server/store';
 import { CaseStore } from '../server/cases';
 import { UserStore } from '../server/users';
 import { SlidingWindowLimiter } from '../server/rateLimit';
-import { checkDevice, DEMO_STUDENTS } from '../server/supportFixtures';
+import { DEMO_STUDENTS } from '../server/supportFixtures';
 import { SUPPORT_ISSUES } from '../src/data/supportContent';
 import { SUPPORT_ISSUE_IDS } from '../src/types';
 
@@ -91,21 +91,30 @@ test('case: language and issue are validated; roster students get fixture detail
   assert.equal(off.body.student.displayName, 'Some Kid');
 });
 
-test('device check is simulated: match, mismatch, unknown tag, no assignment; expected tag never reaches the student', async () => {
-  const { call, login } = await start();
+test('red tag: recorded exactly as typed for the technician, never looked up or judged', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
   const alex = await login('demo.student@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
   const c = (await call('POST', S, { language: 'en', issueId: 'power' }, alex)).body;
 
-  assert.equal((await call('POST', `${S}/${c.id}/device-check`, { assetTag: '  ' }, alex)).status, 400);
-  const match = await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'demo-cb-1001' }, alex);
-  assert.equal(match.body.deviceCheck.result, 'match');
-  assert.equal(match.body.deviceCheck.simulated, true);
-  const mismatch = await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-1003' }, alex);
-  assert.equal(mismatch.body.deviceCheck.result, 'mismatch');
-  assert.equal(mismatch.body.deviceCheck.expectedTag, undefined);
-  assert.equal((await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-9999' }, alex)).body.deviceCheck.result, 'unknown_tag');
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: '  ' }, alex)).status, 400);
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, {}, alex)).status, 400);
 
-  assert.equal(checkDevice(undefined, 'DEMO-CB-1001').result, 'no_assignment');
+  // Any text is accepted: there is no list to check it against, so nothing is a "match" or a "mismatch".
+  const first = await call('POST', `${S}/${c.id}/red-tag`, { tag: ' r-4821 ' }, alex);
+  assert.equal(first.status, 200);
+  assert.equal(first.body.redTag.value, 'r-4821'); // trimmed, case kept
+  assert.equal(first.body.deviceCheck, undefined);
+  assert.equal(JSON.stringify(first.body).includes('expectedTag'), false);
+
+  // Typing it again replaces it; control characters are dropped and the length is capped.
+  const again = await call('POST', `${S}/${c.id}/red-tag`, { tag: 'A\u0000B\n' + 'x'.repeat(100) }, alex);
+  assert.ok(again.body.redTag.value.length <= 40);
+  assert.ok(!/[\u0000-\u001f]/.test(again.body.redTag.value));
+
+  assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.redTag.value, again.body.redTag.value);
+  assert.deepEqual((await call('GET', `${S}/${c.id}`, undefined, tech)).body.history.map((h: any) => h.action), ['case_started', 'tag_recorded', 'tag_recorded']);
 });
 
 test('resolved path: a working step closes the case with no ticket; closed cases refuse more changes', async () => {
@@ -133,7 +142,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   const tech = await login('tech@d.test', 'Tina Tech');
 
   const c = (await call('POST', S, { language: 'es', issueId: 'power', description: 'No prende desde ayer' }, sofia)).body;
-  await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-1003' }, sofia);
+  await call('POST', `${S}/${c.id}/red-tag`, { tag: 'R-4821' }, sofia);
   await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-charger', result: 'not_worked' }, sofia);
   await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-hold', result: 'not_worked' }, sofia);
 
@@ -144,7 +153,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   assert.equal(esc.body.ticket.userRole, 'student');
   assert.equal(esc.body.ticket.priority, 'medium'); // client-supplied priority/role ignored
   assert.equal(esc.body.ticket.assignedTech, 'Media Center Tech Desk');
-  assert.equal(esc.body.ticket.assetTag, 'DEMO-CB-1003');
+  assert.equal(esc.body.ticket.assetTag, 'R-4821'); // the red tag becomes the ticket's asset tag
   assert.match(esc.body.ticket.description, /Spanish/);
   assert.match(esc.body.ticket.description, /No prende desde ayer/);
   assert.equal(esc.body.ticket.title, 'Student support (demo): My Chromebook will not turn on');
@@ -158,18 +167,17 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   assert.equal(full.status, 200);
   assert.equal(full.body.language, 'es');
   assert.equal(full.body.reported.description, 'No prende desde ayer');
-  assert.equal(full.body.deviceCheck.result, 'mismatch');
-  assert.equal(full.body.deviceCheck.expectedTag, 'DEMO-CB-1002');
-  assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'device_checked', 'escalated']);
+  assert.equal(full.body.redTag.value, 'R-4821');
+  assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'tag_recorded', 'escalated']);
 
   const own = await call('GET', `${S}/${c.id}`, undefined, sofia);
   assert.equal(own.status, 200);
-  assert.equal(own.body.deviceCheck.expectedTag, undefined);
+  assert.equal(own.body.redTag.value, 'R-4821'); // students see their own entry
   assert.equal(own.body.history, undefined);
 });
 
 test('escalation: damaged devices go straight to a technician; the shared student ticket limit still applies', async () => {
-  const { call, login } = await start();
+  const { call, login } = await start({ DEMO_MODE: 'true', STUDENT_OPEN_TICKET_LIMIT: '10' }); // isolate the burst limit from the open-request limit
   const jordan = await login('demo.student2@d.test');
   const make = async () => (await call('POST', S, { language: 'en', issueId: 'damaged' }, jordan)).body;
 
@@ -202,6 +210,68 @@ test('"something else": goes straight to a technician with the student\'s own wo
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.reported.description, 'The headphone jack is loose');
 });
 
+test('several problems in one request: added before sending, validated, and listed in one ticket', async () => {
+  const { call, login, users, store } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  const alex = await login('demo.student@d.test');
+  const sofia = await login('demo.estudiante@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+  const c = (await call('POST', S, { language: 'es', issueId: 'wifi', description: 'no hay internet' }, alex)).body;
+  const add = (body: unknown, who = alex) => call('POST', `${S}/${c.id}/issues`, body, who);
+
+  assert.equal((await add({ issueId: 'nope' })).status, 400);
+  assert.equal((await add({ issueId: 'power' }, sofia)).status, 404); // someone else's case
+  assert.equal((await add({ issueId: 'wifi' })).status, 409); // already the first problem
+  assert.equal((await add({ issueId: 'other' })).status, 400); // "something else" needs words
+
+  const two = await add({ issueId: 'power', description: 'tampoco prende' });
+  assert.equal(two.status, 200);
+  assert.deepEqual(two.body.additionalIssues.map((i: any) => i.issueId), ['power']);
+  assert.equal((await add({ issueId: 'power' })).status, 409); // not twice
+  assert.equal((await add({ issueId: 'login' })).status, 200);
+  assert.equal((await add({ issueId: 'other', description: 'el teclado' })).status, 200);
+  assert.equal((await add({ issueId: 'other', description: 'el cargador' })).status, 200); // five in total
+  const sixth = await add({ issueId: 'damaged' });
+  assert.equal(sixth.status, 409);
+  assert.equal(sixth.body.error, 'TOO_MANY_ISSUES');
+
+  const esc = await call('POST', `${S}/${c.id}/escalate`, {}, alex);
+  assert.equal(esc.status, 201);
+  assert.equal(store.size, 1); // one ticket for all five
+  assert.equal(esc.body.ticket.title, 'Student support (demo): My Chromebook will not connect to Wi-Fi (+4 more)');
+  assert.match(esc.body.ticket.description, /Problems reported \(5\):/);
+  assert.match(esc.body.ticket.description, /1\. My Chromebook will not connect to Wi-Fi - "no hay internet"/);
+  assert.match(esc.body.ticket.description, /5\. Something else - "el cargador"/);
+  assert.equal(esc.body.ticket.category, 'network');
+
+  const full = await call('GET', `${S}/${c.id}`, undefined, tech);
+  assert.equal(full.body.additionalIssues.length, 4);
+  assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'issue_added', 'issue_added', 'issue_added', 'issue_added', 'escalated']);
+  assert.equal((await add({ issueId: 'damaged' })).status, 409); // closed cases take no more
+});
+
+test('request limit applies when escalating from the student chat too, and a technician release lets the next one through', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  const alex = await login('demo.student@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+
+  const a = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
+  const first = await call('POST', `${S}/${a.id}/escalate`, {}, alex);
+  assert.equal(first.status, 201);
+
+  const b = (await call('POST', S, { language: 'en', issueId: 'other', description: 'Loaner will not charge' }, alex)).body;
+  const blocked = await call('POST', `${S}/${b.id}/escalate`, {}, alex);
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.body.error, 'OPEN_TICKET_LIMIT');
+  assert.deepEqual(blocked.body.openTicketNumbers, [first.body.ticket.ticketNumber]);
+  assert.equal((await call('GET', `${S}/${b.id}`, undefined, alex)).body.outcome, 'open'); // nothing half-done
+
+  await call('PATCH', `/api/tickets/${first.body.ticket.id}`, { allowAnother: true }, tech);
+  const second = await call('POST', `${S}/${b.id}/escalate`, {}, alex);
+  assert.equal(second.status, 201);
+});
+
 test('access: students only reach their own cases; only technicians record dispositions', async () => {
   const { call, login, users } = await start();
   users.set('tech@d.test', 'tech', 'test');
@@ -213,7 +283,7 @@ test('access: students only reach their own cases; only technicians record dispo
 
   const c = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, sofia)).status, 404);
-  assert.equal((await call('POST', `${S}/${c.id}/device-check`, { assetTag: 'DEMO-CB-1001' }, sofia)).status, 404);
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: 'R-1' }, sofia)).status, 404);
   assert.equal((await call('POST', `${S}/${c.id}/attempts`, { stepId: 'x', result: 'worked' }, sofia)).status, 404);
   assert.equal((await call('POST', `${S}/${c.id}/escalate`, {}, tech)).status, 404); // not even a technician can act as the student
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, teacher)).status, 404);

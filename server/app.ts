@@ -7,7 +7,7 @@ import type { UserStore } from './users';
 import { SlidingWindowLimiter } from './rateLimit';
 import { screenMessage } from './safety';
 import { TicketStore } from './store';
-import { parseTicketInput, parseTicketUpdate } from './tickets';
+import { openTicketLimitBody, parseTicketInput, parseTicketUpdate } from './tickets';
 import { builtInReply, normalizeHistory, type ChatContext } from './chat';
 import { notifyUrgentTicket } from './notify';
 import { CaseStore } from './cases';
@@ -130,6 +130,14 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       return;
     }
     const v = parsed.value;
+    // Checked before the rate limit, so a blocked attempt does not use up the student's allowance.
+    if (v.userRole === 'student') {
+      const open = store.openStudentTickets(user.email);
+      if (open.length >= config.studentOpenTicketLimit) {
+        res.status(429).json(openTicketLimitBody(open));
+        return;
+      }
+    }
     const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);
     const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, 60, FIFTEEN_MIN);
     if (!perUser.allowed || !perIp.allowed) {
@@ -162,14 +170,25 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
     }
-    const { addNote, ...fields } = parsed.value;
+    const { addNote, allowAnother, ...fields } = parsed.value;
     const patch: Record<string, unknown> = { ...fields };
     if (fields.priority) patch.priorityReason = `Priority changed by ${req.user!.name}`;
-    if (addNote) {
-      const existing = store.get(req.params.id)?.techNotes;
+
+    const target = store.get(req.params.id);
+    const notes: string[] = [];
+    if (allowAnother !== undefined) {
+      if (target && target.userRole !== 'student') {
+        res.status(400).json({ error: 'NOT_A_STUDENT_TICKET', message: 'Only a student request can be released this way.' });
+        return;
+      }
+      patch.allowsAnother = allowAnother;
+      notes.push(allowAnother ? 'Allowed the student to send another request while this one is open.' : 'Withdrew permission for another request.');
+    }
+    if (addNote) notes.push(addNote);
+    if (notes.length) {
       const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
-      const entry = `[${stamp} UTC, ${req.user!.name}] ${addNote}`;
-      patch.techNotes = existing ? `${existing}\n${entry}` : entry;
+      const entries = notes.map(n => `[${stamp} UTC, ${req.user!.name}] ${n}`).join('\n');
+      patch.techNotes = target?.techNotes ? `${target.techNotes}\n${entries}` : entries;
     }
     const updated = store.update(req.params.id, patch);
     if (!updated) {

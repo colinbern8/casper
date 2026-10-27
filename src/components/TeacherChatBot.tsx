@@ -964,7 +964,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                 <strong>Rate Limiting:</strong> Requests are limited to 5 messages per 30-second window to prevent system flooding.
               </p>
               <p>
-                <strong>Student Loaner Passes:</strong> Students are limited to 2 loaner ticket submissions per 15 minutes.
+                <strong>Student Loaner Passes:</strong> Students can only have a limited number of open requests at once. If you reach the limit, contact the main office or a technician.
               </p>
               <p>
                 <strong>Privacy:</strong> Do not enter passwords or confidential student records. Free-text questions are answered from built-in help text on the help desk server. Nothing you type is sent to an outside service.
