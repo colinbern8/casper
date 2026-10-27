@@ -125,8 +125,8 @@ export const LANGUAGES: Language[] = ['en', 'es'];
 /** 'prototype' = written for the demo, no district sign-off. 'awaiting_human_review' = draft that still needs a person. */
 export type ReviewStatus = 'prototype' | 'awaiting_human_review';
 
-export type SupportIssueId = 'wifi' | 'power' | 'login' | 'damaged';
-export const SUPPORT_ISSUE_IDS: SupportIssueId[] = ['wifi', 'power', 'login', 'damaged'];
+export type SupportIssueId = 'wifi' | 'power' | 'login' | 'damaged' | 'other';
+export const SUPPORT_ISSUE_IDS: SupportIssueId[] = ['wifi', 'power', 'login', 'damaged', 'other'];
 
 export interface LocalizedText {
   en: string;

@@ -185,6 +185,23 @@ test('escalation: damaged devices go straight to a technician; the shared studen
   assert.equal((await call('GET', `${S}/${third.id}`, undefined, jordan)).body.outcome, 'open'); // nothing half-done
 });
 
+test('"something else": goes straight to a technician with the student\'s own words, nothing is guessed', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  const alex = await login('demo.student@d.test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+
+  const c = (await call('POST', S, { language: 'en', issueId: 'other', description: 'The headphone jack is loose' }, alex)).body;
+  assert.equal(c.reported.issueId, 'other');
+  assert.equal((await call('POST', `${S}/${c.id}/attempts`, { stepId: 'anything', result: 'worked' }, alex)).status, 400);
+  const esc = await call('POST', `${S}/${c.id}/escalate`, { reason: 'no_steps_for_issue' }, alex);
+  assert.equal(esc.status, 201);
+  assert.equal(esc.body.ticket.category, 'other');
+  assert.equal(esc.body.ticket.title, 'Student support (demo): Something else');
+  assert.match(esc.body.ticket.description, /headphone jack is loose/);
+  assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.reported.description, 'The headphone jack is loose');
+});
+
 test('access: students only reach their own cases; only technicians record dispositions', async () => {
   const { call, login, users } = await start();
   users.set('tech@d.test', 'tech', 'test');

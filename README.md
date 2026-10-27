@@ -48,29 +48,21 @@ Identity, role, priority, routing, and ticket numbers always come from the serve
 
 ## Bilingual student-support demo
 
-A prototype of a student-support workflow in English and Spanish. It is available only when `DEMO_MODE=true`, uses fictional data, and has no AI. With demo mode off, its routes return 404 and `/student` shows the original chat.
+A prototype of a student-support workflow in English and Spanish, shown as a chat. It is available only when `DEMO_MODE=true`, uses fictional data, and has no AI. With demo mode off, its routes return 404 and `/student` shows the original chat.
 
-**The flow:** pick English or Spanish, pick an issue (Wi-Fi, will not turn on, sign-in, damaged), optionally enter a Chromebook tag for a **simulated** assignment check, follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. Escalating creates an ordinary ticket. The technician then sees the case: language, the student's own words, the simulated check, the steps tried, a **demo** disposition, an **unsent** draft message, and a short decision history.
+**How it works:** the student chats with Greg Bot. They tap a language, then either tap one of the common problems (Wi-Fi, will not turn on, sign-in, damaged, something else) or type it. Typed text is matched to a common problem by plain keywords in English and Spanish (`src/data/supportMatch.ts`). It is not AI, so it only recognises those words. If nothing matches, the bot says so and shows the choices again, and "Something else" sends what the student typed to a technician. Next they can enter a Chromebook tag for a **simulated** assignment check, follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. Escalating creates an ordinary ticket. The technician then sees the case: language, the student's own words, the simulated check, the steps tried, a **demo** disposition, an **unsent** draft message, and a short decision history.
 
-**Demo accounts** (the sign-in panel appears when `DEV_LOGIN=true`):
+**Demo accounts** (the sign-in panel appears when `DEV_LOGIN=true`): **Student**, **Teacher**, **Technician** and **Admin**. The Student button signs in as a fictional student, Alex Sample, whose assigned tag is `DEMO-CB-1001`. Language is chosen inside the chat, so there is a single student button.
 
-| Button | Fictional student | Assigned tag |
-| --- | --- | --- |
-| Student | Alex Sample | `DEMO-CB-1001` |
-| Student (Spanish) | Sofía Muestra | `DEMO-CB-1002` |
-| Student 2 | Jordan Sample | `DEMO-CB-1003` |
-
-Tags `DEMO-CB-1001` to `DEMO-CB-1004` exist (1004 is an unassigned spare). Any other tag shows "unknown tag", and a tag that belongs to someone else shows "mismatch". There are also Teacher, Technician and Admin buttons.
+Tags `DEMO-CB-1001` to `DEMO-CB-1004` exist in the demo (1004 is an unassigned spare). Any other tag shows "unknown tag", and a tag that belongs to someone else, for example `DEMO-CB-1003`, shows "mismatch". Students are limited to 2 tickets per 15 minutes, the same limit as the normal form. To rehearse more than twice, type another fictional address in the sign-in box, such as `demo.estudiante@your-demo-domain` (Sofía Muestra, tag `DEMO-CB-1002`) or `demo.student2@your-demo-domain` (Jordan Sample, tag `DEMO-CB-1003`). Any other address works too, and shows as "not on the demo roster".
 
 **Five-minute walkthrough**
 
-1. Sign in as **Student (Spanish)**, choose Español, pick "Mi Chromebook no enciende", type a description, enter tag `DEMO-CB-1003`, and continue. You see the simulated "mismatch" result and a notice that the Spanish text awaits review.
-2. Press "No funcionó" on both steps, then "Pedir un técnico". You get a ticket number.
+1. Sign in as **Student** and tap **Español**. Type `mi chromebook no prende`. The bot recognises the problem. Enter tag `demo-cb-1003` and see the simulated "mismatch" result, and the notice that the Spanish text awaits review.
+2. Tap "No funcionó" on both steps, then "Pedir un técnico". You get a ticket number.
 3. Sign out, sign in as **Technician**, and expand that ticket. Record the "Needs in-person check" disposition and read the Spanish draft, which is marked as not sent.
-4. Sign in as **Student**, choose English and Wi-Fi, and press "This fixed it" at step 2 to see a resolved case.
+4. Sign in as **Student** again, tap **English** and the Wi-Fi choice, skip the tag, and tap "This fixed it" at step 2 to see a resolved case.
 5. Sign in as **Teacher** to confirm the original teacher chat is unchanged.
-
-Students are limited to 2 tickets per 15 minutes, the same limit as the normal form, so rotate between the three student accounts when rehearsing.
 
 **What is real and what is simulated**
 
@@ -78,6 +70,7 @@ Students are limited to 2 tickets per 15 minutes, the same limit as the normal f
 - **The device check is a lookup in a fixture file** (`server/supportFixtures.ts`), not a district inventory.
 - **A disposition records a decision only.** It does not approve, order, or change anything.
 - **The notification is a stored draft.** Nothing in the app sends it.
+- **Typed text is matched by keywords, not understood.** The bot never answers a question it was not written to answer.
 - Technician and staff screens stay in English.
 
 ## Run it locally
@@ -108,7 +101,8 @@ Then run `npm run dev` and open http://localhost:3000. The sign-in page shows de
 | --- | --- | --- |
 | Type-check, build | Verified | `npm run lint`, `npm run build` |
 | Roles, tickets, technician updates, admin tools | Verified | `tests/api.test.ts`, plus manual sign-in and access checks for each role over HTTP |
-| Student-support demo (both languages, all three outcomes) | Verified | `tests/support.test.ts` and a full browser walkthrough |
+| Student-support chat: both languages, tapped and typed input, resolved and escalated outcomes | Verified | `tests/support.test.ts`, `tests/match.test.ts` and a full browser walkthrough |
+| Keyword matching of typed text | Verified for the phrases in `tests/match.test.ts` only. Real students will type things it does not recognise, and it falls back to the choices. | |
 | Teacher chat and ticket path | Verified, unchanged by the demo work | existing tests, and a ticket filed through the UI |
 | Data survives a restart; demo off hides the demo routes | Verified | real process restarts |
 | Server-side access control for the new routes | Verified | other students get 404, non-technicians get 403 on dispositions, tampered priority/role fields are ignored |
@@ -148,9 +142,10 @@ server/                    app (routes), auth, session, users (roles), google, c
                            cases + support + supportRoutes + supportFixtures (student-support demo),
                            demoData (sample tickets)
 src/                       React client: App (routing by role), Login, AdminPage, TeacherChatBot,
-                           TechnicianConsole, StudentSupport, CaseDetailPanel
+                           TechnicianConsole, StudentSupport (the student chat), CaseDetailPanel
 src/data/schools.ts        campuses, lead technicians, help desk contact (PLACEHOLDER data)
 src/data/supportContent.ts the fixed troubleshooting steps in English and Spanish
+src/data/supportMatch.ts   keyword matching for what students type
 src/i18n/                  student-facing strings for the demo
 tests/                     node:test suites: API, units, integrations, support demo, identity
 .github/workflows/ci.yml   lint, test and build on every PR

@@ -1,45 +1,89 @@
-import React, { useState } from 'react';
-import { CheckCircle2, ChevronLeft, Info, Languages, Wrench } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Info, Send } from 'lucide-react';
 import type { Language, StudentCaseView, SupportIssue, Ticket } from '../types';
 import { ApiError, checkSupportDevice, createSupportCase, escalateSupportCase, recordSupportAttempt } from '../api';
-import { SUPPORT_ISSUES } from '../data/supportContent';
-import { STRINGS } from '../i18n/studentStrings';
+import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
+import { matchIssue } from '../data/supportMatch';
+import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
 
-type Stage = 'language' | 'issue' | 'intake' | 'steps' | 'resolved' | 'escalated';
+type Phase = 'language' | 'issue' | 'details' | 'tag' | 'steps' | 'handoff' | 'done';
+type Kind = 'plain' | 'check' | 'success' | 'handoff';
+
+interface Msg {
+  id: number;
+  from: 'bot' | 'user';
+  text: string;
+  kind?: Kind;
+}
+
+interface Chip {
+  key: string;
+  label: string;
+  primary?: boolean;
+}
 
 interface StudentSupportProps {
   onTicketCreated: (ticket: Ticket) => void;
   onUseClassicChat: () => void;
 }
 
-const card = 'bg-white border border-gray-300 rounded-md p-4 sm:p-5 shadow-xs';
-const primary = 'px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded text-sm font-semibold';
-const secondary = 'px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-700 rounded text-sm font-medium';
-const field = 'w-full bg-white border border-gray-300 rounded px-2.5 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700';
+const BUBBLE: Record<Kind | 'user', string> = {
+  user: 'bg-gray-800 text-white',
+  plain: 'bg-gray-50 border border-gray-200 text-gray-800',
+  check: 'bg-blue-50 border border-blue-200 text-gray-900',
+  success: 'bg-emerald-50 border border-emerald-200 text-gray-900',
+  handoff: 'bg-blue-50 border border-blue-200 text-gray-900',
+};
 
+const initialMessages = (): Msg[] => [{ id: 0, from: 'bot', text: LANGUAGE_PROMPT }];
+
+/**
+ * The student-support demo as a conversation: tap a choice or type. There is no AI.
+ * Typed text is matched to a common problem by keywords (src/data/supportMatch.ts);
+ * everything the bot says is fixed, reviewed text.
+ */
 export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated, onUseClassicChat }) => {
   const [lang, setLang] = useState<Language | null>(null);
-  const [stage, setStage] = useState<Stage>('language');
+  const [phase, setPhase] = useState<Phase>('language');
+  const [messages, setMessages] = useState<Msg[]>(initialMessages);
   const [issue, setIssue] = useState<SupportIssue | null>(null);
-  const [description, setDescription] = useState('');
-  const [tag, setTag] = useState('');
+  const [pendingText, setPendingText] = useState<string | undefined>();
   const [current, setCurrent] = useState<StudentCaseView | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nextId = useRef(1);
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const t = STRINGS[lang ?? 'en'];
+  const step = issue && !issue.escalateOnly ? issue.steps[stepIndex] : undefined;
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
+  }, [messages, phase, busy]);
+
+  const inputEnabled = !busy && phase !== 'language' && phase !== 'done';
+  useEffect(() => {
+    if (inputEnabled) inputRef.current?.focus();
+  }, [inputEnabled, phase]);
+
+  const push = (from: 'bot' | 'user', text: string, kind: Kind = 'plain') => {
+    const id = nextId.current++;
+    setMessages(m => [...m, { id, from, text, kind }]);
+  };
 
   const reset = () => {
+    nextId.current = 1;
     setLang(null);
-    setStage('language');
+    setPhase('language');
+    setMessages(initialMessages());
     setIssue(null);
-    setDescription('');
-    setTag('');
+    setPendingText(undefined);
     setCurrent(null);
     setStepIndex(0);
-    setTicket(null);
+    setInput('');
     setError(null);
   };
 
@@ -56,166 +100,252 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     }
   };
 
-  const chooseLanguage = (l: Language) => {
+  // ---- Conversation steps ---------------------------------------------------
+
+  const pickLanguage = (l: Language) => {
     setLang(l);
-    setStage('issue');
+    push('user', l === 'en' ? 'English' : 'Español');
+    push('bot', STRINGS[l].greeting);
+    setPhase('issue');
   };
 
-  const chooseIssue = (i: SupportIssue) => {
-    setIssue(i);
-    setStage('intake');
-  };
-
-  const startCase = () =>
-    run(async () => {
-      if (!lang || !issue) return;
-      let view = await createSupportCase({ language: lang, issueId: issue.id, description: description.trim() || undefined });
-      if (tag.trim()) view = await checkSupportDevice(view.id, tag.trim());
-      setCurrent(view);
+  const showFirstStep = (i: SupportIssue, l: Language) => {
+    const tt = STRINGS[l];
+    if (i.escalateOnly) {
+      push('bot', i.escalateOnly[l]);
+      setPhase('handoff');
+    } else {
       setStepIndex(0);
-      setStage('steps');
+      push('bot', `${tt.stepOf(1, i.steps.length)}\n${i.steps[0].text[l]}`);
+      setPhase('steps');
+    }
+  };
+
+  const beginCase = (l: Language, i: SupportIssue, description: string | undefined, matched: boolean) =>
+    run(async () => {
+      const view = await createSupportCase({ language: l, issueId: i.id, description });
+      setCurrent(view);
+      setIssue(i);
+      setPendingText(undefined);
+      if (matched) push('bot', STRINGS[l].thisLooksLike(i.title[l]));
+      push('bot', STRINGS[l].askTag);
+      setPhase('tag');
     });
 
-  const answerStep = (result: 'worked' | 'not_worked') =>
+  const pickIssue = (i: SupportIssue) => {
+    if (!lang) return;
+    push('user', i.title[lang]);
+    if (i.id === 'other' && !pendingText) {
+      push('bot', t.askDetails);
+      setPhase('details');
+      return;
+    }
+    void beginCase(lang, i, pendingText, false);
+  };
+
+  const skip = () => {
+    if (!lang) return;
+    push('user', t.skip);
+    if (phase === 'details') void beginCase(lang, findSupportIssue('other')!, undefined, false);
+    else if (issue) showFirstStep(issue, lang);
+  };
+
+  const checkTag = (text: string) =>
     run(async () => {
-      if (!current || !issue) return;
-      const step = issue.steps[stepIndex];
+      if (!current || !issue || !lang) return;
+      const view = await checkSupportDevice(current.id, text);
+      setCurrent(view);
+      push('bot', `${t.deviceCheckTitle}\n${t.deviceResult[view.deviceCheck!.result]}`, 'check');
+      showFirstStep(issue, lang);
+    });
+
+  const answer = (result: 'worked' | 'not_worked') => {
+    if (!current || !issue || !step || !lang) return;
+    push('user', result === 'worked' ? t.fixed : t.notFixed);
+    void run(async () => {
       const view = await recordSupportAttempt(current.id, step.id, result);
       setCurrent(view);
-      if (view.outcome === 'resolved') setStage('resolved');
-      else setStepIndex(stepIndex + 1);
+      if (view.outcome === 'resolved') {
+        push('bot', `${t.resolvedTitle}\n${t.resolvedBody}\n${t.caseNumber}: ${view.caseNumber}`, 'success');
+        setPhase('done');
+        return;
+      }
+      const n = stepIndex + 1;
+      setStepIndex(n);
+      if (n < issue.steps.length) push('bot', `${t.stepOf(n + 1, issue.steps.length)}\n${issue.steps[n].text[lang]}`);
+      else push('bot', t.noMoreSteps);
     });
+  };
 
-  const askTechnician = (reason: string) =>
-    run(async () => {
-      if (!current) return;
+  const askTechnician = () => {
+    if (!current) return;
+    push('user', t.askTechnician);
+    const reason = issue?.escalateOnly ? 'no_steps_for_issue' : step ? 'student_requested' : 'steps_not_worked';
+    void run(async () => {
       const res = await escalateSupportCase(current.id, reason);
       setCurrent(res.case);
-      setTicket(res.ticket);
       onTicketCreated(res.ticket);
-      setStage('escalated');
+      push('bot', `${t.escalatedTitle}\n${t.escalatedBody}\n${t.ticketNumber}: ${res.ticket.ticketNumber}\n${t.caseNumber}: ${res.case.caseNumber}`, 'handoff');
+      setPhase('done');
     });
+  };
 
-  const noMoreSteps = issue ? stepIndex >= issue.steps.length : false;
-  const step = issue && !noMoreSteps ? issue.steps[stepIndex] : null;
+  const submit = (raw: string) => {
+    const text = raw.trim();
+    if (!text || !inputEnabled || !lang) return;
+    setInput('');
+    push('user', text);
+    switch (phase) {
+      case 'issue': {
+        const id = matchIssue(text);
+        if (id) void beginCase(lang, findSupportIssue(id)!, text, true);
+        else {
+          setPendingText(text);
+          push('bot', t.notSure);
+        }
+        break;
+      }
+      case 'details':
+        void beginCase(lang, findSupportIssue('other')!, text, false);
+        break;
+      case 'tag':
+        void checkTag(text);
+        break;
+      default:
+        push('bot', t.tapChoice);
+    }
+  };
+
+  // ---- Choices shown under the latest bot message --------------------------
+
+  const chips: Chip[] = (() => {
+    if (busy || !lang && phase !== 'language') return [];
+    switch (phase) {
+      case 'language':
+        return [{ key: 'lang:en', label: 'English' }, { key: 'lang:es', label: 'Español' }];
+      case 'issue':
+        return SUPPORT_ISSUES.map(i => ({ key: `issue:${i.id}`, label: i.title[lang!] }));
+      case 'details':
+      case 'tag':
+        return [{ key: 'skip', label: t.skip }];
+      case 'steps':
+        return step
+          ? [
+              { key: 'worked', label: t.fixed, primary: true },
+              { key: 'not_worked', label: t.notFixed },
+              { key: 'tech', label: t.askTechnician },
+            ]
+          : [{ key: 'tech', label: t.askTechnician, primary: true }];
+      case 'handoff':
+        return [{ key: 'tech', label: t.askTechnician, primary: true }];
+      case 'done':
+        return [{ key: 'again', label: t.startAnother, primary: true }];
+    }
+  })();
+
+  const onChip = (key: string) => {
+    if (key === 'lang:en') pickLanguage('en');
+    else if (key === 'lang:es') pickLanguage('es');
+    else if (key.startsWith('issue:')) pickIssue(findSupportIssue(key.slice(6))!);
+    else if (key === 'skip') skip();
+    else if (key === 'worked') answer('worked');
+    else if (key === 'not_worked') answer('not_worked');
+    else if (key === 'tech') askTechnician();
+    else if (key === 'again') reset();
+  };
+
+  const placeholder =
+    phase === 'language' ? PLACEHOLDER_CHOOSE_LANGUAGE
+    : phase === 'issue' ? t.placeholderIssue
+    : phase === 'details' ? t.placeholderDetails
+    : phase === 'tag' ? t.placeholderTag
+    : phase === 'done' ? t.placeholderDone
+    : t.placeholderSteps;
 
   return (
-    <div className="w-full h-full overflow-y-auto">
-      <div className="max-w-xl mx-auto space-y-3 pb-6">
-        <div role="note" className="flex gap-2 items-start text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold">{t.demoBanner}</p>
-            {t.reviewBanner && <p className="mt-0.5">{t.reviewBanner}</p>}
-          </div>
+    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-300 rounded-md shadow-xs overflow-hidden">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 leading-tight">Greg Bot</h2>
+          <p className="text-xs text-gray-500">{t.headerTitle}</p>
         </div>
-
-        {error && <p role="alert" className="text-xs text-red-800 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
-
-        {stage === 'language' && (
-          <section className={card} aria-labelledby="ss-lang">
-            <div className="flex items-center gap-2 mb-3">
-              <Languages className="w-4 h-4 text-gray-500" />
-              <h2 id="ss-lang" className="text-sm font-semibold text-gray-900">Choose your language / Elige tu idioma</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => chooseLanguage('en')} className="py-4 border-2 border-gray-300 hover:border-blue-700 rounded-md text-base font-semibold text-gray-900 bg-white">English</button>
-              <button type="button" onClick={() => chooseLanguage('es')} className="py-4 border-2 border-gray-300 hover:border-blue-700 rounded-md text-base font-semibold text-gray-900 bg-white">Español</button>
-            </div>
-            <button type="button" onClick={onUseClassicChat} className="mt-4 text-xs text-gray-500 underline hover:text-gray-800">{STRINGS.en.classicChat}</button>
-          </section>
+        {lang ? (
+          <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
+        ) : (
+          <button type="button" onClick={onUseClassicChat} className="text-sm text-gray-600 underline hover:text-gray-900">{STRINGS.en.classicChat}</button>
         )}
+      </div>
 
-        {stage === 'issue' && (
-          <section className={card} aria-labelledby="ss-issue">
-            <h2 id="ss-issue" className="text-sm font-semibold text-gray-900 mb-3">{t.chooseIssue}</h2>
-            <div className="space-y-2">
-              {SUPPORT_ISSUES.map(i => (
-                <button key={i.id} type="button" onClick={() => chooseIssue(i)} className="w-full text-left px-3 py-2.5 border border-gray-300 hover:border-blue-700 hover:bg-blue-50/40 rounded bg-white">
-                  <span className="block text-sm font-medium text-gray-900">{i.title[lang!]}</span>
-                  <span className="block text-xs text-gray-500">{i.blurb[lang!]}</span>
-                </button>
-              ))}
+      <div role="note" className="flex gap-2 items-start text-xs text-amber-900 bg-amber-50 border-b border-amber-200 px-4 py-2 shrink-0">
+        <Info className="w-4 h-4 mt-0.5 shrink-0" />
+        <div>
+          <p className="font-semibold">{t.demoBanner}</p>
+          {t.reviewBanner && <p className="mt-0.5">{t.reviewBanner}</p>}
+        </div>
+      </div>
+
+      <div role="log" aria-live="polite" aria-label="Conversation" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+        {messages.map(m => (
+          <div key={m.id} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[88%] sm:max-w-[80%] whitespace-pre-line text-sm sm:text-base leading-relaxed px-4 py-2.5 rounded-lg ${BUBBLE[m.from === 'user' ? 'user' : m.kind ?? 'plain']}`}>
+              {m.text}
             </div>
-            <button type="button" onClick={reset} className="mt-4 text-xs text-gray-500 underline hover:text-gray-800">{t.changeLanguage}</button>
-          </section>
+          </div>
+        ))}
+
+        {busy && <p className="text-sm text-gray-500 italic">{t.working}</p>}
+
+        {chips.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1" role="group" aria-label="Choices">
+            {chips.map(c => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => onChip(c.key)}
+                className={`text-sm sm:text-base px-4 py-2 rounded-full border font-medium text-left transition ${
+                  c.primary
+                    ? 'bg-blue-700 hover:bg-blue-800 border-blue-700 text-white'
+                    : 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         )}
+        <div ref={endRef} />
+      </div>
 
-        {stage === 'intake' && issue && (
-          <section className={`${card} space-y-3`} aria-labelledby="ss-intake">
-            <h2 id="ss-intake" className="text-sm font-semibold text-gray-900">{issue.title[lang!]}</h2>
-            <div>
-              <label htmlFor="ss-desc" className="block text-xs font-medium text-gray-700 mb-1">{t.tellUsMore}</label>
-              <textarea id="ss-desc" className={field} rows={3} maxLength={500} value={description} onChange={e => setDescription(e.target.value)} />
-              <p className="text-[11px] text-gray-500 mt-0.5">{t.tellUsMoreHint}</p>
-            </div>
-            <div>
-              <label htmlFor="ss-tag" className="block text-xs font-medium text-gray-700 mb-1">{t.tagLabel}</label>
-              <input id="ss-tag" className={field} maxLength={40} value={tag} onChange={e => setTag(e.target.value)} />
-              <p className="text-[11px] text-gray-500 mt-0.5">{t.tagHint}</p>
-            </div>
-            <div className="flex justify-between pt-1">
-              <button type="button" onClick={() => setStage('issue')} className={`${secondary} inline-flex items-center gap-1`}><ChevronLeft className="w-4 h-4" />{t.back}</button>
-              <button type="button" onClick={startCase} disabled={busy} className={primary}>{busy ? t.working : t.continue}</button>
-            </div>
-          </section>
-        )}
-
-        {stage === 'steps' && issue && current && (
-          <section className={`${card} space-y-3`} aria-labelledby="ss-steps">
-            <h2 id="ss-steps" className="text-sm font-semibold text-gray-900">{issue.title[lang!]}</h2>
-
-            {current.deviceCheck && (
-              <div className="text-xs bg-gray-50 border border-gray-200 rounded px-3 py-2">
-                <p className="font-semibold text-gray-700">{t.deviceCheckTitle}</p>
-                <p className="text-gray-700 mt-0.5">{t.deviceResult[current.deviceCheck.result]}</p>
-              </div>
-            )}
-
-            {issue.escalateOnly ? (
-              <>
-                <p className="text-sm text-gray-800 leading-relaxed">{issue.escalateOnly[lang!]}</p>
-                <button type="button" onClick={() => askTechnician('damaged_device')} disabled={busy} className={primary}>{busy ? t.working : t.askTechnician}</button>
-              </>
-            ) : step ? (
-              <>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t.stepOf(stepIndex + 1, issue.steps.length)}</p>
-                <p className="text-sm text-gray-900 leading-relaxed">{step.text[lang!]}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => answerStep('worked')} disabled={busy} className={primary}>{t.fixed}</button>
-                  <button type="button" onClick={() => answerStep('not_worked')} disabled={busy} className={secondary}>{t.notFixed}</button>
-                </div>
-                <button type="button" onClick={() => askTechnician('student_requested')} disabled={busy} className="text-xs text-gray-500 underline hover:text-gray-800">{t.askTechnicianNow}</button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray-800">{t.noMoreSteps}</p>
-                <button type="button" onClick={() => askTechnician('steps_not_worked')} disabled={busy} className={primary}>{busy ? t.working : t.askTechnician}</button>
-              </>
-            )}
-          </section>
-        )}
-
-        {stage === 'resolved' && current && (
-          <section className={`${card} space-y-2 text-center`} aria-live="polite">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-            <h2 className="text-base font-semibold text-gray-900">{t.resolvedTitle}</h2>
-            <p className="text-sm text-gray-700">{t.resolvedBody}</p>
-            <p className="text-xs text-gray-500">{t.caseNumber}: <span className="font-mono">{current.caseNumber}</span></p>
-            <button type="button" onClick={reset} className={`${primary} mt-2`}>{t.startAnother}</button>
-          </section>
-        )}
-
-        {stage === 'escalated' && current && ticket && (
-          <section className={`${card} space-y-2 text-center`} aria-live="polite">
-            <Wrench className="w-8 h-8 text-blue-700 mx-auto" />
-            <h2 className="text-base font-semibold text-gray-900">{t.escalatedTitle}</h2>
-            <p className="text-sm text-gray-700">{t.escalatedBody}</p>
-            <p className="text-xs text-gray-500">{t.ticketNumber}: <span className="font-mono">{ticket.ticketNumber}</span></p>
-            <p className="text-xs text-gray-500">{t.caseNumber}: <span className="font-mono">{current.caseNumber}</span></p>
-            <button type="button" onClick={reset} className={`${primary} mt-2`}>{t.startAnother}</button>
-          </section>
-        )}
+      <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 shrink-0">
+        {error && <p role="alert" className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            submit(input);
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            aria-label={placeholder}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            maxLength={500}
+            placeholder={placeholder}
+            disabled={!inputEnabled}
+            className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-100"
+          />
+          <button
+            type="submit"
+            aria-label={t.send}
+            disabled={!inputEnabled || !input.trim()}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
+          >
+            <Send className="w-4 h-4" />
+            <span className="hidden sm:inline">{t.send}</span>
+          </button>
+        </form>
       </div>
     </div>
   );

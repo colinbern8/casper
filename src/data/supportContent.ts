@@ -108,6 +108,18 @@ export const SUPPORT_ISSUES: SupportIssue[] = [
     },
     steps: [],
   },
+  {
+    id: 'other',
+    title: { en: 'Something else', es: 'Otra cosa' },
+    blurb: { en: 'A problem that is not in the list', es: 'Un problema que no está en la lista' },
+    category: 'other',
+    review: REVIEW,
+    escalateOnly: {
+      en: 'Thank you. A technician will look at this. Tap the button below to send it.',
+      es: 'Gracias. Un técnico revisará esto. Toca el botón de abajo para enviarlo.',
+    },
+    steps: [],
+  },
 ];
 
 export const findSupportIssue = (id: unknown): SupportIssue | undefined =>
