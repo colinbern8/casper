@@ -1,7 +1,0 @@
-{
-  "name": "DistrictEdu TechDesk - School IT Support",
-  "description": "School district IT support assistant prioritizing teacher classroom tech with instant troubleshooting and smart ticket escalation.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
-

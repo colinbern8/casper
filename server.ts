@@ -25,7 +25,8 @@ async function main() {
     seedDemoUsers(users, config);
   }
   const verifyGoogle = config.googleClientId ? createGoogleVerifier(config.googleClientId) : undefined;
-  const app = createApp({ config, store, users, verifyGoogle, cases });
+  const healthCheck = () => fs.accessSync(config.dataDir, fs.constants.R_OK | fs.constants.W_OK);
+  const app = createApp({ config, store, users, verifyGoogle, cases, healthCheck, accessLog: true });
 
   if (!config.googleClientId && !config.devLogin) console.warn('Neither GOOGLE_CLIENT_ID nor DEV_LOGIN is set: nobody can sign in.');
   if (config.devLogin) console.warn('DEV_LOGIN is on: anyone can sign in as any district address. Development only.');
