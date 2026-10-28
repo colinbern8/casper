@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
+    "demo": "tsx --env-file=.env.demo server.ts",
     "start": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview",
     "test": "tsx --test tests/*.test.ts",
