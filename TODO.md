@@ -193,7 +193,8 @@ None of these have been tested yet.
 
 ### F6. Polish and later
 
-- [ ] Casper logo. A separate design task. Avoid a ghost, since "Casper the Friendly Ghost" is a trademarked character.
+- [x] Casper logo: the wordmark is done (`design/casper/`) and shown in the sign-in page, app header and student chat header. No ghost, since "Casper the Friendly Ghost" is a trademarked character.
+- [ ] Browser tab icon (favicon) for Casper. A full wordmark is unreadable at tab size, so this needs a decision on a small mark.
 - [ ] Staff-side Spanish.
 - [ ] Teacher menu built from the most common real past tickets (needs ticket history).
 - [ ] Photo upload. Needs a storage and retention decision first.
@@ -274,9 +275,9 @@ These need an answer from the district, not code. Ask early.
 
 ## 6. Progress
 
-- [ ] **P1 Teacher screen fixes** (not started)
-- [ ] **P2 Sign-in page cleanup** (not started)
-- [ ] **P3 Rename to Casper** (not started)
+- [x] **P1 Teacher screen fixes** (done, on master)
+- [x] **P2 Sign-in page cleanup** (done, on master)
+- [x] **P3 Rename to Casper** (done, on master, with the Casper wordmark logo in the page headers; the files are in `design/casper/`)
 - [ ] **P4 Student language pop-up** (not started)
 - [ ] **P5 Student spam guard** (not started)
 - [ ] **P6 Shared chat and smarter matching** (not planned yet)
