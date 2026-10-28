@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Send } from 'lucide-react';
 import { MAX_REPORTED_ISSUES, type Language, type StudentCaseView, type SupportIssue, type SupportIssueId, type Ticket } from '../types';
 import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, getSupportLimit, recordRedTag, recordSupportAttempt } from '../api';
 import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
@@ -458,17 +458,16 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     : t.placeholderSteps;
 
   return (
-    <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 text-xs text-gray-600 shrink-0">
-        <div className="flex items-center gap-2 truncate">
-          <h2 className="font-medium text-gray-900">Greg Bot</h2>
-          <span className="text-gray-300">•</span>
-          <span className="truncate">{t.headerTitle}</span>
+    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 leading-tight">Greg Bot</h2>
+          <p className="text-xs text-gray-500">{t.headerTitle}</p>
         </div>
         {limit ? null : lang ? (
-          <button type="button" onClick={reset} className="text-[11px] text-blue-700 hover:text-blue-900 underline shrink-0">{t.changeLanguage}</button>
+          <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
         ) : (
-          <button type="button" onClick={onUseClassicChat} className="text-[11px] text-blue-700 hover:text-blue-900 underline shrink-0">{STRINGS.en.classicChat}</button>
+          <button type="button" onClick={onUseClassicChat} className="text-sm text-gray-600 underline hover:text-gray-900">{STRINGS.en.classicChat}</button>
         )}
       </div>
 
@@ -480,28 +479,28 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
         </div>
       </div>
 
-      <div role="log" aria-live="polite" aria-label="Conversation" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+      <div role="log" aria-live="polite" aria-label="Conversation" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
         {messages.map(m => (
           <div key={m.id} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[92%] sm:max-w-[85%] whitespace-pre-line text-xs sm:text-sm leading-relaxed p-3.5 rounded-lg ${BUBBLE[m.from === 'user' ? 'user' : m.kind ?? 'plain']}`}>
+            <div className={`max-w-[88%] sm:max-w-[80%] whitespace-pre-line text-sm sm:text-base leading-relaxed px-4 py-2.5 rounded-lg ${BUBBLE[m.from === 'user' ? 'user' : m.kind ?? 'plain']}`}>
               {m.text}
             </div>
           </div>
         ))}
 
-        {busy && <p className="text-xs text-gray-500 italic p-2">{t.working}</p>}
+        {busy && <p className="text-sm text-gray-500 italic">{t.working}</p>}
 
         {chips.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1" role="group" aria-label="Choices">
+          <div className="flex flex-wrap gap-2 pt-1" role="group" aria-label="Choices">
             {chips.map(c => (
               <button
                 key={c.key}
                 type="button"
                 onClick={() => onChip(c.key)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg border transition font-medium text-left ${
+                className={`text-sm sm:text-base px-4 py-2 rounded-full border font-medium text-left transition ${
                   c.primary
-                    ? 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
-                    : 'bg-gray-50 hover:bg-gray-100 border-gray-300 text-gray-700'
+                    ? 'bg-blue-700 hover:bg-blue-800 border-blue-700 text-white'
+                    : 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
                 }`}
               >
                 {c.label}
@@ -531,15 +530,16 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
             inputMode={phase === 'tag' ? 'numeric' : 'text'}
             placeholder={placeholder}
             disabled={!inputEnabled}
-            className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-100"
+            className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-100"
           />
           <button
             type="submit"
             aria-label={t.send}
             disabled={!inputEnabled || !input.trim()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
           >
-            <span>{t.send}</span>
+            <Send className="w-4 h-4" />
+            <span className="hidden sm:inline">{t.send}</span>
           </button>
         </form>
       </div>
