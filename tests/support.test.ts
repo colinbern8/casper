@@ -91,29 +91,38 @@ test('case: language and issue are validated; roster students get fixture detail
   assert.equal(off.body.student.displayName, 'Some Kid');
 });
 
-test('red tag: recorded exactly as typed for the technician, never looked up or judged', async () => {
+test('red tag: exactly six digits, recorded as typed for the technician, never looked up', async () => {
   const { call, login, users } = await start();
   users.set('tech@d.test', 'tech', 'test');
   const alex = await login('demo.student@d.test');
   const tech = await login('tech@d.test', 'Tina Tech');
   const c = (await call('POST', S, { language: 'en', issueId: 'power' }, alex)).body;
+  const send = (tag: unknown) => call('POST', `${S}/${c.id}/red-tag`, { tag }, alex);
 
-  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: '  ' }, alex)).status, 400);
-  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, {}, alex)).status, 400);
+  // Anything that is not exactly six digits is refused, and nothing is saved.
+  for (const bad of ['', '  ', '12345', '1234567', '12345a', 'R-4821', '12 3456', '123-456', '12.3456', '１２３４５６', '٠١٢٣٤٥', '123456\n7', 'x'.repeat(100)]) {
+    const r = await send(bad);
+    assert.equal(r.status, 400, JSON.stringify(bad));
+    assert.equal(r.body.error, 'INVALID_TAG');
+    assert.match(r.body.message, /exactly 6 digits/);
+  }
+  for (const notText of [undefined, null, 482193, ['482193'], { tag: '482193' }]) {
+    assert.equal((await send(notText)).status, 400, JSON.stringify(notText));
+  }
+  assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.redTag, undefined);
 
-  // Any text is accepted: there is no list to check it against, so nothing is a "match" or a "mismatch".
-  const first = await call('POST', `${S}/${c.id}/red-tag`, { tag: ' r-4821 ' }, alex);
+  // Six digits are accepted, including a leading zero, and surrounding spaces are ignored.
+  const first = await send(' 048219 ');
   assert.equal(first.status, 200);
-  assert.equal(first.body.redTag.value, 'r-4821'); // trimmed, case kept
+  assert.equal(first.body.redTag.value, '048219'); // kept as typed: the leading zero is not lost
   assert.equal(first.body.deviceCheck, undefined);
   assert.equal(JSON.stringify(first.body).includes('expectedTag'), false);
 
-  // Typing it again replaces it; control characters are dropped and the length is capped.
-  const again = await call('POST', `${S}/${c.id}/red-tag`, { tag: 'A\u0000B\n' + 'x'.repeat(100) }, alex);
-  assert.ok(again.body.redTag.value.length <= 40);
-  assert.ok(!/[\u0000-\u001f]/.test(again.body.redTag.value));
-
-  assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.redTag.value, again.body.redTag.value);
+  // It is never judged against anything: any six digits are fine. Typing again replaces it.
+  const again = await send('999999');
+  assert.equal(again.body.redTag.value, '999999');
+  assert.equal((await send('12345')).status, 400);
+  assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.redTag.value, '999999'); // the bad one changed nothing
   assert.deepEqual((await call('GET', `${S}/${c.id}`, undefined, tech)).body.history.map((h: any) => h.action), ['case_started', 'tag_recorded', 'tag_recorded']);
 });
 
@@ -142,7 +151,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   const tech = await login('tech@d.test', 'Tina Tech');
 
   const c = (await call('POST', S, { language: 'es', issueId: 'power', description: 'No prende desde ayer' }, sofia)).body;
-  await call('POST', `${S}/${c.id}/red-tag`, { tag: 'R-4821' }, sofia);
+  await call('POST', `${S}/${c.id}/red-tag`, { tag: '482193' }, sofia);
   await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-charger', result: 'not_worked' }, sofia);
   await call('POST', `${S}/${c.id}/attempts`, { stepId: 'power-hold', result: 'not_worked' }, sofia);
 
@@ -153,7 +162,7 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   assert.equal(esc.body.ticket.userRole, 'student');
   assert.equal(esc.body.ticket.priority, 'medium'); // client-supplied priority/role ignored
   assert.equal(esc.body.ticket.assignedTech, 'Media Center Tech Desk');
-  assert.equal(esc.body.ticket.assetTag, 'R-4821'); // the red tag becomes the ticket's asset tag
+  assert.equal(esc.body.ticket.assetTag, '482193'); // the red tag becomes the ticket's asset tag
   assert.match(esc.body.ticket.description, /Spanish/);
   assert.match(esc.body.ticket.description, /No prende desde ayer/);
   assert.equal(esc.body.ticket.title, 'Student support (demo): My Chromebook will not turn on');
@@ -167,12 +176,12 @@ test('escalation (Spanish): ticket comes from the existing validator and carries
   assert.equal(full.status, 200);
   assert.equal(full.body.language, 'es');
   assert.equal(full.body.reported.description, 'No prende desde ayer');
-  assert.equal(full.body.redTag.value, 'R-4821');
+  assert.equal(full.body.redTag.value, '482193');
   assert.deepEqual(full.body.history.map((h: any) => h.action), ['case_started', 'tag_recorded', 'escalated']);
 
   const own = await call('GET', `${S}/${c.id}`, undefined, sofia);
   assert.equal(own.status, 200);
-  assert.equal(own.body.redTag.value, 'R-4821'); // students see their own entry
+  assert.equal(own.body.redTag.value, '482193'); // students see their own entry
   assert.equal(own.body.history, undefined);
 });
 
@@ -351,7 +360,7 @@ test('access: students only reach their own cases; only technicians record dispo
 
   const c = (await call('POST', S, { language: 'en', issueId: 'damaged' }, alex)).body;
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, sofia)).status, 404);
-  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: 'R-1' }, sofia)).status, 404);
+  assert.equal((await call('POST', `${S}/${c.id}/red-tag`, { tag: '111111' }, sofia)).status, 404);
   assert.equal((await call('POST', `${S}/${c.id}/attempts`, { stepId: 'x', result: 'worked' }, sofia)).status, 404);
   assert.equal((await call('POST', `${S}/${c.id}/escalate`, {}, tech)).status, 404); // not even a technician can act as the student
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, teacher)).status, 404);

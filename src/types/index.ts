@@ -164,7 +164,7 @@ export interface SupportIssue {
 export type SupportOutcome = 'open' | 'resolved' | 'escalated' | 'blocked';
 
 /**
- * The number on the red tag on the student's Chromebook, exactly as they typed it.
+ * The number on the red tag on the student's Chromebook: exactly six digits, as they typed it.
  * The app never looks it up or judges it: it only shows it to the technician, who
  * uses it to find the Chromebook (and the student it belongs to) in their own records.
  */

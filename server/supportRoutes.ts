@@ -4,10 +4,11 @@ import { requireRole } from './auth';
 import type { SlidingWindowLimiter } from './rateLimit';
 import type { TicketStore } from './store';
 import type { CaseStore } from './cases';
-import { clean, cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
+import { cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
 import { DEMO_SCHOOL, studentFor } from './supportFixtures';
 import { buildDraft, buildTicketBody, toStudentView } from './support';
 import { findSupportIssue } from '../src/data/supportContent';
+import { isRedTag, normalizeRedTag, RED_TAG_LENGTH } from '../src/data/redTag';
 import { DISPOSITION_VALUES, LANGUAGES, MAX_REPORTED_ISSUES, SUPPORT_ISSUE_IDS, type SupportCase } from '../src/types';
 import { HELP_DESK } from '../src/data/schools';
 
@@ -98,13 +99,14 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     res.json(toStudentView(found));
   });
 
-  // The red tag is recorded exactly as typed, for the technician to read. It is never looked up.
+  // The red tag (exactly six digits) is recorded as typed, for the technician to read. It is never looked up.
   router.post('/cases/:id/red-tag', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
     if (limited(res, `support-act:${req.user!.email}`, 60)) return;
-    const value = clean(req.body?.tag, 40);
-    if (!value) return bad(res, 'INVALID_TAG', 'Enter the number on the red tag.');
+    const tag = req.body?.tag;
+    if (!isRedTag(tag)) return bad(res, 'INVALID_TAG', `The red tag number is exactly ${RED_TAG_LENGTH} digits, numbers only.`);
+    const value = normalizeRedTag(tag);
 
     const at = new Date().toISOString();
     const saved = cases.save({

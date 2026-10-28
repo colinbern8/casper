@@ -4,6 +4,7 @@ import { MAX_REPORTED_ISSUES, type Language, type StudentCaseView, type SupportI
 import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, getSupportLimit, recordRedTag, recordSupportAttempt } from '../api';
 import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
+import { isRedTag, normalizeRedTag } from '../data/redTag';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
 
 type Phase =
@@ -41,9 +42,6 @@ const BUBBLE: Record<Kind | 'user', string> = {
 
 /** Every problem on a request, the first one first. */
 const idsOf = (c: StudentCaseView): SupportIssueId[] => [c.reported.issueId, ...(c.additionalIssues ?? []).map(i => i.issueId)];
-
-/** The same tidy-up the server applies, so the student confirms exactly what will be saved. */
-const tidyTag = (raw: string): string => raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
 
 const YES = new Set(['yes', 'y', 'yep', 'yeah', 'correct', 'right', 'si', 'sí', 's', 'correcto', 'correcta', 'es correcto']);
 const NO = new Set(['no', 'n', 'nope', 'wrong', 'incorrect', 'incorrecto', 'incorrecta']);
@@ -198,20 +196,22 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     void beginCase(lang, i, pendingText, false);
   };
 
+  /** Skipping is only offered when describing "Something else". The red tag cannot be skipped. */
   const skip = () => {
     if (!lang) return;
     push('user', t.skip);
-    if (phase === 'details') void beginCase(lang, findSupportIssue('other')!, undefined, false);
-    else if (issue) showFirstStep(issue, lang);
+    void beginCase(lang, findSupportIssue('other')!, undefined, false);
   };
 
   /** The student typed a red tag: repeat it back and ask before anything is saved. */
   const askToConfirmTag = (text: string) => {
-    const tag = tidyTag(text);
-    if (!tag) {
-      push('bot', t.tagRetype);
+    if (!isRedTag(text)) {
+      // Not six digits: say so and ask again. Nothing is kept, and there is no way to skip this step.
+      push('bot', t.tagInvalid);
+      setPhase('tag');
       return;
     }
+    const tag = normalizeRedTag(text);
     setPendingTag(tag);
     push('bot', t.confirmTag(tag));
     setPhase('confirmTag');
@@ -385,8 +385,9 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       case 'issue':
         return SUPPORT_ISSUES.map(i => ({ key: `issue:${i.id}`, label: i.title[lang!] }));
       case 'details':
-      case 'tag':
         return [{ key: 'skip', label: t.skip }];
+      case 'tag':
+        return []; // the red tag is required: no Skip
       case 'confirmTag':
         return [{ key: 'tag-yes', label: t.tagYes, primary: true }, { key: 'tag-no', label: t.tagNo }];
       case 'steps':
@@ -535,6 +536,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
             value={input}
             onChange={e => setInput(e.target.value)}
             maxLength={500}
+            inputMode={phase === 'tag' ? 'numeric' : 'text'}
             placeholder={placeholder}
             disabled={!inputEnabled}
             className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-100"
