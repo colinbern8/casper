@@ -31,9 +31,11 @@ interface LoginProps {
   config: PublicConfig;
   notice?: string | null;
   onSignedIn: (user: SessionUser) => void;
+  /** Rendered inside another page: no full-height wrapper. */
+  embedded?: boolean;
 }
 
-export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn }) => {
+export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedded }) => {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,7 +61,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn }) => {
             }
           },
         });
-        window.google.accounts.id.renderButton(buttonRef.current, { theme: 'outline', size: 'large', text: 'signin_with', width: 320 });
+        window.google.accounts.id.renderButton(buttonRef.current, { theme: 'outline', size: 'large', text: 'continue_with', width: 320 });
       })
       .catch(() => setError('Google sign-in could not load. Check your connection, or ask IT to allow accounts.google.com.'));
     return () => {
@@ -87,10 +89,10 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn }) => {
   ];
 
   return (
-    <div className="w-full h-full flex items-center justify-center overflow-y-auto py-6">
+    <div className={embedded ? 'w-full' : 'w-full h-full flex items-center justify-center overflow-y-auto py-6'}>
       <div className="w-full max-w-lg bg-white border border-gray-300 rounded-lg p-6 sm:p-8 space-y-6 text-base shadow-xs">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Sign in to the IT Help Desk</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">{embedded ? 'Sign in' : 'Sign in to the IT Help Desk'}</h2>
           <p className="text-gray-600 mt-2">Use your @{config.domain} school account.</p>
         </div>
 

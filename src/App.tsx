@@ -5,7 +5,6 @@ import { DispatchSlipModal } from './components/DispatchSlipModal';
 import { TechnicianConsole } from './components/TechnicianConsole';
 import { ProfileSetup } from './components/ProfileSetup';
 import { AdminPage } from './components/AdminPage';
-import { Login } from './components/Login';
 import { Landing } from './components/Landing';
 import { StudentSupport } from './components/StudentSupport';
 import { Phone, FileText, X } from 'lucide-react';
@@ -38,7 +37,6 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [path, setPath] = useState(window.location.pathname);
-  const [signingIn, setSigningIn] = useState(window.location.pathname === '/login');
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -155,16 +153,11 @@ export default function App() {
       setMyTickets([]);
       setNotice(null);
       setClassicStudentChat(false);
-      setSigningIn(false);
       navigate('/', true);
     }
   };
 
   // ---- Render gates ------------------------------------------------------
-  const openSignIn = () => {
-    setSigningIn(true);
-    navigate('/login');
-  };
   if (configError) {
     return (
       <div className="h-[100dvh] flex flex-col items-center justify-center gap-3 bg-gray-100 text-sm text-gray-700">
@@ -177,9 +170,9 @@ export default function App() {
     return <div className="h-[100dvh] flex items-center justify-center bg-gray-100 text-xs text-gray-500">Loading...</div>;
   }
 
-  // Signed-out visitors see the public landing page first; "Sign in" (or /login, or a session-ended notice) shows the form.
-  if (!user && !signingIn && !notice) {
-    return <Landing config={config} onSignIn={openSignIn} />;
+  // Signed-out visitors get the landing page, which carries the sign-in panel.
+  if (!user) {
+    return <Landing config={config} notice={notice} onSignedIn={u => { setUser(u); setNotice(null); }} />;
   }
 
   const isChatPage = page === 'student' || page === 'teacher';
@@ -270,9 +263,7 @@ export default function App() {
       </header>
 
       <main className={`flex-1 w-full mx-auto p-2 sm:p-4 flex flex-col min-h-0 overflow-hidden ${page === 'tech' || page === 'admin' ? 'max-w-5xl' : 'max-w-3xl'}`}>
-        {!user ? (
-          <Login config={config} notice={notice} onSignedIn={u => { setUser(u); setNotice(null); }} />
-        ) : needsProfile ? (
+        {needsProfile ? (
           <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
         ) : supportDemo ? (
           <StudentSupport onTicketCreated={handleTicketCreated} onUseClassicChat={() => setClassicStudentChat(true)} />
