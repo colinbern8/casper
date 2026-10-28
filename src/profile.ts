@@ -31,3 +31,13 @@ export function saveProfile(email: string, profile: Profile) {
     // Private browsing or full storage: the app still works for this session.
   }
 }
+
+export type RequiredField = 'school' | 'room';
+
+/** Required fields that are empty or only whitespace, in form order. */
+export function missingFields(values: { school: string; room: string }): RequiredField[] {
+  const missing: RequiredField[] = [];
+  if (!values.school.trim()) missing.push('school');
+  if (!values.room.trim()) missing.push('room');
+  return missing;
+}
