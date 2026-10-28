@@ -237,6 +237,7 @@ These need decisions from the district, not code:
 - **A human reviewer for the Spanish text**, and sign-off on the English text.
 - **The real campus, room and technician data**, and a decision on who administers it.
 - **A real-device trial** on managed Chromebooks, including the district web filter and shared-device sign-out.
+- **Parent sign-in (on hold, confirm with district leadership).** Parents have no district Google account, and the server rejects any address outside `DISTRICT_DOMAIN`, so parents cannot sign in today. Options: (a) parents do not sign in and contact the school; (b) an email magic-link sign-in with a `parent` role limited to their own child's tickets, which needs a parent-to-student link list from the district; (c) a parent portal fed by the student information system. Nothing is built for this yet.
 - **What a student does if their Chromebook has no red tag.** The chat requires a six-digit red tag and has no way to skip it, so a student whose device has none cannot send a request. This is undecided and is being confirmed with the district.
 
 ## Contributing
