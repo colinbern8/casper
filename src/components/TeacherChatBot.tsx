@@ -575,7 +575,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
         sender: 'bot',
         content: (isStudent
           ? "Troubleshooting steps for your Chromebook:\n\n1. Check the power light: Plug in the charger and verify the indicator light turns on.\n2. Hardware refresh: Hold the circular refresh key and press the power button once.\n3. Need a loaner? Visit the Media Center Tech Desk for a replacement."
-          : `Troubleshooting steps for ${userContext.room}:\n\n1. Check the display cable: Ensure the HDMI cord is connected firmly between your laptop and the wall plate.\n2. Display setting: Press Windows + P and select "Duplicate".\n3. If unresolved, submit a request for an on-campus technician visit.`) + `\n\n(Greg Bot could not reach the help desk server, so these are general steps.)`,
+          : `Troubleshooting steps for ${userContext.room}:\n\n1. Check the display cable: Ensure the HDMI cord is connected firmly between your laptop and the wall plate.\n2. Display setting: Press Windows + P and select "Duplicate".\n3. If unresolved, submit a request for an on-campus technician visit.`) + `\n\n(Casper could not reach the help desk server, so these are general steps.)`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: [
           'Issue resolved',
@@ -941,7 +941,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
             <div className="space-y-2.5 text-xs text-gray-600 leading-relaxed">
               <p>
-                <strong>Scope:</strong> Greg Bot is designed strictly for school district technology troubleshooting (Chromebooks, classroom displays, network connectivity, and district accounts).
+                <strong>Scope:</strong> Casper is designed strictly for school district technology troubleshooting (Chromebooks, classroom displays, network connectivity, and district accounts).
               </p>
               <p>
                 <strong>Rate Limiting:</strong> Requests are limited to 5 messages per 30-second window to prevent system flooding.

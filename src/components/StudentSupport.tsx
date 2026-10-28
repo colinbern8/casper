@@ -461,7 +461,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 text-xs text-gray-600 shrink-0">
         <div className="flex items-center gap-2 truncate">
-          <h2 className="font-medium text-gray-900">Greg Bot</h2>
+          <h2 className="font-medium text-gray-900">Casper</h2>
           <span className="text-gray-300">•</span>
           <span className="truncate">{t.headerTitle}</span>
         </div>

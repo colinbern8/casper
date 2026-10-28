@@ -42,7 +42,7 @@ async function main() {
   }
 
   app.listen(config.port, '0.0.0.0', () => {
-    console.log(`Greg Bot help desk running on http://0.0.0.0:${config.port} (${config.isProduction ? 'production' : 'development'})`);
+    console.log(`Casper help desk running on http://0.0.0.0:${config.port} (${config.isProduction ? 'production' : 'development'})`);
   });
 }
 
