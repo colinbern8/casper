@@ -14,10 +14,10 @@ const DISPOSITION_LABELS: Record<DispositionValue, string> = {
 const when = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
 
 const Section: React.FC<{ title: string; tag?: string; children: React.ReactNode }> = ({ title, tag, children }) => (
-  <div className="bg-white p-2.5 rounded border border-gray-200 space-y-1">
+  <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
     <div className="flex flex-wrap items-center gap-2">
       <span className="font-semibold text-gray-700">{title}</span>
-      {tag && <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">{tag}</span>}
+      {tag && <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">{tag}</span>}
     </div>
     {children}
   </div>
@@ -54,7 +54,7 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
     }
   };
 
-  if (error && !data) return <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded px-3 py-1.5">{error}</p>;
+  if (error && !data) return <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{error}</p>;
   if (!data) return <p className="text-gray-500">Loading student-support case...</p>;
 
   const issue = findSupportIssue(data.reported.issueId);
@@ -64,10 +64,10 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
   }));
 
   return (
-    <div className="space-y-2 border border-blue-200 bg-blue-50/40 rounded p-2.5" data-testid="case-panel">
+    <div className="space-y-2 border border-blue-200 bg-blue-50/40 rounded-lg p-2.5" data-testid="case-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold text-gray-800">Student-support case {data.caseNumber}</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">Prototype demo, fictional data</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Prototype demo, fictional data</span>
       </div>
 
       <Section title="Student-reported">
@@ -132,11 +132,11 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Disposition" value={value} onChange={e => setValue(e.target.value as DispositionValue)} className="text-xs border border-gray-300 rounded px-2 py-1 bg-white">
+          <select aria-label="Disposition" value={value} onChange={e => setValue(e.target.value as DispositionValue)} className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white">
             {DISPOSITION_VALUES.map(v => <option key={v} value={v}>{DISPOSITION_LABELS[v]}</option>)}
           </select>
-          <input aria-label="Disposition note" value={note} onChange={e => setNote(e.target.value)} maxLength={300} placeholder="Note (optional)" className="flex-1 min-w-[10rem] text-xs border border-gray-300 rounded px-2 py-1 bg-white" />
-          <button type="button" onClick={record} disabled={busy} className="px-3 py-1 text-xs font-medium text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 rounded">
+          <input aria-label="Disposition note" value={note} onChange={e => setNote(e.target.value)} maxLength={300} placeholder="Note (optional)" className="flex-1 min-w-[10rem] text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white" />
+          <button type="button" onClick={record} disabled={busy} className="px-3 py-1 text-xs font-medium text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 rounded-lg">
             {data.disposition ? 'Replace demo disposition' : 'Record demo disposition'}
           </button>
         </div>
@@ -149,7 +149,7 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
             <p className="text-gray-600">To (fictional): {data.notificationDraft.recipient} · Language: {data.notificationDraft.language === 'es' ? 'Spanish' : 'English'}</p>
             {data.notificationDraft.spanishReview && <p className="text-amber-800">Spanish text awaiting human review.</p>}
             <p className="font-medium text-gray-800">{data.notificationDraft.subject}</p>
-            <p className="text-gray-800 whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded p-2">{data.notificationDraft.body}</p>
+            <p className="text-gray-800 whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-2">{data.notificationDraft.body}</p>
           </div>
         ) : (
           <p className="text-gray-400">A draft is created when a disposition is recorded.</p>

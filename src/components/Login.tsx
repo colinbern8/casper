@@ -90,9 +90,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
 
   return (
     <div className={embedded ? 'w-full' : 'w-full h-full flex items-center justify-center overflow-y-auto py-6'}>
-      <div className="w-full max-w-lg bg-white border border-gray-300 rounded-lg p-6 sm:p-8 space-y-6 text-base shadow-xs">
+      <div className="w-full max-w-lg bg-white border border-gray-200 rounded-lg p-6 sm:p-8 space-y-6 text-sm shadow-sm">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">{embedded ? 'Sign in' : 'Sign in to the IT Help Desk'}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">{embedded ? 'Sign in' : 'Sign in to the IT Help Desk'}</h2>
           <p className="text-gray-600 mt-2">Use your @{config.domain} school account.</p>
         </div>
 
@@ -123,7 +123,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
                   type="button"
                   disabled={busy}
                   onClick={() => dev(email)}
-                  className="px-4 py-3 text-base border border-gray-300 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-60 font-semibold text-gray-900"
+                  className="px-4 py-3 text-sm border border-gray-300 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:opacity-60 font-semibold text-gray-900"
                 >
                   {label}
                 </button>
@@ -134,9 +134,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
               <div className="flex gap-2">
                 <input
                   id="dev-email" value={devEmail} onChange={e => setDevEmail(e.target.value)} placeholder={`anyone@${config.domain}`}
-                  className="flex-1 min-w-0 border border-gray-300 rounded-lg px-4 py-2.5 text-base bg-white placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+                  className="flex-1 min-w-0 border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
                 />
-                <button type="submit" disabled={busy || !devEmail} className="px-5 py-2.5 text-base font-semibold bg-gray-800 text-white rounded-lg disabled:opacity-50">Go</button>
+                <button type="submit" disabled={busy || !devEmail} className="px-5 py-2.5 text-sm font-semibold bg-blue-700 hover:bg-blue-800 transition-colors duration-150 text-white rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-700 disabled:opacity-50">Go</button>
               </div>
             </form>
           </div>

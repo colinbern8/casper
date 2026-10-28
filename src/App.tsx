@@ -162,7 +162,7 @@ export default function App() {
     return (
       <div className="h-[100dvh] flex flex-col items-center justify-center gap-3 bg-gray-100 text-sm text-gray-700">
         <p>The help desk could not be reached.</p>
-        <button type="button" onClick={boot} className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs font-semibold">Try again</button>
+        <button type="button" onClick={boot} className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold">Try again</button>
       </div>
     );
   }
@@ -211,7 +211,7 @@ export default function App() {
               <h1 className="text-base font-semibold text-gray-900 tracking-tight leading-tight">Greg Bot</h1>
               <span className="text-xs text-gray-500 font-medium">IT Help Desk</span>
               {config.demoMode && (
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">Demo</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>
               )}
             </div>
             <p className="text-[11px] text-gray-500">{config.districtName}</p>
@@ -222,7 +222,7 @@ export default function App() {
               ALLOWED[user.role].map(p => (
                 <button
                   key={p} type="button" onClick={() => navigate(PATHS[p])} aria-current={p === page ? 'page' : undefined}
-                  className={`px-2.5 py-1 text-xs font-medium rounded border ${
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border ${
                     p === page ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
                 >
@@ -231,19 +231,19 @@ export default function App() {
               ))}
 
             {user && isChatPage && !needsProfile && !supportDemo && (
-              <button type="button" onClick={() => setEditingProfile(true)} className="hidden sm:inline-flex px-2.5 py-1 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded font-medium">
+              <button type="button" onClick={() => setEditingProfile(true)} className="hidden sm:inline-flex px-2.5 py-1 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
                 {profile?.room}
               </button>
             )}
 
             {user && isChatPage && myTickets.length > 0 && (
-              <button type="button" onClick={() => setIsDrawerOpen(true)} className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded font-medium">
+              <button type="button" onClick={() => setIsDrawerOpen(true)} className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
                 <FileText className="w-3.5 h-3.5 text-gray-500" />
                 <span>Requests ({myTickets.length})</span>
               </button>
             )}
 
-            <button type="button" onClick={() => setShowContactModal(true)} className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded transition">
+            <button type="button" onClick={() => setShowContactModal(true)} className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition">
               <Phone className="w-3 h-3 text-gray-500" />
               <span className="hidden sm:inline">Contact IT</span>
             </button>
@@ -253,7 +253,7 @@ export default function App() {
                 <span className="hidden md:inline text-[11px] text-gray-500">
                   {user.name} · {ROLE_LABELS[user.role]}
                 </span>
-                <button type="button" onClick={handleSignOut} className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded">
+                <button type="button" onClick={handleSignOut} className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg">
                   Sign out
                 </button>
               </>
@@ -271,7 +271,7 @@ export default function App() {
           <AdminPage user={user} domain={config.domain} />
         ) : page === 'tech' ? (
           <>
-            {techError && <div role="alert" className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded shrink-0">{techError}</div>}
+            {techError && <div role="alert" className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg shrink-0">{techError}</div>}
             <TechnicianConsole districtName={config.districtName} tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onViewDispatchSlip={setSelectedTicketForSlip} />
           </>
         ) : userContext ? (
@@ -300,7 +300,7 @@ export default function App() {
 
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white border border-gray-300 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md">
+          <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200">
               <div>
                 <h3 className="text-sm font-semibold text-gray-900">District IT Help Desk</h3>
@@ -311,22 +311,22 @@ export default function App() {
               </button>
             </div>
             <div className="mt-4 space-y-3 text-xs text-gray-700">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded">
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <span className="font-semibold block text-gray-900">Phone</span>
                 <p className="text-gray-600 mt-0.5">Call <strong>{HELP_DESK.ext}</strong> from any classroom or office phone.</p>
                 <p className="text-gray-500 text-[11px] mt-1">Available {HELP_DESK.hours}.</p>
               </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded">
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <span className="font-semibold block text-gray-900">Media Center Tech Desk (students)</span>
                 <p className="text-gray-600 mt-0.5">Walk in to the school library for Chromebook loaners and charger replacements.</p>
               </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded">
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <span className="font-semibold block text-gray-900">Email</span>
                 <p className="text-gray-600 mt-0.5">{HELP_DESK.email}</p>
               </div>
             </div>
             <div className="mt-5 flex justify-end">
-              <button type="button" onClick={() => setShowContactModal(false)} className="px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded">Close</button>
+              <button type="button" onClick={() => setShowContactModal(false)} className="px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg">Close</button>
             </div>
           </div>
         </div>

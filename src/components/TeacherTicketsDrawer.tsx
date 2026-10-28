@@ -31,7 +31,7 @@ export const TeacherTicketsDrawer: React.FC<TeacherTicketsDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/40">
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-8 sm:pl-16">
-        <div className="w-screen max-w-md bg-white border-l border-gray-300 shadow-md flex flex-col">
+        <div className="w-screen max-w-md bg-white border-l border-gray-200 shadow-md flex flex-col">
           {/* Header */}
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <div>
@@ -41,7 +41,7 @@ export const TeacherTicketsDrawer: React.FC<TeacherTicketsDrawerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-700 rounded"
+              className="p-1 text-gray-400 hover:text-gray-700 rounded-lg"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -60,14 +60,14 @@ export const TeacherTicketsDrawer: React.FC<TeacherTicketsDrawerProps> = ({
               tickets.map(ticket => (
                 <div
                   key={ticket.id}
-                  className="p-3.5 rounded border border-gray-200 bg-white text-xs space-y-2 hover:border-gray-300 transition"
+                  className="p-3.5 rounded-lg border border-gray-200 bg-white text-xs space-y-2 hover:border-gray-300 transition"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                    <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">
                       {ticket.ticketNumber}
                     </span>
                     <span
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border ${
                         ticket.status === 'resolved'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : ticket.status === 'open'
