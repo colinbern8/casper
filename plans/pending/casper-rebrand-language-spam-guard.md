@@ -1,7 +1,7 @@
 # Casper rebrand, language pop-up, and chat spam guard
 Ticket: none yet (this repo has no tracker; file one issue per step once approved)
 
-Status: DRAFT, waiting on the first question gate. No implementation has started.
+Status: Gate 1 answered; waiting on final approval. No implementation has started.
 
 ## Context (what the code does today)
 - Name "Greg Bot" appears in 24 places across 14 files. User-visible: `index.html` (title, og:title), `src/components/Landing.tsx:21`, `src/App.tsx:211`, `src/components/StudentSupport.tsx:464`, `src/components/TeacherChatBot.tsx:578,944`, `server.ts:45`, `README.md`. Internal identifiers: cookie `greg_session` (`server/session.ts:3`), localStorage key `greg.profile.v2.<email>` (`src/profile.ts:8`), event `greg:unauthorized` (`src/api.ts:13`), package name, test temp dirs. There is no logo file; the brand is plain text.
@@ -14,15 +14,15 @@ Status: DRAFT, waiting on the first question gate. No implementation has started
 ## Phases
 
 ### Phase 1: Rename to Casper and add a logo
-Verified when: `grep -ri greg` over source returns only intentional hits (none, or a documented cookie-migration shim), the logo renders in light and dark headers, and CI commands pass.
-Files to touch: `src/brand.ts` (new), `src/components/Logo.tsx` (new), `public/favicon.svg` (new), `index.html`, `src/components/Landing.tsx`, `src/App.tsx`, `src/components/StudentSupport.tsx`, `src/components/TeacherChatBot.tsx`, `server.ts`, `server/session.ts`, `src/profile.ts`, `src/api.ts`, `package.json`, `README.md`, `tests/units.test.ts`.
+Verified when: `grep -ri greg` over source returns only intentional hits (none, or a documented cookie-migration shim) and CI commands pass.
+Files to touch: `src/brand.ts` (new), `src/components/Logo.tsx` (new), `index.html`, `src/components/Landing.tsx`, `src/App.tsx`, `src/components/StudentSupport.tsx`, `src/components/TeacherChatBot.tsx`, `server.ts`, `server/session.ts`, `src/profile.ts`, `src/api.ts`, `package.json`, `README.md`, `tests/units.test.ts`.
 
 #### Step 1.1: Single brand constant and user-visible text (Size: S)
 - Acceptance criteria: `BRAND_NAME` lives in `src/brand.ts` and is used by every user-visible string; page title and og tags say the new name; README retitled.
 - Verification command: `npm run lint && npm test && npm run build`
 - Files likely touched: `src/brand.ts`, `index.html`, `Landing.tsx`, `App.tsx`, `StudentSupport.tsx`, `TeacherChatBot.tsx`, `server.ts`, `README.md`
 - Test seams: one new assertion in `tests/units.test.ts` that no source file under `src/` or `server/` contains the old name outside the migration shim.
-- Blocked by: Gate 1 answers (spelling)
+- Blocked by: none
 
 #### Step 1.2: Internal identifiers with a safe migration (Size: S)
 - Acceptance criteria: cookie, localStorage key and unauthorized event renamed; the old localStorage profile is read once and copied to the new key; signing everyone out once is acceptable for a prototype (see Decision log).
@@ -31,12 +31,12 @@ Files to touch: `src/brand.ts` (new), `src/components/Logo.tsx` (new), `public/f
 - Test seams: `createSessions` unit test; `profile.ts` pure functions.
 - Blocked by: 1.1
 
-#### Step 1.3: Logo, favicon, and placement (Size: S)
-- Acceptance criteria: an inline-SVG `Logo` component (mark plus wordmark, works at 24px and 120px, uses `currentColor` so it follows theme); `favicon.svg` linked from `index.html`; used in Landing, signed-in header and student chat header.
-- Verification command: Playwright screenshot of Landing and the student chat header at 390px and 1280px (one-off script in the scratchpad, not committed).
-- Files likely touched: `src/components/Logo.tsx`, `public/favicon.svg`, `index.html`, `Landing.tsx`, `App.tsx`, `StudentSupport.tsx`
-- Test seams: visual check only (no component test harness exists).
-- Blocked by: 1.1, Gate 1 answers (logo direction)
+#### Step 1.3: Logo slot only (Size: XS)
+- Acceptance criteria: a `Logo` component renders the plain text name `Casper` (wordmark) in the three places the old name appears as a header; nothing else. The real logo is a later design task, so the component is the single place to swap it in. No favicon work yet.
+- Verification command: `npm run lint && npm run build`
+- Files likely touched: `src/components/Logo.tsx`, `Landing.tsx`, `App.tsx`, `StudentSupport.tsx`
+- Test seams: none needed (text only).
+- Blocked by: 1.1
 
 ### Phase 2: Language pop-up before the student chat
 Verified when: a signed-in student sees a small language dialog first, cannot reach the chat until they pick, and the chat starts in that language with no language message in the transcript.
@@ -65,7 +65,7 @@ Files to touch: `server/spamGuard.ts` (new), `server/app.ts`, `server/supportRou
 - Verification command: `npm test` (new `tests/spamguard.test.ts`)
 - Files likely touched: `server/spamGuard.ts`, `server/config.ts`, `tests/spamguard.test.ts`
 - Test seams: pure class with injected `now`.
-- Blocked by: Gate 1 answers (thresholds, lockout length)
+- Blocked by: none
 
 #### Step 3.2: Enforce on the server (Size: M)
 - Acceptance criteria: `attachUser` rejects locked-out emails (treated as signed out, with a `LOCKED_OUT` reason and retry time on `/api/auth/me`), both sign-in routes refuse a locked-out email, and `/api/auth/logout`-equivalent cookie clearing happens in the response that delivers the final strike.
@@ -97,13 +97,24 @@ These are ranked in the previous message. Each gets its own plan file when picke
 | Where spam is enforced | Server, with a per-email lockout checked in `attachUser` | The cookie is stateless and the client is untrusted; the role check already runs per request. |
 | How the server sees typed chat | New `POST /api/support/message` for free-typed text | Today the server never sees client-matched text, so it cannot count strikes. |
 | Rename depth | Full: user-visible text, cookie, localStorage (with migration), package name | A half rename leaves the old name in DevTools and error messages. GitHub repo rename is left to the owner. |
-| Logo style | PENDING (Gate 1) | Avoid a ghost mascot: "Casper the Friendly Ghost" is a trademarked character. |
-| Mid-chat language change | PENDING (Gate 1) | |
+| Name | Casper (not Caspr) | User choice. |
+| Logo | Deferred to a later design task; text wordmark placeholder now | User choice. When it is designed, avoid a ghost mascot: "Casper the Friendly Ghost" is a trademarked character. |
+| Mid-chat language change | Header "Change language" reopens the pop-up and keeps the conversation | User choice; students should not lose their request progress. |
+| Spam thresholds | Warn at 3 bad events, sign out at 5, 15 minute lockout | User choice. |
+| Spam scope | Students only | User choice; staff and technicians are never signed out by this guard. |
 
 ## Not yet specified
-- Phase 3: whether a lockout should persist across server restarts (in-memory is fine for one instance; `data/` JSON if it must survive). Recommended: in-memory, since lockouts are short.
-- Phase 3: whether staff and technician chat should get the same warn-then-logoff, or students only. Recommended: students only for now.
+- Phase 3: lockout persistence across server restarts. Assumed in-memory (see Assumptions below).
 - Phase 4+: fog.
+
+## Assumptions (correct before approval, otherwise they stand)
+1. The language pop-up is for students only; staff chat stays English until staff-side Spanish is built.
+2. The chosen language is remembered per account in the browser (localStorage), so a returning student sees the pop-up only on first use or after "Change language"; signing in on a new device asks again.
+3. Renaming the session cookie signs everyone out once; acceptable because the app is not deployed.
+4. Spam lockouts are in-memory, so a server restart clears them.
+5. "Spam" means blocked by the abuse/off-topic screen, repeated identical messages, or a rate-limit burst; button taps, red tag digits and yes/no confirmations never count.
+6. The GitHub repo and `package.json` name `greg-bot-help-desk` are renamed in `package.json` only; the repo rename is left to you.
+7. I will run `npm ci` first so the 59 existing tests can run, and use the pre-installed Chromium for the one-off browser checks.
 
 ## Always / Never
 - Always: all chat wording stays fixed reviewable text (no AI); every new student-facing string exists in English and Spanish; the server stays the authority on identity, role, and lockout; existing 59 tests keep passing.
@@ -112,6 +123,6 @@ These are ranked in the previous message. Each gets its own plan file when picke
 ## Progress
 | Phase | Status |
 | --- | --- |
-| 1 Rename and logo | not started |
+| 1 Rename (logo deferred) | not started |
 | 2 Language pop-up | not started |
 | 3 Spam guard | not started |
