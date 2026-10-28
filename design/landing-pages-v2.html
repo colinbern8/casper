@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Greg Bot landing pages design v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+/* Greg Bot landing pages v2: design mock-up only, not wired to the app.
+   Principles: one main action per screen, a conversation instead of forms for students and teachers,
+   detail only when asked for. The red tag stands for Greg: it is his avatar and the corner notch on his messages. */
+:root {
+  --paper: #F3F5F3;
+  --surface: #FFFFFF;
+  --ink: #17212B;
+  --ink-2: #485562;
+  --line: #CDD5DA;
+  --locker: #E2E7EA;
+  --tag: #C8102E;
+  --tag-deep: #8F0A21;
+  --tag-soft: #F8DCE1;
+  --hall: #0E6B78;
+  --hall-soft: #D7EBED;
+  --bell: #F2B632;
+  --bell-soft: #FBEBC4;
+  --display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --r-ctl: 8px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 18px/1.5 var(--body); }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; margin: 0; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--hall); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 1.25em; height: 1.25em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.help { color: var(--ink-2); font-size: 15px; }
+
+/* design-board bar: not part of the product */
+.board { background: var(--ink); color: #fff; padding: 8px 16px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+.board b { font-weight: 700; margin-right: 8px; }
+.board a { color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 999px; }
+.board a[aria-current="page"] { background: #fff; color: var(--ink); font-weight: 700; }
+.board a:hover:not([aria-current="page"]) { background: #ffffff26; }
+
+/* product header */
+.top { display: flex; align-items: center; gap: 16px; max-width: 1240px; margin: 0 auto; padding: 16px 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; }
+.brand .glyph { width: 24px; height: 30px; }
+.brand small { font: 400 15px var(--body); color: var(--ink-2); letter-spacing: 0; }
+.who { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.who .name { text-align: right; line-height: 1.2; }
+.who .name span { display: block; color: var(--ink-2); font-size: 14px; }
+.btn-quiet { background: none; border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 14px; min-height: 44px; }
+.btn-quiet:hover { background: var(--locker); }
+.nav { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.nav a { padding: 10px 14px; text-decoration: none; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.nav a[aria-current="page"] { color: var(--ink); font-weight: 700; border-color: var(--ink); }
+.nav a:hover { color: var(--ink); }
+
+.screen { display: none; }
+.screen.on { display: block; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 72px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 10px 20px; border-radius: var(--r-ctl); border: 2px solid var(--ink); background: var(--ink); color: #fff; font-weight: 700; text-decoration: none; }
+.btn:hover { background: #000; }
+.btn.red { background: var(--tag); border-color: var(--tag); }
+.btn.red:hover { background: var(--tag-deep); border-color: var(--tag-deep); }
+.btn.ghost { background: var(--surface); color: var(--ink); }
+.btn.ghost:hover { background: var(--locker); }
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 700; font-size: 15px; }
+.field select, .field input { min-height: 48px; border: 2px solid var(--line); border-radius: var(--r-ctl); padding: 8px 12px; background: var(--surface); }
+.field select:hover, .field input:hover { border-color: var(--ink-2); }
+
+/* ========== SIGN IN ========== */
+.signin { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 460px); gap: 72px; align-items: center; max-width: 1100px; margin: 0 auto; padding: 56px 24px 80px; min-height: calc(100vh - 140px); }
+.signin h1 { font-size: clamp(42px, 5.6vw, 68px); max-width: 12ch; text-wrap: balance; }
+.signin .lede { margin-top: 18px; font-size: 20px; color: var(--ink-2); max-width: 36ch; }
+.gbtn { margin-top: 32px; gap: 12px; background: var(--surface); color: var(--ink); min-height: 56px; padding: 10px 28px; font-size: 18px; box-shadow: 4px 4px 0 var(--ink); }
+.gbtn:hover { background: var(--surface); transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.gbtn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.gbtn svg { width: 22px; height: 22px; }
+.acct { margin-top: 12px; }
+.how { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 14px; max-width: 40ch; counter-reset: s; }
+.how li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+.how li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: #fff; font: 700 17px/34px var(--display); text-align: center; }
+.how b { display: block; line-height: 1.25; }
+.how span { color: var(--ink-2); font-size: 16px; }
+.parent { margin-top: 36px; padding-left: 14px; border-left: 4px solid var(--bell); max-width: 44ch; font-size: 16px; }
+.demo { margin-top: 28px; font-size: 15px; color: var(--ink-2); }
+.demo summary { cursor: pointer; min-height: 32px; }
+.demo .row { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.demo .row button { min-height: 40px; padding: 4px 14px; border: 2px solid var(--line); background: var(--surface); border-radius: 999px; font-weight: 700; }
+.demo .row button:hover { border-color: var(--ink); }
+
+/* preview of a conversation: shows the product instead of describing it */
+.peek { position: relative; background: var(--surface); border: 2px solid var(--ink); border-radius: 18px; padding: 22px 20px 26px; box-shadow: 10px 10px 0 var(--locker); min-height: 400px; }
+.peek .hang { position: absolute; top: -26px; right: 36px; width: 38px; height: 48px; }
+.peek .hd { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.peek .hd b { font-family: var(--display); }
+.peek .live { margin-left: auto; font-size: 14px; color: var(--hall); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.peek .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hall); }
+.peek .m { opacity: 0; transform: translateY(8px); animation: pop .5s ease forwards; }
+.peek .m:nth-of-type(2) { animation-delay: 1s; }
+.peek .m:nth-of-type(3) { animation-delay: 2.1s; }
+.peek .m:nth-of-type(4) { animation-delay: 3.2s; }
+@keyframes pop { to { opacity: 1; transform: none; } }
+
+/* ========== CHAT (student + teacher) ========== */
+.chatpage { max-width: 760px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; min-height: calc(100vh - 110px); }
+.ctxbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0 14px; }
+.pill-btn { min-height: 44px; padding: 6px 16px; border: 2px solid var(--line); background: var(--surface); border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+.pill-btn:hover { border-color: var(--ink); }
+.pill-btn[aria-pressed="true"] { background: var(--bell); border-color: var(--bell); }
+.pill-btn .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.pill-btn[aria-pressed="true"] .dot { background: var(--tag); }
+.ctxbar .grow { margin-left: auto; }
+.ctx-l { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lang { display: inline-grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--surface); }
+.lang button { border: 0; background: none; padding: 4px 16px; font-weight: 700; min-height: 40px; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.mine { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.mine .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.mine b { font-family: var(--display); }
+.mine .st { font-size: 14px; font-weight: 700; background: var(--hall-soft); color: #08454d; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.log { flex: 1; padding: 8px 0 24px; display: flex; flex-direction: column; gap: 14px; }
+.msg { display: flex; gap: 10px; align-items: flex-end; max-width: 100%; }
+.msg.bot .av { width: 34px; height: 42px; flex: none; margin-bottom: 2px; }
+.bubble { padding: 14px 18px; font-size: 19px; line-height: 1.45; max-width: 36em; }
+.msg.bot .bubble { background: var(--surface); border: 2px solid var(--ink); border-radius: 4px 20px 20px 20px; clip-path: none; }
+.msg.me { justify-content: flex-end; }
+.msg.me .bubble { background: var(--ink); color: #fff; border-radius: 20px 20px 4px 20px; font-weight: 700; }
+.msg.in { animation: rise .28s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.replies { display: flex; flex-wrap: wrap; gap: 10px; padding-left: 44px; }
+.chip { min-height: 52px; padding: 8px 20px; border: 2px solid var(--ink); background: var(--surface); border-radius: 999px; font-weight: 700; font-size: 18px; display: inline-flex; align-items: center; gap: 10px; text-align: left; }
+.chip:hover { background: var(--hall); border-color: var(--hall); color: #fff; }
+.chip.soft { border-style: dashed; }
+.chip.go { background: var(--tag); border-color: var(--tag); color: #fff; }
+.chip.go:hover { background: var(--tag-deep); border-color: var(--tag-deep); }
+.digits { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+.digits input { width: 48px; height: 60px; text-align: center; font: 700 26px var(--display); border: 2px solid var(--ink); border-radius: 8px; background: var(--surface); padding: 0; }
+.digits input:nth-child(3) { margin-right: 8px; }
+.digits input:focus-visible { border-color: var(--tag); outline-color: var(--tag); }
+.digits .btn { min-height: 60px; margin-left: 6px; }
+.err { margin-top: 8px; color: var(--tag-deep); font-weight: 700; font-size: 16px; }
+.receipt { background: var(--surface); border: 2px solid var(--ink); border-radius: 4px; max-width: 36em; position: relative; padding: 24px 20px 18px; }
+.receipt::before { content: ""; position: absolute; top: 8px; left: 12px; right: 12px; border-top: 2px dotted var(--ink-2); }
+.receipt h3 { font-size: 28px; }
+.receipt .rt { display: inline-flex; align-items: center; gap: 10px; background: var(--tag); color: #fff; font: 700 20px var(--display); padding: 4px 14px 4px 10px; border-radius: 4px 14px 14px 4px; margin-top: 10px; }
+.receipt .rt i { width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+.receipt .pr { display: inline-block; margin-top: 10px; background: var(--ink); color: #fff; font: 700 15px var(--display); padding: 3px 10px; border-radius: 4px; }
+.receipt .pr.p1 { background: var(--tag); }
+.receipt dl { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 17px; }
+.receipt dt { color: var(--ink-2); }
+.receipt dd { margin: 0; font-weight: 700; }
+.composer { position: sticky; bottom: 0; background: linear-gradient(to top, var(--paper) 78%, transparent); padding: 14px 0 20px; }
+.composer form { display: flex; gap: 10px; }
+.composer input { flex: 1; min-width: 0; min-height: 56px; border: 2px solid var(--ink); border-radius: 999px; padding: 8px 22px; background: var(--surface); font-size: 18px; }
+.composer .btn { border-radius: 999px; min-height: 56px; padding: 10px 26px; }
+.composer .help { margin-top: 8px; text-align: center; }
+
+/* ========== TECHNICIAN ========== */
+.tbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+.tbar h1 { font-size: 36px; margin-right: auto; }
+.tbar .field { min-width: 280px; }
+.tlayout { margin-top: 18px; display: grid; grid-template-columns: 210px minmax(0, 1.5fr) minmax(320px, 1fr); gap: 24px; align-items: start; }
+.schools { display: grid; gap: 2px; position: sticky; top: 16px; }
+.schools h2 { font-size: 18px; margin-bottom: 8px; }
+.sch { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 48px; padding: 8px 12px; border: 0; background: none; border-radius: 8px; text-align: left; border-left: 4px solid transparent; }
+.sch em { font-style: normal; color: var(--ink-2); font-weight: 700; }
+.sch:hover { background: var(--locker); }
+.sch[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--tag); }
+.sch[aria-pressed="true"] em { color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.fchip { min-height: 40px; padding: 4px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--surface); font-weight: 700; }
+.fchip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; }
+.qlist { display: grid; gap: 8px; }
+.tk { position: relative; display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; gap: 4px 14px; align-items: start; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px 14px 22px; width: 100%; }
+.tk::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--ink-2); border-radius: 6px 0 0 6px; }
+.tk.p1::before { background: var(--tag); }
+.tk.p2::before { background: var(--bell); }
+.tk.ln::before { background: var(--hall); }
+.tk:hover { border-color: var(--ink); }
+.tk[aria-selected="true"] { border: 2px solid var(--ink); padding: 13px 15px 13px 21px; background: var(--surface); }
+.tk .n { font: 700 17px var(--display); }
+.tk .pr { font-weight: 700; }
+.tk .sub { color: var(--ink-2); font-size: 15px; }
+.tk .age { white-space: nowrap; font-size: 15px; color: var(--ink-2); text-align: right; }
+.tk .age.old { color: var(--tag-deep); font-weight: 700; }
+.pill { display: inline-block; font-size: 14px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--locker); white-space: nowrap; }
+.pill.open { background: var(--tag-soft); color: var(--tag-deep); }
+.pill.live { background: var(--hall-soft); color: #08454d; }
+.dispatch { position: sticky; top: 16px; background: var(--surface); border: 2px solid var(--ink); border-radius: 4px; padding: 26px 22px 20px; }
+.dispatch::before { content: ""; position: absolute; top: 8px; left: 12px; right: 12px; border-top: 2px dotted var(--ink-2); }
+.dispatch .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.dispatch h2 { font-size: 30px; }
+.dispatch .rt { margin-top: 10px; display: inline-flex; align-items: center; gap: 10px; background: var(--tag); color: #fff; font: 700 20px var(--display); padding: 4px 14px 4px 10px; border-radius: 4px 14px 14px 4px; }
+.dispatch .rt i { width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+.dispatch .what { margin-top: 12px; font-size: 19px; font-weight: 700; }
+.dispatch dl { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 16px; }
+.dispatch dt { color: var(--ink-2); }
+.dispatch dd { margin: 0; }
+.dispatch h3 { font-size: 17px; margin-top: 16px; }
+.dispatch ul { margin: 6px 0 0; padding-left: 20px; font-size: 16px; }
+.dispatch .note { margin-top: 6px; font-size: 15px; border-top: 1px solid var(--line); padding-top: 6px; }
+.dispatch .acts { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dispatch .acts .btn { min-height: 44px; padding: 8px 12px; }
+.dispatch .acts .btn.red { grid-column: 1 / -1; }
+.dispatch .acts select { grid-column: 1 / -1; min-height: 44px; border: 2px solid var(--line); border-radius: var(--r-ctl); padding: 6px 10px; background: var(--surface); }
+.sub2 { color: var(--ink-2); font-size: 15px; }
+.none { padding: 28px; border: 2px dashed var(--line); border-radius: 6px; color: var(--ink-2); }
+
+/* ========== ADMIN ========== */
+.adm-head { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+.adm-head h1 { font-size: clamp(30px, 3.6vw, 42px); max-width: 24ch; text-wrap: balance; margin-right: auto; }
+.range { display: inline-flex; gap: 6px; }
+.range button { min-height: 40px; padding: 4px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--surface); font-weight: 700; }
+.range button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.an { margin-top: 28px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 40px; align-items: start; }
+.an h2 { font-size: 22px; }
+.chart { margin-top: 10px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--body); fill: var(--ink-2); font-size: 12px; }
+.chart .dl { fill: var(--ink); font-weight: 700; font-size: 13px; }
+.key { display: flex; gap: 18px; margin-top: 6px; font-size: 15px; color: var(--ink-2); }
+.key i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.bars { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.bars li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 16px; }
+.bars li b { font-variant-numeric: tabular-nums; }
+.bars .track { grid-column: 1 / -1; height: 10px; border-radius: 5px; background: var(--locker); overflow: hidden; }
+.bars .track span { display: block; height: 100%; background: var(--ink); border-radius: 5px; }
+.bars .track span.hot { background: var(--tag); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; padding-top: 20px; border-top: 2px solid var(--ink); }
+.facts p { font-size: 15px; color: var(--ink-2); }
+.facts b { display: block; font: 700 28px var(--display); color: var(--ink); letter-spacing: -0.02em; }
+.stack { display: grid; gap: 36px; }
+.rule { margin-top: 18px; display: flex; gap: 14px; align-items: start; padding: 16px 18px; background: var(--hall-soft); border-radius: 8px; max-width: 64ch; }
+.rule svg { margin-top: 3px; color: var(--hall); }
+.adm2 { margin-top: 24px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 48px; align-items: start; }
+.people { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.psearch { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.psearch input { width: 100%; min-height: 48px; border: 2px solid var(--line); border-radius: var(--r-ctl); padding: 8px 12px; }
+.person { display: grid; grid-template-columns: minmax(0, 1fr) 160px 44px; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.person select { min-height: 44px; border: 2px solid var(--line); border-radius: var(--r-ctl); padding: 4px 8px; background: var(--surface); }
+.person .x { width: 44px; height: 44px; border: 0; background: none; border-radius: 50%; color: var(--ink-2); }
+.person .x:hover { background: var(--tag-soft); color: var(--tag-deep); }
+.add { display: flex; gap: 10px; padding: 14px 16px; background: var(--paper); border-top: 2px solid var(--ink); border-radius: 0 0 8px 8px; flex-wrap: wrap; }
+.add input { flex: 1; min-width: 200px; min-height: 48px; border: 2px solid var(--line); border-radius: var(--r-ctl); padding: 8px 12px; background: var(--surface); }
+.drop { margin-top: 14px; border: 2px dashed var(--ink-2); border-radius: 8px; padding: 26px 20px; text-align: center; background: var(--surface); }
+.drop b { display: block; font-size: 18px; }
+.drop p { margin-top: 4px; color: var(--ink-2); font-size: 15px; }
+.drop .btn { margin-top: 14px; }
+.last { margin-top: 18px; border-left: 4px solid var(--hall); padding-left: 14px; }
+
+@media (max-width: 1000px) {
+  .signin, .an, .adm2 { grid-template-columns: minmax(0, 1fr); gap: 44px; }
+  .signin { padding-top: 36px; min-height: 0; }
+  .tlayout { grid-template-columns: minmax(0, 1fr); }
+  .schools { position: static; display: flex; gap: 6px; overflow-x: auto; }
+  .schools h2 { display: none; }
+  .sch { white-space: nowrap; border-left: 0; border: 2px solid var(--line); border-radius: 999px; flex: none; gap: 10px; }
+  .dispatch { position: static; }
+}
+@media (max-width: 600px) {
+  .wrap, .top, .nav { padding-left: 16px; padding-right: 16px; }
+  .chatpage { padding: 0 14px; }
+  .who .name { display: none; }
+  .nav { overflow-x: auto; }
+  .replies { padding-left: 0; }
+  .digits input { width: 42px; height: 54px; }
+  .person { grid-template-columns: minmax(0, 1fr) 44px; }
+  .person select { grid-column: 1; }
+  .tk { grid-template-columns: 64px minmax(0, 1fr); }
+  .tk .age { grid-column: 2; text-align: left; }
+  .facts { grid-template-columns: 1fr; }
+  .peek { box-shadow: 6px 6px 0 var(--locker); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .peek .m { opacity: 1; transform: none; animation: none; }
+  .msg.in { animation: none; }
+  .gbtn:hover, .gbtn:active { transform: none; }
+}
+@media print { .board { display: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="tagglyph" viewBox="0 0 26 32"><path d="M4 8 9 2h8l5 6v21a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="#C8102E"/><circle cx="13" cy="7.5" r="2.2" fill="#F3F5F3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+</svg>
+
+<div class="board" role="navigation" aria-label="Design screens">
+  <b>Design preview</b>
+  <a href="#signin">Sign in</a>
+  <a href="#student">Student chat</a>
+  <a href="#teacher">Teacher chat</a>
+  <a href="#tech">Technician</a>
+  <a href="#admin-analytics">Admin: analytics</a>
+  <a href="#admin-people">Admin: permissions</a>
+</div>
+
+<header>
+  <div class="top">
+    <div class="brand"><svg class="glyph" aria-hidden="true"><use href="#tagglyph"/></svg><span>Greg Bot <small>IT Help Desk</small></span></div>
+    <div class="who" id="who" hidden>
+      <div class="name"><b id="who-name"></b><span id="who-role"></span></div>
+      <button class="btn-quiet" type="button">Sign out</button>
+    </div>
+  </div>
+  <nav class="nav" id="appnav" aria-label="Pages" hidden></nav>
+</header>
+
+<main>
+
+<!-- ============ SIGN IN ============ -->
+<section class="screen" id="s-signin" aria-labelledby="h-signin">
+  <div class="signin">
+    <div>
+      <h1 id="h-signin">Tech trouble? Ask Greg.</h1>
+      <p class="lede">Greg Bot helps with school technology problems, one small step at a time.</p>
+      <button class="btn gbtn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.6z"/><path fill="#34A853" d="M12 22.5c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.700v2.700A10.500 10.500 0 0 0 12 22.500z"/><path fill="#FBBC05" d="M6.200 14.100a6.300 6.300 0 0 1 0-4.100V7.300H2.700a10.500 10.500 0 0 0 0 9.500z"/><path fill="#EA4335" d="M12 5.600c1.500 0 2.900.5 4 1.600l3-3A10.500 10.500 0 0 0 2.700 7.300L6.200 10c.8-2.500 3.100-4.400 5.800-4.400z"/></svg>
+        Sign in with Google
+      </button>
+      <p class="help acct">Use your @demo.example.org school account.</p>
+
+      <ol class="how" aria-label="How it works">
+        <li><div><b>Tell Greg what’s wrong</b><span>Tap a choice or type it in your own words.</span></div></li>
+        <li><div><b>Try a quick fix</b><span>Greg suggests one step at a time.</span></div></li>
+        <li><div><b>Still broken? Greg asks a technician</b><span>Your request goes straight to the right person.</span></div></li>
+      </ol>
+
+      <p class="parent"><b>Parent or guardian?</b> You don’t need to sign in. Call the help desk at x5000, 7:30 AM to 4:00 PM on school days.</p>
+
+      <details class="demo">
+        <summary>Demo sign-in (fictional accounts)</summary>
+        <div class="row">
+          <button type="button" data-go="student">Student</button>
+          <button type="button" data-go="teacher">Teacher</button>
+          <button type="button" data-go="tech">Technician</button>
+          <button type="button" data-go="admin-analytics">Admin</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="peek" aria-label="Example conversation with Greg">
+      <svg class="hang" aria-hidden="true"><use href="#tagglyph"/></svg>
+      <div class="hd"><svg width="26" height="32" aria-hidden="true"><use href="#tagglyph"/></svg><b>Greg</b><span class="live">Here to help</span></div>
+      <div class="m msg bot"><div class="bubble">Hi! What’s not working?</div></div>
+      <div class="m msg me" style="margin-top:12px"><div class="bubble">My Chromebook won’t turn on</div></div>
+      <div class="m msg bot" style="margin-top:12px"><div class="bubble">Let’s check one thing first. Is the charger plugged in, with the light on?</div></div>
+      <div class="m replies" style="margin-top:12px;padding-left:0"><span class="chip" aria-hidden="true">That fixed it</span><span class="chip soft" aria-hidden="true">Still won’t turn on</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAT: STUDENT + TEACHER (same shell) ============ -->
+<section class="screen" id="s-student" aria-label="Student chat"></section>
+<section class="screen" id="s-teacher" aria-label="Teacher chat"></section>
+<template id="chat-tpl">
+  <div class="chatpage">
+    <div class="ctxbar">
+      <span class="ctx-l"></span>
+      <span class="grow"></span>
+      <button class="pill-btn mybtn" type="button" aria-expanded="false"></button>
+    </div>
+    <div class="mine" hidden></div>
+    <div class="log" role="log" aria-live="polite"></div>
+    <div class="composer">
+      <form onsubmit="return false">
+        <label class="sr" for="">Message</label>
+        <input autocomplete="off">
+        <button class="btn" type="submit"></button>
+      </form>
+      <p class="help"></p>
+    </div>
+  </div>
+</template>
+
+<!-- ============ TECHNICIAN ============ -->
+<section class="screen" id="s-tech" aria-labelledby="h-tech">
+  <div class="wrap">
+    <div class="tbar">
+      <h1 id="h-tech">Open tickets</h1>
+      <div class="field"><label for="q">Search</label><input id="q" type="search" placeholder="Ticket, name, room or red tag"></div>
+    </div>
+    <div class="tlayout">
+      <nav class="schools" aria-label="Filter by school"><h2>School</h2><div id="school-list" style="display:contents"></div></nav>
+      <div>
+        <div class="chips" role="group" aria-label="Filter by status" id="stat-chips"></div>
+        <div class="qlist" id="qlist"></div>
+      </div>
+      <aside class="dispatch" id="dispatch" aria-live="polite"></aside>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ADMIN: ANALYTICS ============ -->
+<section class="screen" id="s-admin-analytics" aria-labelledby="h-an">
+  <div class="wrap">
+    <div class="adm-head">
+      <h1 id="h-an"></h1>
+      <div class="range" role="group" aria-label="Time range">
+        <button type="button" aria-pressed="false">7 days</button><button type="button" aria-pressed="true">14 days</button><button type="button" aria-pressed="false">30 days</button>
+      </div>
+    </div>
+    <div class="an">
+      <div>
+        <h2>Problems per day</h2>
+        <div class="chart" id="daily"></div>
+        <div class="key"><span><i style="background:var(--ink)"></i>Fixed in chat</span><span><i style="background:var(--tag)"></i>Sent to a technician</span></div>
+        <div class="facts" id="facts"></div>
+      </div>
+      <div class="stack">
+        <div><h2>What people ask about</h2><ul class="bars" id="topics"></ul></div>
+        <div><h2>Tickets by school</h2><ul class="bars" id="by-school"></ul></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ADMIN: PERMISSIONS ============ -->
+<section class="screen" id="s-admin-people" aria-labelledby="h-pp">
+  <div class="wrap">
+    <h1 id="h-pp" style="font-size:clamp(30px,3.6vw,42px)">Who can do what</h1>
+    <div class="rule"><svg class="i"><use href="#i-info"/></svg><p>Everyone with a district account is a student unless they’re on a list. Teachers and staff come from the staff list. Technicians and admins are set here.</p></div>
+    <div class="adm2">
+      <div class="people">
+        <div class="psearch"><label class="sr" for="ps">Find a person</label><input id="ps" type="search" placeholder="Find a technician or admin"></div>
+        <div class="person"><div><b>Rosa Vasquez</b><div class="sub2">r.vasquez@demo.example.org</div></div><select aria-label="Role for Rosa Vasquez"><option>Technician</option><option>Admin</option></select><button class="x" aria-label="Remove Rosa Vasquez"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="person"><div><b>Daniel Mbeki</b><div class="sub2">d.mbeki@demo.example.org</div></div><select aria-label="Role for Daniel Mbeki"><option>Technician</option><option>Admin</option></select><button class="x" aria-label="Remove Daniel Mbeki"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="person"><div><b>Media Center Tech Desk</b><div class="sub2">mediadesk@demo.example.org</div></div><select aria-label="Role for Media Center Tech Desk"><option>Technician</option><option>Admin</option></select><button class="x" aria-label="Remove Media Center Tech Desk"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="person"><div><b>Demo Admin</b><div class="sub2">demo.admin@demo.example.org</div></div><select aria-label="Role for Demo Admin"><option>Admin</option><option>Technician</option></select><button class="x" aria-label="Remove Demo Admin"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <form class="add" onsubmit="return false"><label class="sr" for="addp">Email address</label><input id="addp" type="email" placeholder="name@demo.example.org"><button class="btn" type="submit">Add person</button></form>
+      </div>
+      <aside>
+        <h2 style="font-size:24px">Staff list</h2>
+        <p class="help" style="margin-top:6px">People on this list get the teacher page. Importing replaces the current list.</p>
+        <div class="drop"><svg class="i" style="width:32px;height:32px"><use href="#i-upload"/></svg><b>Drop a CSV file here</b><p>One staff email per row.</p><button class="btn ghost" type="button">Choose a file</button></div>
+        <div class="last"><b>Last import: 312 staff</b><p class="help">Oct 27 by Demo Admin. 2 rows skipped: not in @demo.example.org.</p></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var screens = { signin: 'Sign in', student: 'Student', teacher: 'Teacher', tech: 'Technician', 'admin-analytics': 'Analytics', 'admin-people': 'Permissions' };
+  var people = { student: ['Alex Sample', 'Student'], teacher: ['Demo Teacher', 'Teacher'], tech: ['Rosa Vasquez', 'Technician'], 'admin-analytics': ['Demo Admin', 'Admin'], 'admin-people': ['Demo Admin', 'Admin'] };
+  var navFor = {
+    student: [], teacher: [], tech: [['tech', 'Tickets']],
+    'admin-analytics': [['admin-analytics', 'Analytics'], ['admin-people', 'Permissions'], ['tech', 'Tickets']],
+    'admin-people': [['admin-analytics', 'Analytics'], ['admin-people', 'Permissions'], ['tech', 'Tickets']]
+  };
+  function show(name) {
+    if (!screens[name]) name = 'signin';
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('on', s.id === 's-' + name); });
+    document.querySelectorAll('.board a').forEach(function (a) {
+      if (a.getAttribute('href') === '#' + name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    var who = $('#who'), nav = $('#appnav');
+    if (name === 'signin') { who.hidden = true; nav.hidden = true; }
+    else {
+      who.hidden = false; $('#who-name').textContent = people[name][0]; $('#who-role').textContent = people[name][1];
+      var items = navFor[name]; nav.hidden = !items.length;
+      nav.innerHTML = items.map(function (n) { return '<a href="#' + n[0] + '"' + (n[0] === name ? ' aria-current="page"' : '') + '>' + n[1] + '</a>'; }).join('');
+    }
+    document.title = 'Greg Bot: ' + screens[name] + ' (design v2)';
+  }
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+  document.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { location.hash = b.dataset.go; }); });
+
+  /* ---------- chat engine, shared by student and teacher ---------- */
+  var T = {
+    en: {
+      hiS: 'Hi Alex. What’s wrong with your Chromebook?', hiT: 'Hi. What’s not working in Room 114?',
+      fixedQ: 'Did that fix it?', fixed: 'That fixed it', notfixed: 'Didn’t work', gl: 'Glad it’s working. Nothing was sent.', another: 'Try another problem',
+      tag: 'Type the six digits on the red tag on your Chromebook. A technician uses it to find your device.', enter: 'Enter', bad: 'A red tag is exactly six digits. Check the tag and try again.',
+      conf: function (d) { return 'Is ' + d.slice(0, 3) + ' ' + d.slice(3) + ' right?'; }, yes: 'Yes, send it', no: 'No, type it again',
+      sendQ: function (p1) { return p1 ? 'This goes to a technician as Priority 1 because a class is in session. Send it?' : 'Send this to a technician?'; }, send: 'Send to a technician', cancel: 'Not yet',
+      sentT: 'Request sent', pick: 'Pick up', soon: 'A technician has it', wait: 'Greg will tell you here when a technician picks it up.',
+      ph: 'Or type it in your own words', sendbtn: 'Send', myS: 'My request', myT: 'My tickets', review: 'Spanish text is waiting for human review.',
+      quick: 'Quick fix: ', limit: ''
+    },
+    es: {
+      hiS: 'Hola Alex. ¿Qué le pasa a tu Chromebook?', hiT: '',
+      fixedQ: '¿Eso lo arregló?', fixed: 'Lo arregló', notfixed: 'No funcionó', gl: 'Qué bueno que funciona. No se envió nada.', another: 'Probar otro problema',
+      tag: 'Escribe los seis dígitos de la etiqueta roja de tu Chromebook. Un técnico los usa para encontrar tu dispositivo.', enter: 'Enviar', bad: 'Una etiqueta roja tiene exactamente seis dígitos. Revisa la etiqueta e inténtalo de nuevo.',
+      conf: function (d) { return '¿Es ' + d.slice(0, 3) + ' ' + d.slice(3) + '?'; }, yes: 'Sí, enviar', no: 'No, escribirlo otra vez',
+      sentT: 'Solicitud enviada', pick: 'Recoger', soon: 'Un técnico la tiene', wait: 'Greg te avisará aquí cuando un técnico la tome.',
+      ph: 'O escríbelo con tus palabras', sendbtn: 'Enviar', myS: 'Mi solicitud', review: 'El texto en español espera revisión humana.',
+      quick: 'Solución rápida: '
+    }
+  };
+  var problemsS = [
+    { id: 'wifi', en: 'My Chromebook will not connect to Wi-Fi', es: 'Mi Chromebook no se conecta al Wi-Fi', step: { en: 'Restart the Chromebook: hold Refresh and tap Power.', es: 'Reinicia la Chromebook: mantén Refresh y toca Power.' } },
+    { id: 'power', en: 'My Chromebook will not turn on', es: 'Mi Chromebook no enciende', step: { en: 'Check the charger. Is the charging light on?', es: 'Revisa el cargador. ¿Está encendida la luz de carga?' } },
+    { id: 'login', en: 'I cannot sign in to my school account', es: 'No puedo iniciar sesión en mi cuenta escolar', step: { en: 'Check your email address, Caps Lock and password.', es: 'Revisa tu correo, las mayúsculas y tu contraseña.' } },
+    { id: 'damage', en: 'My Chromebook is damaged', es: 'Mi Chromebook está dañada' },
+    { id: 'other', en: 'Something else', es: 'Otra cosa', soft: true }
+  ];
+  var problemsT = [
+    { id: 'power', en: 'Power', step: 'Check the cable and the power strip. Is the light on?' },
+    { id: 'wifi', en: 'Wi-Fi', step: 'Turn Wi-Fi off and on, then rejoin the school network.' },
+    { id: 'display', en: 'Classroom display', step: 'Check the HDMI cable and choose the right input.' },
+    { id: 'audio', en: 'Audio', step: 'Check the volume and the speaker cable.' },
+    { id: 'copier', en: 'Copier badge', step: 'Try a second badge on the reader.' },
+    { id: 'acct', en: 'Account sign-in', step: 'Wait five minutes, then try once more.' }
+  ];
+
+  function Chat(root, role) {
+    var teacher = role === 'teacher', lang = 'en', inSession = false, problem = null, ticketNo = 1048;
+    root.appendChild(document.getElementById('chat-tpl').content.cloneNode(true));
+    var log = $('.log', root), input = $('input', root), mine = $('.mine', root), mybtn = $('.mybtn', root);
+    var id = role + '-in'; input.id = id; $('label', root).setAttribute('for', id);
+    var t = function () { return T[lang]; };
+
+    function scroll() { var c = $('.composer', root); if (c && log.lastElementChild) log.lastElementChild.scrollIntoView({ block: 'nearest' }); }
+    function bot(html) {
+      var d = document.createElement('div'); d.className = 'msg bot in';
+      d.innerHTML = '<svg class="av" aria-hidden="true"><use href="#tagglyph"/></svg><div class="bubble">' + html + '</div>'; log.appendChild(d);
+    }
+    function me(text) { var d = document.createElement('div'); d.className = 'msg me in'; d.innerHTML = '<div class="bubble"></div>'; $('.bubble', d).textContent = text; log.appendChild(d); }
+    function replies(items) {
+      var d = document.createElement('div'); d.className = 'replies in';
+      items.forEach(function (it) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (it.soft ? ' soft' : '') + (it.go ? ' go' : ''); b.textContent = it.label;
+        b.addEventListener('click', function () { d.remove(); me(it.label); it.fn(); });
+        d.appendChild(b);
+      });
+      log.appendChild(d);
+    }
+    function priority() { return teacher ? (inSession ? 'Priority 1' : 'Priority 2') : ''; }
+
+    function start() {
+      log.innerHTML = '';
+      bot(teacher ? T.en.hiT : t().hiS);
+      replies((teacher ? problemsT : problemsS).map(function (p) { return { label: p[lang] || p.en, soft: p.soft, fn: function () { choose(p); } }; }));
+    }
+    function choose(p) {
+      problem = p;
+      if (p.step) {
+        var s = teacher ? p.step : p.step[lang];
+        bot('<b>' + (lang === 'en' ? 'Quick fix: ' : t().quick) + '</b>' + s);
+        replies([{ label: t().fixed || T.en.fixed, fn: fixed }, { label: t().notfixed, fn: teacher ? askSend : askTag }]);
+      } else if (teacher) askSend(); else askTag();
+    }
+    function fixed() { bot(t().gl); replies([{ label: t().another, soft: true, fn: start }]); }
+
+    function askTag() {
+      var d = document.createElement('div'); d.className = 'msg bot in';
+      d.innerHTML = '<svg class="av" aria-hidden="true"><use href="#tagglyph"/></svg><div class="bubble">' + t().tag +
+        '<div class="digits" role="group" aria-label="Red tag number">' + '<input inputmode="numeric" maxlength="1" aria-label="Digit 1"><input inputmode="numeric" maxlength="1" aria-label="Digit 2"><input inputmode="numeric" maxlength="1" aria-label="Digit 3"><input inputmode="numeric" maxlength="1" aria-label="Digit 4"><input inputmode="numeric" maxlength="1" aria-label="Digit 5"><input inputmode="numeric" maxlength="1" aria-label="Digit 6">' +
+        '<button class="btn red" type="button">' + t().enter + '</button></div><p class="err" role="alert" hidden>' + t().bad + '</p></div>';
+      log.appendChild(d);
+      var ds = d.querySelectorAll('input'), err = $('.err', d);
+      ds.forEach(function (x, i) {
+        x.addEventListener('input', function () { x.value = x.value.replace(/\D/g, ''); if (x.value && ds[i + 1]) ds[i + 1].focus(); });
+        x.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !x.value && ds[i - 1]) ds[i - 1].focus(); });
+      });
+      $('.btn', d).addEventListener('click', function () {
+        var v = Array.prototype.map.call(ds, function (x) { return x.value; }).join('');
+        if (!/^\d{6}$/.test(v)) { err.hidden = false; return; }
+        d.querySelector('.digits').remove(); err.hidden = true; me(v.slice(0, 3) + ' ' + v.slice(3));
+        bot(t().conf(v)); replies([{ label: t().yes, go: true, fn: function () { receipt(v); } }, { label: t().no, soft: true, fn: askTag }]);
+      });
+      scroll();
+    }
+    function askSend() {
+      bot(t().sendQ ? t().sendQ(inSession) : T.en.sendQ(inSession));
+      replies([{ label: T.en.send, go: true, fn: function () { receipt(); } }, { label: T.en.cancel, soft: true, fn: start }]);
+    }
+    function receipt(tagNo) {
+      var title = teacher ? problem.en : (problem[lang] || problem.en);
+      var d = document.createElement('div'); d.className = 'msg bot in';
+      d.innerHTML = '<svg class="av" aria-hidden="true"><use href="#tagglyph"/></svg><div class="receipt"><h3>' + t().sentT + ' · T-' + (ticketNo++) + '</h3>' +
+        (tagNo ? '<div class="rt"><i></i>' + tagNo + '</div>' : '') + (teacher ? '<div class="pr ' + (inSession ? 'p1' : '') + '">' + priority() + '</div>' : '') +
+        '<dl><dt>' + (lang === 'en' ? 'Problem' : 'Problema') + '</dt><dd>' + title + '</dd><dt>' + (teacher ? 'Where' : t().pick) + '</dt><dd>' + (teacher ? 'Demo Middle School, Room 114' : 'Media Center Tech Desk') + '</dd></dl>' +
+        '<p class="help" style="margin-top:10px">' + t().wait + '</p></div>';
+      log.appendChild(d); scroll();
+    }
+    function typed(text) {
+      if (!text.trim()) return;
+      me(text); problem = { en: 'Something else', es: 'Otra cosa' };
+      teacher ? askSend() : askTag();
+    }
+    $('form', root).addEventListener('submit', function () { var v = input.value; input.value = ''; typed(v); });
+
+    // context bar
+    var ctx = $('.ctx-l', root);
+    if (teacher) {
+      ctx.innerHTML = '<button class="pill-btn" type="button" aria-pressed="false"><span class="dot"></span><span class="sl">Class in session</span></button><span class="help">Demo Middle School · Room 114</span>';
+      $('.pill-btn', ctx).addEventListener('click', function (e) {
+        inSession = !inSession; e.currentTarget.setAttribute('aria-pressed', inSession);
+        $('.sl', ctx).textContent = inSession ? 'Class in session: Priority 1' : 'Class in session';
+      });
+      mybtn.textContent = 'My tickets (1)';
+      mine.innerHTML = '<div class="row"><b>T-1047</b><span class="st">Technician on the way</span></div><p>Classroom display is blank</p><p class="help">Room 114 · sent 6 minutes ago</p>';
+      $('.composer .btn', root).textContent = 'Send'; input.placeholder = 'Or type it in your own words';
+      $('.composer .help', root).textContent = 'Still stuck? Call the help desk at x5000.';
+    } else {
+      ctx.innerHTML = '<div class="lang" role="group" aria-label="Language"><button type="button" data-l="en" aria-pressed="true">English</button><button type="button" data-l="es" lang="es" aria-pressed="false">Español</button></div>';
+      mybtn.textContent = 'My request';
+      mine.innerHTML = '<div class="row"><b>T-1045</b><span class="st">A technician has it</span></div><p>Will not turn on</p><p class="help">Pick up at the Media Center Tech Desk. You can have one open request at a time.</p>';
+      $('.composer .btn', root).textContent = 'Send'; input.placeholder = t().ph;
+      $('.composer .help', root).textContent = '';
+      ctx.querySelectorAll('[data-l]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          lang = b.dataset.l; ctx.querySelectorAll('[data-l]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+          input.placeholder = t().ph; $('.composer .btn', root).textContent = t().sendbtn; mybtn.textContent = t().myS;
+          $('.composer .help', root).textContent = lang === 'es' ? t().review : '';
+          start();
+        });
+      });
+    }
+    mybtn.addEventListener('click', function () { mine.hidden = !mine.hidden; mybtn.setAttribute('aria-expanded', !mine.hidden); });
+    start();
+  }
+  Chat($('#s-student'), 'student');
+  Chat($('#s-teacher'), 'teacher');
+
+  /* ---------- technician ---------- */
+  var tickets = [
+    { n: 'T-1047', k: 'p1', pr: 'Priority 1', sc: 'Demo Middle School', who: 'Ms. Okafor', where: 'Room 114', prob: 'Classroom display is blank', age: '6 min', old: false, st: 'Open', pc: 'open', to: 'Not assigned', tried: ['Checked the HDMI cable', 'Restarted the display'], note: 'Class is in session, 28 students.' },
+    { n: 'T-1045', k: 'ln', pr: 'Loaner request', sc: 'Students', who: 'Alex Sample', where: 'Student', prob: 'Chromebook will not turn on', age: '41 min', old: false, st: 'Open', pc: 'open', to: 'Media Center Tech Desk', red: '482193', tried: ['Checked the charger and charging light', 'Held Power for about 10 seconds'], note: 'Not charging after both steps.' },
+    { n: 'T-1046', k: 'p2', pr: 'Priority 2', sc: 'Hamilton High School West', who: 'Mr. Lindqvist', where: 'Room 104', prob: 'Wi-Fi drops in the hallway', age: '22 min', old: false, st: 'Assigned', pc: '', to: 'Rosa Vasquez', tried: ['Restarted the laptop', 'Forgot and rejoined the network'], note: 'Checking the access point outside Room 104.' },
+    { n: 'T-1044', k: 'p3', pr: 'Priority 3', sc: 'Yardville Elementary School', who: 'Front office', where: 'Main office', prob: 'Copier badge reader not responding', age: '1 h 10 min', old: true, st: 'In progress', pc: 'live', to: 'Daniel Mbeki', tried: ['Tried two different badges'], note: 'Reader has no power light. Swapping the cable.' },
+    { n: 'T-1043', k: 'ln', pr: 'Loaner request', sc: 'Students', who: 'Jordan Sample', where: 'Student', prob: 'Chromebook is damaged', age: '2 h', old: true, st: 'Hardware swap', pc: 'live', to: 'Media Center Tech Desk', red: '305118', tried: ['Student described a cracked screen'], note: 'Needs an in-person check before a loaner is issued.' },
+    { n: 'T-1041', k: 'p3', pr: 'Priority 3', sc: 'Demo Middle School', who: 'Ms. Haddad', where: 'Room 115', prob: 'Cannot sign in', age: '3 h', old: true, st: 'Open', pc: 'open', to: 'Not assigned', tried: ['Waited five minutes and retried'], note: '' }
+  ];
+  var schools = ['All schools', 'Demo Middle School', 'Hamilton High School West', 'Yardville Elementary School', 'District Technology Center', 'Students'];
+  var fSchool = 'All schools', fStat = 'Needs work', q = '';
+  var stats = ['Needs work', 'Open', 'Assigned', 'In progress', 'Hardware swap'];
+  var sel = 'T-1045';
+  function inStat(t) { return fStat === 'Needs work' ? true : t.st === fStat; }
+  function renderTech() {
+    $('#school-list').innerHTML = schools.map(function (s) {
+      var c = tickets.filter(function (t) { return s === 'All schools' || t.sc === s; }).length;
+      return '<button class="sch" type="button" data-s="' + s + '" aria-pressed="' + (s === fSchool) + '"><span>' + s + '</span><em>' + c + '</em></button>';
+    }).join('');
+    $('#stat-chips').innerHTML = stats.map(function (s) { return '<button class="fchip" type="button" data-st="' + s + '" aria-pressed="' + (s === fStat) + '">' + s + '</button>'; }).join('');
+    var rows = tickets.filter(function (t) {
+      return (fSchool === 'All schools' || t.sc === fSchool) && inStat(t) && (!q || (t.n + t.who + t.where + t.prob + (t.red || '')).toLowerCase().indexOf(q) > -1);
+    });
+    $('#qlist').innerHTML = rows.length ? rows.map(function (t) {
+      return '<button class="tk ' + t.k + '" type="button" data-n="' + t.n + '" aria-selected="' + (t.n === sel) + '"><span class="n">' + t.n + '</span><span><b>' + t.prob + '</b><br><span class="sub">' + t.who + ' · ' + (t.sc === 'Students' ? 'red tag ' + t.red : t.sc + ', ' + t.where) + '</span></span><span class="age' + (t.old ? ' old' : '') + '">' + t.age + '<br><span class="pill ' + t.pc + '">' + t.st + '</span></span></button>';
+    }).join('') : '<div class="none">No tickets match. Try another school or status.</div>';
+    var cur = tickets.filter(function (t) { return t.n === sel; })[0];
+    $('#dispatch').innerHTML = cur ? '<div class="hd"><h2>' + cur.n + '</h2><span class="sub2">' + cur.pr + '</span></div>' +
+      (cur.red ? '<div class="rt"><i></i>' + cur.red + '</div>' : '') + '<p class="what">' + cur.prob + '</p>' +
+      '<dl><dt>From</dt><dd>' + cur.who + '</dd><dt>School</dt><dd>' + (cur.sc === 'Students' ? 'Student request' : cur.sc + ', ' + cur.where) + '</dd><dt>Assigned</dt><dd>' + cur.to + '</dd></dl>' +
+      '<h3>Already tried</h3><ul>' + cur.tried.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' + (cur.note ? '<h3>Notes</h3><p class="note">' + cur.note + '</p>' : '') +
+      '<div class="acts"><select aria-label="Status"><option>' + cur.st + '</option><option>Assigned</option><option>Dispatched</option><option>In progress</option><option>Hardware swap</option><option>Resolved</option></select><button class="btn ghost" type="button">Add note</button><button class="btn ghost" type="button">Reassign</button><button class="btn red" type="button"><svg class="i"><use href="#i-print"/></svg>Print ' + (cur.red ? 'loaner pass' : 'dispatch slip') + '</button></div>' : '<p class="help">Pick a ticket to see its details.</p>';
+  }
+  $('#school-list').addEventListener('click', function (e) { var b = e.target.closest('.sch'); if (b) { fSchool = b.dataset.s; renderTech(); } });
+  $('#stat-chips').addEventListener('click', function (e) { var b = e.target.closest('.fchip'); if (b) { fStat = b.dataset.st; renderTech(); } });
+  $('#qlist').addEventListener('click', function (e) { var b = e.target.closest('.tk'); if (b) { sel = b.dataset.n; renderTech(); } });
+  $('#q').addEventListener('input', function (e) { q = e.target.value.toLowerCase(); renderTech(); });
+  renderTech();
+
+  /* ---------- analytics (numbers are fictional; the headline is computed from them) ---------- */
+  var days = ['W', 'T', 'F', 'S', 'S', 'M', 'T', 'W', 'T', 'F', 'S', 'S', 'M', 'T'];
+  var fixedD = [42, 48, 44, 9, 6, 52, 46, 47, 54, 49, 8, 5, 50, 45];
+  var sentD = [30, 34, 31, 8, 5, 36, 33, 29, 32, 28, 9, 4, 31, 27];
+  var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+  var F = sum(fixedD), S = sum(sentD), pct = Math.round(F / (F + S) * 100);
+  $('#h-an').textContent = 'Greg fixed ' + pct + '% of problems before a technician was needed.';
+  var W = 640, H = 250, pl = 30, pb = 26, mx = 100, bw = (W - pl) / days.length;
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Stacked bars of problems per day, fixed in chat and sent to a technician">';
+  [0, 50, 100].forEach(function (g) { var y = H - pb - g / mx * (H - pb - 14); svg += '<line x1="' + pl + '" x2="' + W + '" y1="' + y + '" y2="' + y + '" stroke="#CDD5DA"/><text x="0" y="' + (y + 4) + '">' + g + '</text>'; });
+  days.forEach(function (d, i) {
+    var x = pl + i * bw + bw * .16, w = bw * .68, hf = fixedD[i] / mx * (H - pb - 14), hs = sentD[i] / mx * (H - pb - 14), y0 = H - pb;
+    svg += '<rect x="' + x + '" y="' + (y0 - hf) + '" width="' + w + '" height="' + hf + '" fill="#17212B"/>';
+    svg += '<rect x="' + x + '" y="' + (y0 - hf - hs - 1) + '" width="' + w + '" height="' + hs + '" fill="#C8102E"/>';
+    svg += '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + d + '</text>';
+  });
+  $('#daily').innerHTML = svg + '</svg>';
+  $('#facts').innerHTML = '<p><b>' + (F + S) + '</b>conversations in 14 days</p><p><b>' + S + '</b>tickets sent to technicians</p><p><b>11 min</b>median wait for a technician to pick up</p><p><b>2 h 40 min</b>median time to resolve</p>';
+  var topics = [['Wi-Fi', 31], ['Will not turn on', 22], ['Cannot sign in', 19], ['Classroom display', 11], ['Damaged', 9], ['Something else', 8]];
+  $('#topics').innerHTML = topics.map(function (t, i) { return '<li><span>' + t[0] + '</span><b>' + t[1] + '%</b><div class="track"><span class="' + (i === 0 ? 'hot' : '') + '" style="width:' + t[1] * 3 + '%"></span></div></li>'; }).join('');
+  var w = [.29, .37, .16, .03, .15], names = ['Hamilton High School West', 'Demo Middle School', 'Yardville Elementary School', 'District Technology Center', 'Students'];
+  var cnt = [.37, .29, .16, .03].map(function (p) { return Math.round(S * p); }); cnt.push(S - sum(cnt));
+  var mxc = Math.max.apply(null, cnt);
+  $('#by-school').innerHTML = names.map(function (n, i) { return '<li><span>' + n + '</span><b>' + cnt[i] + '</b><div class="track"><span style="width:' + cnt[i] / mxc * 100 + '%"></span></div></li>'; }).join('');
+  document.querySelectorAll('.range button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('.range button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }); });
+
+  show(location.hash.slice(1));
+})();
+</script>
+</body>
+</html>
