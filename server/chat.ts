@@ -21,6 +21,9 @@ export interface ChatReply {
   suggestedActions: string[];
 }
 
+export const STUDENT_TOPICS = ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login', 'Chromebook is broken or damaged'];
+export const STAFF_TOPICS = ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers', 'Cannot sign in to my account'];
+
 const MAX_HISTORY = 10;
 const MAX_MODEL_TURN_CHARS = 1500;
 
@@ -74,7 +77,13 @@ export function builtInReply(ctx: ChatContext, query: string): ChatReply {
   } else if (/(headphone|mic|sound|audio|hear|speaker)/.test(q)) {
     text = `Audio:\n\n1. Click the speaker icon and choose the correct output device.\n2. Push the audio cable in firmly at both ends.\n3. Check that the speaker or wall-plate power is on and volume is up.`;
   } else {
-    text = `Describe the problem in a sentence (for example: "board says No Signal" or "Chromebook will not connect to Wi-Fi") and I will suggest the next step.`;
+    // Nothing matched: only fixes are on offer, so point at the topics instead of guessing.
+    const topics = ctx.isStudent ? STUDENT_TOPICS : STAFF_TOPICS;
+    return {
+      text: `I can only help with school technology problems. Pick one of these, or describe it with words like "Wi-Fi", "will not turn on", "password", or "display".`,
+      needsEscalation: false,
+      suggestedActions: topics,
+    };
   }
 
   return {

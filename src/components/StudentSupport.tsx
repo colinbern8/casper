@@ -196,13 +196,6 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     void beginCase(lang, i, pendingText, false);
   };
 
-  /** Skipping is only offered when describing "Something else". The red tag cannot be skipped. */
-  const skip = () => {
-    if (!lang) return;
-    push('user', t.skip);
-    void beginCase(lang, findSupportIssue('other')!, undefined, false);
-  };
-
   /** The student typed a red tag: repeat it back and ask before anything is saved. */
   const askToConfirmTag = (text: string) => {
     if (!isRedTag(text)) {
@@ -213,7 +206,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     }
     const tag = normalizeRedTag(text);
     setPendingTag(tag);
-    push('bot', t.confirmTag(tag));
+    push('bot', t.confirmTag(tag, current?.student.displayName ?? ''));
     setPhase('confirmTag');
   };
 
@@ -385,7 +378,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       case 'issue':
         return SUPPORT_ISSUES.map(i => ({ key: `issue:${i.id}`, label: i.title[lang!] }));
       case 'details':
-        return [{ key: 'skip', label: t.skip }];
+        return [];
       case 'tag':
         return []; // the red tag is required: no Skip
       case 'confirmTag':
@@ -408,7 +401,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
           { key: 'more-no', label: t.addMoreNo, primary: true },
         ];
       case 'addDetails':
-        return [{ key: 'add-skip', label: t.skip }];
+        return [];
       case 'done':
         return limit
           ? [{ key: 'another', label: t.tryAnother, primary: true }]
@@ -436,7 +429,6 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     if (key === 'lang:en') pickLanguage('en');
     else if (key === 'lang:es') pickLanguage('es');
     else if (key.startsWith('issue:')) pickIssue(findSupportIssue(key.slice(6))!);
-    else if (key === 'skip') skip();
     else if (key === 'tag-yes') { push('user', t.tagYes); void saveTag(); }
     else if (key === 'tag-no') { push('user', t.tagNo); rejectTag(); }
     else if (key === 'worked') answer('worked');
@@ -450,7 +442,6 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       if (id === 'other') { push('bot', t.askDetails); setPhase('addDetails'); }
       else void addIssueToRequest(id, undefined);
     }
-    else if (key === 'add-skip') { push('user', t.skip); push('bot', t.addMoreAsk(MAX_REPORTED_ISSUES - listedIds.length)); setPhase('addMore'); }
     else if (key === 'again') reset();
     else if (key === 'another') tryAnother();
   };

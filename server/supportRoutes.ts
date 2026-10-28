@@ -4,6 +4,7 @@ import { requireRole } from './auth';
 import type { SlidingWindowLimiter } from './rateLimit';
 import type { TicketStore } from './store';
 import type { CaseStore } from './cases';
+import { screenMessage } from './safety';
 import { cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
 import { DEMO_SCHOOL, studentFor } from './supportFixtures';
 import { buildDraft, buildTicketBody, toStudentView } from './support';
@@ -20,6 +21,13 @@ export interface SupportDeps {
 }
 
 const FIFTEEN_MIN = 15 * 60_000;
+/** "Something else" is the only free text a student can send a technician, so it must say something real. */
+export const MIN_OTHER_WORDS = 8;
+const otherWordsProblem = (description: string | undefined): string | null => {
+  if (!description || description.length < MIN_OTHER_WORDS) return `Say what is wrong in a few words (at least ${MIN_OTHER_WORDS} characters).`;
+  const screen = screenMessage(description);
+  return screen.blocked ? screen.message : null;
+};
 const bad = (res: Response, error: string, message: string, status = 400) => res.status(status).json({ error, message });
 
 /**
@@ -71,6 +79,10 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
 
     const fixture = studentFor(user.email, config.domain);
     const description = cleanMultiline(req.body?.description, 500) || undefined;
+    if (issueId === 'other') {
+      const problem = otherWordsProblem(description);
+      if (problem) return bad(res, 'DESCRIPTION_REQUIRED', problem);
+    }
     const now = new Date().toISOString();
     const created = cases.create({
       language,
@@ -129,12 +141,15 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     if (1 + extras.length >= MAX_REPORTED_ISSUES) {
       return bad(res, 'TOO_MANY_ISSUES', `One request can list at most ${MAX_REPORTED_ISSUES} problems.`, 409);
     }
-    // "Something else" may be listed more than once (each has its own words); the rest only once.
-    if (issueId !== 'other' && [found.reported, ...extras].some(r => r.issueId === issueId)) {
+    // Each problem can be listed once, including "Something else" (one free-text note per request).
+    if ([found.reported, ...extras].some(r => r.issueId === issueId)) {
       return bad(res, 'ALREADY_LISTED', 'That problem is already on this request.', 409);
     }
     const description = cleanMultiline(req.body?.description, 500) || undefined;
-    if (issueId === 'other' && !description) return bad(res, 'DESCRIPTION_REQUIRED', 'Say what is wrong.');
+    if (issueId === 'other') {
+      const problem = otherWordsProblem(description);
+      if (problem) return bad(res, 'DESCRIPTION_REQUIRED', problem);
+    }
 
     const at = new Date().toISOString();
     const saved = cases.save({

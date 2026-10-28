@@ -41,7 +41,7 @@ export function buildTicketBody(c: SupportCase) {
     room: c.student.room,
     category: primary.category,
     assetTag: c.redTag?.value,
-    title: `Student support (demo): ${primary.title.en}${all.length > 1 ? ` (+${all.length - 1} more)` : ''}`,
+    title: `Student support (demo): ${primary.id === 'other' && all[0].words ? `Other - "${all[0].words.slice(0, 60)}"` : primary.title.en}${all.length > 1 ? ` (+${all.length - 1} more)` : ''}`,
     description: lines.join('\n'),
     troubleshootStepsAttempted: tried,
     teacherAvailability: 'Will visit the Media Center',

@@ -50,7 +50,7 @@ Identity, role, priority, routing, and ticket numbers always come from the serve
 
 A prototype of a student-support workflow in English and Spanish, shown as a chat. It is available only when `DEMO_MODE=true`, uses fictional data, and has no AI. With demo mode off, its routes return 404 and `/student` shows the original chat.
 
-**How it works:** the student chats with Greg Bot. They tap a language, then either tap one of the common problems (Wi-Fi, will not turn on, sign-in, damaged, something else) or type it. Typed text is matched to a common problem by plain keywords in English and Spanish (`src/data/supportMatch.ts`). It is not AI, so it only recognises those words. If nothing matches, the bot says so and shows the choices again, and "Something else" sends what the student typed to a technician. Next the student must type the number from the **red tag** on their Chromebook. A red tag is **exactly six digits** (numbers only), the bot refuses anything else and asks again, and there is no way to skip this step because every device has a red tag. Once they type six digits, the bot repeats the number back and asks "Is that right?", and nothing is saved until they confirm (or they can type it again to fix a typo). Then they follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. The red tag is saved as typed and is **never looked up** (the app only checks that it is six digits): it is there so the technician reading the request can find that Chromebook, and the student it belongs to, in their own records. Escalating creates an ordinary ticket, with the red tag as its asset tag. The technician sees the case: language, the student's own words, the red tag, the steps tried, a **demo** disposition, an **unsent** draft message, and a short decision history.
+**How it works:** the student chats with Greg Bot. They tap a language, then either tap one of the common problems (Wi-Fi, will not turn on, sign-in, damaged, something else) or type it. Typed text is matched to a common problem by plain keywords in English and Spanish (`src/data/supportMatch.ts`). It is not AI, so it only recognises those words. If nothing matches, the bot says so and shows the choices again, and "Something else" sends what the student typed to a technician. To stop it being used to send junk, it needs at least 8 characters of real words (no Skip), is run through the same abuse/off-topic screen as the chat, and can appear once per request. The ticket title starts with the student's own words so the technician can see the problem at a glance. Next the student must type the number from the **red tag** on their Chromebook. A red tag is **exactly six digits** (numbers only), the bot refuses anything else and asks again, and there is no way to skip this step because every device has a red tag. Once they type six digits, the bot shows the student's name (from their Google account) and the number and asks "Is all of that right?", and nothing is saved until they confirm (or they can type it again to fix a typo). Then they follow fixed troubleshooting steps, then either finish as fixed or ask for a technician. The red tag is saved as typed and is **never looked up** (the app only checks that it is six digits): it is there so the technician reading the request can find that Chromebook, and the student it belongs to, in their own records. Escalating creates an ordinary ticket, with the red tag as its asset tag. The technician sees the case: language, the student's own words, the red tag, the steps tried, a **demo** disposition, an **unsent** draft message, and a short decision history.
 
 **Demo accounts** (the sign-in panel appears when `DEV_LOGIN=true`): **Student**, **Teacher**, **Technician** and **Admin**. The Student button signs in as a fictional student, Alex Sample. Language is chosen inside the chat, so there is a single student button.
 
@@ -250,6 +250,18 @@ These need decisions from the district, not code:
 ## Roadmap
 
 Not built yet, roughly in priority order:
+
+**Requested, not built yet** (from the project owner's review):
+
+- One shared chat layout for every role (`ChatShell`), with about 5 tappable common problems and free typing under them; the buttons and keyword table should come from one shared data file. Menu contents should follow the most common past tickets.
+- Student path in production: after Google sign-in the student goes straight to the chat, which shows their name and asks for the red tag with a confirmation. Today this runs only in `DEMO_MODE`; it also needs a way to learn the student's school (the demo uses a fictional roster).
+- Admin analytics dashboard (tickets per school, priority, time to resolve, top categories).
+- **Tell the requester when their ticket changes.** Nothing is sent today; the technician's decision is only a stored draft. Needs an email or in-app notice and a decision on the sender.
+- Technician coverage: let technicians claim a ticket, and fall back to a backup technician or the shared queue when a school's lead is out.
+- Photo upload (for example a cracked screen). Needs a storage and retention decision first; not started.
+- Data retention and privacy policy for tickets and cases.
+- Staff-side Spanish.
+- Parent sign-in: on hold pending district confirmation (see "Before a pilot").
 
 1. The pilot prerequisites above.
 2. Decide whether loaner problems should be allowed automatically, for example once a technician marks the swap done, instead of needing a technician to allow each one.

@@ -46,7 +46,7 @@ export interface StudentStrings {
   notFixed: string;
   askTechnician: string;
   noMoreSteps: string;
-  confirmTag: (tag: string) => string;
+  confirmTag: (tag: string, name: string) => string;
   tagYes: string;
   tagNo: string;
   tagRetype: string;
@@ -77,7 +77,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     greeting: 'Hi! I can help with your Chromebook. What is the problem? Tap one below, or type it.',
     thisLooksLike: title => `This looks like: ${title}.`,
     notSure: 'I am not sure which one that is. Pick the closest one below, or choose "Something else" and a technician will look at it.',
-    askDetails: 'Tell us what is wrong in a few words, or tap Skip.',
+    askDetails: 'Tell us what is wrong in a few words.',
     askTag: 'Look for the red tag on your Chromebook. Type the 6-digit number on it here.',
     skip: 'Skip',
     send: 'Send',
@@ -110,7 +110,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     notFixed: 'It did not work',
     askTechnician: 'Ask for a technician',
     noMoreSteps: 'We are out of steps to try. A technician can help from here.',
-    confirmTag: tag => `You typed: ${tag}\nPlease check that it matches the number on the red tag on your Chromebook. Is that right?`,
+    confirmTag: (tag, name) => `Name: ${name}\nRed tag: ${tag}\nPlease check that the name is yours and the red tag matches the number on your Chromebook. Is all of that right?`,
     tagYes: 'Yes, that is right',
     tagNo: 'No, type it again',
     tagRetype: 'No problem. Type the 6-digit number on the red tag again.',
@@ -138,7 +138,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     greeting: '¡Hola! Puedo ayudarte con tu Chromebook. ¿Cuál es el problema? Toca una opción o escríbelo.',
     thisLooksLike: title => `Esto parece ser: ${title}.`,
     notSure: 'No estoy seguro de cuál es. Elige la más parecida de abajo, o elige "Otra cosa" y un técnico lo revisará.',
-    askDetails: 'Cuéntanos qué pasa en pocas palabras, o toca Omitir.',
+    askDetails: 'Cuéntanos qué pasa en pocas palabras.',
     askTag: 'Busca la etiqueta roja de tu Chromebook. Escribe aquí el número de 6 dígitos que tiene.',
     skip: 'Omitir',
     send: 'Enviar',
@@ -171,7 +171,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     notFixed: 'No funcionó',
     askTechnician: 'Pedir un técnico',
     noMoreSteps: 'Ya no tenemos más pasos para probar. Un técnico puede ayudarte desde aquí.',
-    confirmTag: tag => `Escribiste: ${tag}\nPor favor, revisa que sea igual al número de la etiqueta roja de tu Chromebook. ¿Es correcto?`,
+    confirmTag: (tag, name) => `Nombre: ${name}\nEtiqueta roja: ${tag}\nPor favor, revisa que el nombre sea el tuyo y que la etiqueta coincida con el número de tu Chromebook. ¿Todo es correcto?`,
     tagYes: 'Sí, es correcto',
     tagNo: 'No, escribirlo otra vez',
     tagRetype: 'No hay problema. Escribe otra vez el número de 6 dígitos de la etiqueta roja.',

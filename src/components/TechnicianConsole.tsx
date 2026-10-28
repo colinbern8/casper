@@ -37,6 +37,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterSchool, setFilterSchool] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
   const [newNoteText, setNewNoteText] = useState<{ [ticketId: string]: string }>({});
@@ -65,6 +66,8 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     if (filterStatus === 'resolved' && t.status !== 'resolved') return false;
     if (filterStatus === 'dispatched' && t.status !== 'dispatched') return false;
     if (filterStatus === 'in_progress' && t.status !== 'in_progress') return false;
+
+    if (filterSchool !== 'all' && t.school !== filterSchool) return false;
 
     // Role filter
     if (filterRole === 'teacher' && !t.userRole.startsWith('teacher')) return false;
@@ -289,6 +292,18 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
           <option value="critical">Critical (P1 Active Class)</option>
           <option value="high">High (P2 Prep Period)</option>
           <option value="medium">Medium Priority</option>
+        </select>
+
+        {/* School Filter */}
+        <select
+          value={filterSchool}
+          onChange={(e) => setFilterSchool(e.target.value)}
+          className="text-xs border border-gray-300 rounded px-2.5 py-1.5 bg-white text-gray-700"
+        >
+          <option value="all">All Schools</option>
+          {Array.from(new Set(tickets.map(t => t.school))).sort().map(name => (
+            <option key={name} value={name}>{name}</option>
+          ))}
         </select>
 
         {/* Role Filter */}
