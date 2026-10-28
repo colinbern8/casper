@@ -112,16 +112,16 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
 
         {config.devLogin && (
           <details open={!config.googleClientId}>
-            <summary className="cursor-pointer text-xs text-gray-600 select-none">Testing only</summary>
-            <div className="mt-2 border border-dashed border-amber-300 bg-amber-50/50 rounded-2xl p-3 space-y-3">
-              <div className="grid grid-cols-2 min-[460px]:grid-cols-4 gap-2">
+            <summary className="cursor-pointer text-sm text-neutral-600 select-none">Testing only</summary>
+            <div className="mt-2 bg-neutral-100 rounded-2xl p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
                 {demoAccounts.map(([label, email]) => (
                   <button
                     key={email}
                     type="button"
                     disabled={busy}
                     onClick={() => dev(email)}
-                    className="px-2 py-2 text-xs border border-gray-300 bg-white rounded-full hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:opacity-60 font-medium text-gray-900"
+                    className="px-2 py-2 text-sm bg-white rounded-full hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:opacity-60 font-medium text-neutral-900"
                   >
                     {label}
                   </button>
@@ -131,7 +131,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
                 <label htmlFor="dev-email" className="sr-only">Test email address</label>
                 <input
                   id="dev-email" value={devEmail} onChange={e => setDevEmail(e.target.value)} placeholder={`anyone@${config.domain}`}
-                  className="flex-1 min-w-0 border border-gray-300 rounded-full px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+                  className="flex-1 min-w-0 rounded-full px-4 py-2 text-sm bg-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-700"
                 />
                 <button type="submit" disabled={busy || !devEmail} className="px-4 py-2 text-sm font-semibold bg-[#3b5a9d] hover:bg-[#2f4a85] text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-700 disabled:opacity-50">Go</button>
               </form>

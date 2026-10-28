@@ -24,7 +24,7 @@ export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) 
           <Logo className="h-20 sm:h-24 lg:h-28 -ml-2" />
           <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-base text-neutral-700">
             IT Help Desk, {config.districtName}
-            {config.demoMode && <DemoBadge />}
+            {config.demoMode && <DemoBadge neutral />}
           </p>
         </div>
 
