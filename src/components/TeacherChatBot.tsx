@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserContext, Ticket, IssueCategory } from '../types';
-import { ApiError, createTicket } from '../api';
+import { ApiError, createTicket, sendChat } from '../api';
 import { HELP_DESK, SCHOOLS } from '../data/schools';
 
 const MAX_MESSAGE_LENGTH = 1000;
@@ -499,94 +499,77 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
     setLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map(m => ({
-            role: m.sender === 'user' ? 'user' : 'model',
-            content: m.content
-          })),
-          userContext: {
-            role: userContext.role,
-            school: userContext.school,
-            room: userContext.room,
-            deviceType: userContext.deviceType,
-            assetTag: userContext.assetTag
-          }
-        })
-      });
+      const data = await sendChat(
+        [...messages, userMsg].map(m => ({ role: m.sender === 'user' ? 'user' : 'model', content: m.content })),
+        {
+          role: userContext.role,
+          school: userContext.school,
+          room: userContext.room,
+          deviceType: userContext.deviceType,
+          assetTag: userContext.assetTag,
+        },
+      );
 
-      if (response.status === 401) {
-        window.dispatchEvent(new Event('greg:unauthorized'));
-      }
-
-      if (response.status === 429) {
-        const data = await response.json();
-        const waitSec = data.cooldownSeconds || 15;
-        setCooldownRemaining(waitSec);
+      if (data.isSafetyBlocked) {
         const botMsg: Message = {
           id: `bot-${Date.now()}`,
           sender: 'bot',
-          content: data.text || `Rate limit active: Please wait ${waitSec} seconds before sending another message.`,
+          content: data.text,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isSafetyBlocked: true,
-          isRateLimited: true,
-          suggestedActions: [
-            isStudent ? 'Chromebook will not turn on' : 'Smartboard or display shows "No Signal"',
-            'Contact IT'
-          ]
+          suggestedActions: data.suggestedActions || (isStudent ? [
+            'Chromebook will not turn on',
+            'Cannot connect to school Wi-Fi',
+            'Forgot account password or login'
+          ] : [
+            'Smartboard or display shows "No Signal"',
+            'Student Chromebook cannot connect to Wi-Fi',
+            'Audio playing from laptop instead of room speakers'
+          ])
         };
         setMessages(prev => [...prev, botMsg]);
         return;
       }
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isSafetyBlocked) {
-          const botMsg: Message = {
-            id: `bot-${Date.now()}`,
-            sender: 'bot',
-            content: data.text,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isSafetyBlocked: true,
-            suggestedActions: data.suggestedActions || (isStudent ? [
-              'Chromebook will not turn on',
-              'Cannot connect to school Wi-Fi',
-              'Forgot account password or login'
-            ] : [
-              'Smartboard or display shows "No Signal"',
-              'Student Chromebook cannot connect to Wi-Fi',
-              'Audio playing from laptop instead of room speakers'
-            ])
-          };
-          setMessages(prev => [...prev, botMsg]);
-          return;
-        }
+      // Clean out any lingering emojis
+      const cleanText = (data.text || '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
 
-        // Clean out any lingering emojis
-        const cleanText = (data.text || '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
-
-        const botMsg: Message = {
+      const botMsg: Message = {
+        id: `bot-${Date.now()}`,
+        sender: 'bot',
+        content: cleanText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestedActions: data.needsEscalation ? [
+          isStudent ? 'Request loaner device' : 'Submit IT ticket',
+          'Issue resolved',
+          'Contact IT'
+        ] : [
+          'Issue resolved',
+          'Try next step',
+          isStudent ? 'Request loaner device' : 'Submit IT ticket'
+        ]
+      };
+      setMessages(prev => [...prev, botMsg]);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        const waitSec = Number(err.details?.cooldownSeconds) || 15;
+        setCooldownRemaining(waitSec);
+        const text = typeof err.details?.text === 'string' ? err.details.text : `Rate limit active: Please wait ${waitSec} seconds before sending another message.`;
+        const limitedMsg: Message = {
           id: `bot-${Date.now()}`,
           sender: 'bot',
-          content: cleanText,
+          content: text,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          suggestedActions: data.needsEscalation ? [
-            isStudent ? 'Request loaner device' : 'Submit IT ticket',
-            'Issue resolved',
-            'Contact IT'
-          ] : [
-            'Issue resolved',
-            'Try next step',
-            isStudent ? 'Request loaner device' : 'Submit IT ticket'
-          ]
+          isSafetyBlocked: true,
+          isRateLimited: true,
+          suggestedActions: [
+            isStudent ? 'Chromebook will not turn on' : 'Smartboard or display shows "No Signal"',
+            'Contact IT',
+          ],
         };
-        setMessages(prev => [...prev, botMsg]);
-      } else {
-        throw new Error('API failed');
+        setMessages(prev => [...prev, limitedMsg]);
+        return;
       }
-    } catch {
       const botMsg: Message = {
         id: `bot-${Date.now()}`,
         sender: 'bot',

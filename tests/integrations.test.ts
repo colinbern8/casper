@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { notifyUrgentTicket } from '../server/notify';
+import { createApp } from '../server/app';
+import { loadConfig } from '../server/config';
+import { UserStore } from '../server/users';
 import { seedDemoTickets } from '../server/demoData';
 import { TicketStore } from '../server/store';
 import type { Ticket } from '../src/types';
@@ -43,4 +46,36 @@ test('demo seed data uses valid schools and only seeds an empty store', () => {
   assert.equal(store.size, 3);
   seedDemoTickets(store, { domain: 'a.org' });
   assert.equal(store.size, 3);
+});
+
+test('webhook: a failed first attempt is retried once', async () => {
+  let hits = 0;
+  const srv = http.createServer((_req, res) => {
+    hits += 1;
+    res.statusCode = hits === 1 ? 500 : 200;
+    res.end('x');
+  });
+  await new Promise<void>(r => srv.listen(0, r));
+  await notifyUrgentTicket(`http://127.0.0.1:${(srv.address() as AddressInfo).port}/hook`, ticket(), 1);
+  assert.equal(hits, 2);
+  srv.close();
+});
+
+test('health: reports 503 when the supplied check throws', async () => {
+  const config = loadConfig({ NODE_ENV: 'development' } as NodeJS.ProcessEnv);
+  let broken = false;
+  const app = createApp({
+    config,
+    store: new TicketStore(null),
+    users: new UserStore(null, []),
+    healthCheck: () => { if (broken) throw new Error('disk full'); },
+  });
+  const srv = await new Promise<http.Server>(resolve => { const s = app.listen(0, () => resolve(s)); });
+  const url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/api/health`;
+  assert.equal((await fetch(url)).status, 200);
+  broken = true;
+  const res = await fetch(url);
+  assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), { ok: false });
+  srv.close();
 });
