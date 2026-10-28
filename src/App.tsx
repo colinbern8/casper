@@ -6,6 +6,7 @@ import { TechnicianConsole } from './components/TechnicianConsole';
 import { ProfileSetup } from './components/ProfileSetup';
 import { AdminPage } from './components/AdminPage';
 import { Landing } from './components/Landing';
+import { DemoBadge } from './components/DemoBadge';
 import { Logo } from './components/Logo';
 import { StudentSupport } from './components/StudentSupport';
 import { Phone, FileText, X } from 'lucide-react';
@@ -49,7 +50,6 @@ export default function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedTicketForSlip, setSelectedTicketForSlip] = useState<Ticket | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
-  const [classicStudentChat, setClassicStudentChat] = useState(false);
 
   // ---- Boot --------------------------------------------------------------
   const boot = useCallback(async () => {
@@ -153,7 +153,6 @@ export default function App() {
       setTickets([]);
       setMyTickets([]);
       setNotice(null);
-      setClassicStudentChat(false);
       navigate('/', true);
     }
   };
@@ -178,7 +177,7 @@ export default function App() {
 
   const isChatPage = page === 'student' || page === 'teacher';
   // Prototype: in demo mode the student page is the bilingual support flow. Teacher/staff pages are unchanged.
-  const supportDemo = config.demoMode && page === 'student' && !classicStudentChat;
+  const supportDemo = config.demoMode && page === 'student';
   const needsProfile = isChatPage && !supportDemo && user && (!profile || editingProfile);
 
   const userContext: UserContext | null =
@@ -212,18 +211,18 @@ export default function App() {
               <h1 className="text-gray-900 leading-none"><Logo /></h1>
               <span className="text-xs text-gray-500 font-medium">IT Help Desk</span>
               {config.demoMode && (
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>
+                <DemoBadge />
               )}
             </div>
-            <p className="text-[11px] text-gray-500">{config.districtName}</p>
+            <p className="text-xs text-gray-500">{config.districtName}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {user && page && ALLOWED[user.role].length > 1 &&
               ALLOWED[user.role].map(p => (
                 <button
                   key={p} type="button" onClick={() => navigate(PATHS[p])} aria-current={p === page ? 'page' : undefined}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border ${
+                  className={`px-2 sm:px-2.5 py-1 text-xs font-medium rounded-lg border ${
                     p === page ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
                 >
@@ -251,7 +250,7 @@ export default function App() {
 
             {user && (
               <>
-                <span className="hidden md:inline text-[11px] text-gray-500">
+                <span className="hidden md:inline text-xs text-gray-500">
                   {user.name} · {ROLE_LABELS[user.role]}
                 </span>
                 <button type="button" onClick={handleSignOut} className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg">
@@ -267,7 +266,7 @@ export default function App() {
         {needsProfile ? (
           <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
         ) : supportDemo ? (
-          <StudentSupport onTicketCreated={handleTicketCreated} onUseClassicChat={() => setClassicStudentChat(true)} />
+          <StudentSupport onTicketCreated={handleTicketCreated} />
         ) : page === 'admin' ? (
           <AdminPage user={user} domain={config.domain} />
         ) : page === 'tech' ? (
@@ -315,7 +314,7 @@ export default function App() {
               <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <span className="font-semibold block text-gray-900">Phone</span>
                 <p className="text-gray-600 mt-0.5">Call <strong>{HELP_DESK.ext}</strong> from any classroom or office phone.</p>
-                <p className="text-gray-500 text-[11px] mt-1">Available {HELP_DESK.hours}.</p>
+                <p className="text-gray-500 text-xs mt-1">Available {HELP_DESK.hours}.</p>
               </div>
               <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <span className="font-semibold block text-gray-900">Media Center Tech Desk (students)</span>

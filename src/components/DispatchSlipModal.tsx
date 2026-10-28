@@ -50,7 +50,7 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtNa
         {/* Slip Document Content */}
         <div className="space-y-4 text-xs text-gray-800">
           <div className="border-b border-gray-300 pb-3">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
               {districtName} • Technology Services
             </p>
             <h2 className="text-lg font-bold text-gray-900 mt-0.5">
@@ -65,34 +65,34 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtNa
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-[11px] font-medium text-gray-500 uppercase block">Ticket Number</span>
+              <span className="text-xs font-medium text-gray-500 uppercase block">Ticket Number</span>
               <span className="font-mono text-sm font-semibold text-gray-900">{ticket.ticketNumber}</span>
             </div>
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-[11px] font-medium text-gray-500 uppercase block">Priority Level</span>
+              <span className="text-xs font-medium text-gray-500 uppercase block">Priority Level</span>
               <span className="text-xs font-semibold text-gray-900 capitalize">
                 {ticket.priority} - {ticket.userRole === 'teacher_active' ? 'Class in session' : 'Standard queue'}
               </span>
             </div>
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-[11px] font-medium text-gray-500 uppercase block">Name & Role</span>
+              <span className="text-xs font-medium text-gray-500 uppercase block">Name & Role</span>
               <span className="font-medium text-gray-900">{ticket.userName} ({ticket.userRole})</span>
             </div>
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-[11px] font-medium text-gray-500 uppercase block">Location</span>
+              <span className="text-xs font-medium text-gray-500 uppercase block">Location</span>
               <span className="font-medium text-gray-900">{ticket.room} • {ticket.school}</span>
             </div>
           </div>
 
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <span className="text-[11px] font-medium text-gray-500 uppercase block">Reported Problem</span>
+            <span className="text-xs font-medium text-gray-500 uppercase block">Reported Problem</span>
             <p className="font-medium text-gray-900 mt-0.5">{ticket.title}</p>
             <p className="text-gray-600 mt-1 leading-relaxed">{ticket.description}</p>
           </div>
 
           {ticket.troubleshootStepsAttempted && ticket.troubleshootStepsAttempted.length > 0 && (
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-[11px] font-medium text-gray-500 uppercase block mb-1">
+              <span className="text-xs font-medium text-gray-500 uppercase block mb-1">
                 Steps Attempted Prior to Escalation
               </span>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">
@@ -103,7 +103,7 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtNa
             </div>
           )}
 
-          <div className="pt-3 border-t border-gray-200 flex items-center justify-between text-[11px] text-gray-500">
+          <div className="pt-3 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
             <span>Created: {new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             <span>{districtName} IT Services • Phone ext. {HELP_DESK.ext}</span>
           </div>

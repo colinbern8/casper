@@ -9,7 +9,6 @@ export interface StudentStrings {
   reviewBanner: string | null;
   headerTitle: string;
   changeLanguage: string;
-  classicChat: string;
   greeting: string;
   thisLooksLike: (issueTitle: string) => string;
   notSure: string;
@@ -65,7 +64,7 @@ export interface StudentStrings {
 
 /** Shown before a language is chosen, so it is in both. */
 export const LANGUAGE_PROMPT = 'Hi! Please choose your language.\n¡Hola! Por favor, elige tu idioma.';
-export const PLACEHOLDER_CHOOSE_LANGUAGE = 'Choose a language first / Elige un idioma';
+export const PLACEHOLDER_CHOOSE_LANGUAGE = 'Pick a language / Elige idioma';
 
 export const STRINGS: Record<Language, StudentStrings> = {
   en: {
@@ -73,7 +72,6 @@ export const STRINGS: Record<Language, StudentStrings> = {
     reviewBanner: null,
     headerTitle: 'Student help',
     changeLanguage: 'Change language',
-    classicChat: 'Use the classic help chat instead',
     greeting: 'Hi! I can help with your Chromebook. What is the problem? Tap one below, or type it.',
     thisLooksLike: title => `This looks like: ${title}.`,
     notSure: 'I am not sure which one that is. Pick the closest one below, or choose "Something else" and a technician will look at it.',
@@ -134,7 +132,6 @@ export const STRINGS: Record<Language, StudentStrings> = {
     reviewBanner: 'Texto en español pendiente de revisión humana.',
     headerTitle: 'Ayuda para estudiantes',
     changeLanguage: 'Cambiar idioma',
-    classicChat: 'Usar el chat de ayuda clásico',
     greeting: '¡Hola! Puedo ayudarte con tu Chromebook. ¿Cuál es el problema? Toca una opción o escríbelo.',
     thisLooksLike: title => `Esto parece ser: ${title}.`,
     notSure: 'No estoy seguro de cuál es. Elige la más parecida de abajo, o elige "Otra cosa" y un técnico lo revisará.',

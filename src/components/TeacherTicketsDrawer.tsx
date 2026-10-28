@@ -67,7 +67,7 @@ export const TeacherTicketsDrawer: React.FC<TeacherTicketsDrawerProps> = ({
                       {ticket.ticketNumber}
                     </span>
                     <span
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border ${
+                      className={`text-xs font-medium px-2 py-0.5 rounded-lg border ${
                         ticket.status === 'resolved'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : ticket.status === 'open'

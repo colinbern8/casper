@@ -61,14 +61,14 @@ Do first: small, visible, and one is a bug. *Done when:* the last step shows eac
   - Files: `src/data/stepActions.ts` (new), `src/components/TeacherChatBot.tsx` (lines 284-286, 317-319, 543-549, 581-583). Check: `npm test` with a new test of a pure `stepActions({ isLastStep, isStudent })` function.
 - [x] Color-code the buttons: "Issue resolved" green, "Try next step" blue, "Submit IT ticket" orange. Keep the words so color is not the only cue. Text and background must pass 4.5:1 contrast.
   - Files: `TeacherChatBot.tsx`, `stepActions.ts`. Check: `npm run lint && npm run build`, plus a browser screenshot at 390px and 1280px.
-- [x] Make the teacher text larger, matching the student chat (`text-sm sm:text-base` for bubbles and chips). About 27 spots use tiny or custom sizes. Helper labels may stay small but not below 12px. *Checked in a browser: chat text is 16px. Still under 12px: the shared header (Demo badge 10px, district name 11px) and the technician and admin badges (11px). See the open item under P1.*
+- [x] Make the teacher text larger, matching the student chat (`text-sm sm:text-base` for bubbles and chips). About 27 spots use tiny or custom sizes. Helper labels may stay small but not below 12px. *Checked in a browser: chat text is 16px, and nothing is under 12px now.*
   - Files: `TeacherChatBot.tsx`. Check: build, plus a screenshot next to the student chat.
 - [x] "Where are you working today": if Continue is clicked with a required box empty, outline it in red, show "*Required" next to its label, move focus to it, and clear the marker when they type. Use text as well as color.
   - Files: `src/components/ProfileSetup.tsx`, `src/profile.ts` (a `missingFields` function with a unit test). Check: browser run.
 - [x] "Where are you working today": make the room box an autofill dropdown that filters the school's rooms as the teacher types (matches anywhere in the name). Arrow keys and Enter pick a room. A typed location still works. Follow the ARIA combobox pattern so screen readers announce it.
   - Files: `src/components/RoomPicker.tsx` (new), `ProfileSetup.tsx`. Check: unit test of `filterRooms`, plus a keyboard-only browser walk.
 - [x] The teacher chat is **restyled** to look like the student chat (same look, text size, button style) but keeps its own guided flow. This is a decision; see section 5.
-- [ ] Raise the remaining sub-12px text to 12px: `text-[10px]` and `text-[11px]` in `App.tsx`, `Landing.tsx`, `CaseDetailPanel.tsx`, `AdminPage.tsx` and `TechnicianConsole.tsx`. Found in the browser check. Check: build, plus a screenshot.
+- [x] Raise the remaining sub-12px text to 12px: `text-[10px]` and `text-[11px]` in `App.tsx`, `Landing.tsx`, `CaseDetailPanel.tsx`, `AdminPage.tsx` and `TechnicianConsole.tsx`. Found in the browser check. Check: build, plus a screenshot.
 
 ### P2. Sign-in page cleanup
 
@@ -241,6 +241,7 @@ These need an answer from the district, not code. Ask early.
 - **How the server sees typed chat:** New `POST /api/support/message`. *Why:* The server never sees browser-matched text today.
 - **Rename depth:** Full: visible text, cookie, saved profile (with a one-time copy), package name. *Why:* A half rename leaves the old name in error messages.
 - **Demo sign-in:** Kept for testing, hidden from real users. *Why:* Tests and demos need it; the server already refuses it in production.
+- **Classic student chat:** Removed. Students no longer get a "use the classic help chat" option. *Why:* Your choice.
 - **Order of work:** Teacher fixes, sign-in page, rename, language pop-up, spam guard. *Why:* Smallest and most visible first; the spam guard is largest so it goes last.
 
 **Assumptions** (tell me if any is wrong, otherwise they stand)
@@ -276,7 +277,7 @@ These need an answer from the district, not code. Ask early.
 
 ## 6. Progress
 
-- [x] **P1 Teacher screen fixes** (done, on master; sub-12px text still to raise)
+- [x] **P1 Teacher screen fixes** (done, on master)
 - [x] **P2 Sign-in page cleanup** (done, on master)
 - [x] **P3 Rename to Casper** (done, on master, with the Casper wordmark logo in the page headers; the files are in `design/casper/`)
 - [ ] **P4 Student language pop-up** (not started)
