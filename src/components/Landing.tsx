@@ -37,13 +37,13 @@ export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) 
 
     {/* Sign-in side: a white panel that overlaps the brand side. */}
     <section aria-label="Sign in" className="bg-white text-neutral-900 -mt-8 rounded-t-[2rem] lg:mt-0 lg:rounded-t-none lg:rounded-l-[2.75rem] px-6 sm:px-12 lg:px-16 py-8 lg:py-12 flex flex-col">
-      <Logo className="h-14 sm:h-16 -ml-1.5 self-start" />
+      <Logo className="h-14 sm:h-16 self-center" />
 
-      <div className="enter my-12 lg:my-auto w-full max-w-md" style={{ ['--i' as string]: 2 }}>
+      <div className="enter my-12 lg:my-auto w-full max-w-md mx-auto text-center" style={{ ['--i' as string]: 2 }}>
         <Login config={config} notice={notice} onSignedIn={onSignedIn} embedded bare />
       </div>
 
-      <p className="text-sm text-neutral-600 max-w-md">
+      <p className="text-sm text-neutral-600 max-w-md mx-auto text-center">
         Prototype. Not yet deployed or reviewed for student-data privacy.
         {config.demoMode && ' Demo accounts and data are fictional.'}
       </p>
