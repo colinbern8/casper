@@ -22,7 +22,7 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtNa
         {/* Controls (Hidden in Print) */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-200 print:hidden">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+            <span className="text-xs font-semibold text-gray-600">
               {ticket.userRole === 'student' ? 'Student Loaner Pass' : 'Field Technician Work Order'}
             </span>
             <span className="text-xs font-mono text-gray-400">#{ticket.ticketNumber}</span>
@@ -50,7 +50,7 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtNa
         {/* Slip Document Content */}
         <div className="space-y-4 text-xs text-gray-800">
           <div className="border-b border-gray-300 pb-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            <p className="text-xs font-medium text-gray-500">
               {districtName} • Technology Services
             </p>
             <h2 className="text-lg font-bold text-gray-900 mt-0.5">
@@ -65,34 +65,34 @@ export const DispatchSlipModal: React.FC<DispatchSlipModalProps> = ({ districtNa
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-xs font-medium text-gray-500 uppercase block">Ticket Number</span>
+              <span className="text-xs font-medium text-gray-500 block">Ticket Number</span>
               <span className="font-mono text-sm font-semibold text-gray-900">{ticket.ticketNumber}</span>
             </div>
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-xs font-medium text-gray-500 uppercase block">Priority Level</span>
+              <span className="text-xs font-medium text-gray-500 block">Priority Level</span>
               <span className="text-xs font-semibold text-gray-900 capitalize">
                 {ticket.priority} - {ticket.userRole === 'teacher_active' ? 'Class in session' : 'Standard queue'}
               </span>
             </div>
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-xs font-medium text-gray-500 uppercase block">Name & Role</span>
+              <span className="text-xs font-medium text-gray-500 block">Name & Role</span>
               <span className="font-medium text-gray-900">{ticket.userName} ({ticket.userRole})</span>
             </div>
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-xs font-medium text-gray-500 uppercase block">Location</span>
+              <span className="text-xs font-medium text-gray-500 block">Location</span>
               <span className="font-medium text-gray-900">{ticket.room} • {ticket.school}</span>
             </div>
           </div>
 
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <span className="text-xs font-medium text-gray-500 uppercase block">Reported Problem</span>
+            <span className="text-xs font-medium text-gray-500 block">Reported Problem</span>
             <p className="font-medium text-gray-900 mt-0.5">{ticket.title}</p>
             <p className="text-gray-600 mt-1 leading-relaxed">{ticket.description}</p>
           </div>
 
           {ticket.troubleshootStepsAttempted && ticket.troubleshootStepsAttempted.length > 0 && (
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-xs font-medium text-gray-500 uppercase block mb-1">
+              <span className="text-xs font-medium text-gray-500 block mb-1">
                 Steps Attempted Prior to Escalation
               </span>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">

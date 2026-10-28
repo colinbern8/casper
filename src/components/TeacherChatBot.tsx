@@ -654,7 +654,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
             >
               {/* Safety notice indicator */}
               {msg.isSafetyBlocked && (
-                <div className="text-xs font-semibold text-amber-900 uppercase tracking-wider pb-1 mb-2 border-b border-amber-200">
+                <div className="text-xs font-semibold text-amber-900 pb-1 mb-2 border-b border-amber-200">
                   {msg.isRateLimited ? 'Rate Limit Notice' : 'Policy Notice'}
                 </div>
               )}
@@ -662,7 +662,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
               {/* Action Callout if provided */}
               {msg.actionCallout && (
                 <div className="mb-2.5 p-2 bg-white border border-gray-300 rounded-lg text-sm sm:text-base font-medium text-gray-900">
-                  <span className="font-semibold text-gray-700 uppercase tracking-wider text-xs block text-gray-500 mb-0.5">
+                  <span className="font-semibold text-gray-700 text-xs block text-gray-500 mb-0.5">
                     Recommended Action
                   </span>
                   {msg.actionCallout}

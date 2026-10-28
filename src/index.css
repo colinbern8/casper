@@ -2,6 +2,36 @@
 
 @theme {
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+
+  /* Calm neutral greys and one muted blue, shared by every page. */
+  --color-gray-50: #f7f7f8;
+  --color-gray-100: #f1f2f4;
+  --color-gray-200: #e3e4e8;
+  --color-gray-300: #cfd1d6;
+  --color-gray-400: #8f9199;
+  --color-gray-500: #686b73;
+  --color-gray-600: #52555c;
+  --color-gray-700: #3d4046;
+  --color-gray-800: #26282c;
+  --color-gray-900: #171717;
+  --color-blue-50: #eef2fa;
+  --color-blue-100: #dde6f5;
+  --color-blue-200: #c4d2ec;
+  --color-blue-300: #9fb4de;
+  --color-blue-600: #46659f;
+  --color-blue-700: #3b5a9d;
+  --color-blue-800: #2f4a85;
+  --color-blue-900: #243a69;
+
+  /* Softer shapes, no resting shadows, and small text that is easier to read. */
+  --radius-lg: 1rem;
+  --radius-md: 0.75rem;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.5rem;
 }
 
 .font-display {
@@ -10,6 +40,10 @@
 
 
 @layer base {
+  h2 {
+    font-family: var(--font-display);
+    font-variation-settings: "SOFT" 100, "WONK" 1;
+  }
   button, a, input, select, textarea {
     transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
   }

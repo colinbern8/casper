@@ -217,7 +217,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border-b border-gray-200 shrink-0 text-xs">
         <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-          <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">
+          <span className="text-gray-500 block text-xs font-medium">
             Active Requests
           </span>
           <div className="text-lg font-bold text-gray-900 mt-0.5">
@@ -229,7 +229,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
           criticalP1Count > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-white border-gray-200 text-gray-900'
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`block text-xs font-medium uppercase tracking-wider ${
+            <span className={`block text-xs font-medium ${
               criticalP1Count > 0 ? 'text-red-700' : 'text-gray-500'
             }`}>
               P1 Classroom Emergency
@@ -242,7 +242,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-          <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">
+          <span className="text-gray-500 block text-xs font-medium">
             Student Loaner Depot
           </span>
           <div className="text-lg font-bold text-gray-900 mt-0.5">
@@ -251,7 +251,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-          <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">
+          <span className="text-gray-500 block text-xs font-medium">
             Resolved Today
           </span>
           <div className="text-lg font-bold text-gray-900 mt-0.5">
