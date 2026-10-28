@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const COOKIE = 'greg_session';
+const COOKIE = 'casper_session';
 const TTL_MS = 8 * 60 * 60 * 1000;
 
 export interface SessionIdentity {

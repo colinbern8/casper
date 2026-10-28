@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 /** Fired on any 401 so the app can send the person back to sign-in, wherever the call came from. */
-export const UNAUTHORIZED_EVENT = 'greg:unauthorized';
+export const UNAUTHORIZED_EVENT = 'casper:unauthorized';
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response;
