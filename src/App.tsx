@@ -6,6 +6,7 @@ import { TechnicianConsole } from './components/TechnicianConsole';
 import { ProfileSetup } from './components/ProfileSetup';
 import { AdminPage } from './components/AdminPage';
 import { Landing } from './components/Landing';
+import { Logo } from './components/Logo';
 import { StudentSupport } from './components/StudentSupport';
 import { Phone, FileText, X } from 'lucide-react';
 import type { PublicConfig, Role, SessionUser, Ticket, TicketUpdateInput, UserContext, UserRole } from './types';
@@ -208,7 +209,7 @@ export default function App() {
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div>
             <div className="flex items-baseline gap-2 whitespace-nowrap">
-              <h1 className="text-base font-semibold text-gray-900 tracking-tight leading-tight">Greg Bot</h1>
+              <h1 className="text-base font-semibold text-gray-900 tracking-tight leading-tight"><Logo /></h1>
               <span className="text-xs text-gray-500 font-medium">IT Help Desk</span>
               {config.demoMode && (
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>

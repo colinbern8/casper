@@ -2,6 +2,7 @@ import React from 'react';
 import { GraduationCap, Backpack, Wrench } from 'lucide-react';
 import type { PublicConfig, SessionUser } from '../types';
 import { Login } from './Login';
+import { Logo } from './Logo';
 
 interface LandingProps {
   config: PublicConfig;
@@ -18,7 +19,7 @@ const ROLES = [
 export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) => (
   <div className="min-h-[100dvh] flex flex-col bg-gray-50 text-gray-900 font-sans antialiased">
     <header className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-4 flex items-baseline gap-2">
-      <span className="text-lg font-semibold tracking-tight">Greg Bot</span>
+      <Logo className="text-lg font-semibold tracking-tight" />
       <span className="text-sm text-gray-600">IT Help Desk</span>
       {config.demoMode && (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>

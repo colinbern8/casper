@@ -6,6 +6,7 @@ import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
 import { isRedTag, normalizeRedTag } from '../data/redTag';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
+import { Logo } from './Logo';
 
 type Phase =
   | 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff'
@@ -461,7 +462,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
         <div>
-          <h2 className="text-base font-semibold text-gray-900 leading-tight">Greg Bot</h2>
+          <h2 className="text-base font-semibold text-gray-900 leading-tight"><Logo /></h2>
           <p className="text-xs text-gray-500">{t.headerTitle}</p>
         </div>
         {limit ? null : lang ? (
