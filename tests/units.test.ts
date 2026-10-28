@@ -15,20 +15,20 @@ test('session cookies: valid, expired, tampered, wrong secret', () => {
   const sessions = createSessions('secret-a', false);
   const now = 1_000_000;
   const value = sessions.create({ email: 'a@d.test', name: 'A' }, now);
-  const header = `greg_session=${value}`;
+  const header = `casper_session=${value}`;
   assert.deepEqual(sessions.read(header, now + 1000), { email: 'a@d.test', name: 'A' });
   assert.equal(sessions.read(header, now + 9 * 3600 * 1000), null);
   assert.equal(sessions.read(header.slice(0, -2) + 'xx', now), null);
   assert.equal(createSessions('secret-b', false).read(header, now), null);
   assert.equal(sessions.read(undefined, now), null);
-  assert.equal(sessions.read(`other=1; greg_session=${value}`, now)?.email, 'a@d.test');
+  assert.equal(sessions.read(`other=1; casper_session=${value}`, now)?.email, 'a@d.test');
   assert.match(sessions.setCookie(value), /HttpOnly; SameSite=Lax/);
   assert.ok(!sessions.setCookie(value).includes('Secure'));
   assert.match(createSessions('s', true).setCookie(value), /; Secure$/);
 });
 
 test('user store: default student, locked env admins, persistence, import never overrides', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'greg-u-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'casper-u-'));
   const file = path.join(dir, 'users.json');
   const u = new UserStore(file, ['boss@d.test']);
   assert.equal(u.roleFor('anyone@d.test'), 'student');
@@ -46,7 +46,7 @@ test('user store: default student, locked env admins, persistence, import never 
 });
 
 test('store persists to disk, continues numbering, and survives a corrupt file', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'greg-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'casper-'));
   const file = path.join(dir, 'tickets.json');
   const base = {
     userRole: 'staff' as const, userName: 'A', userEmail: 'a@x.org', school: 'S', room: 'R', category: 'other' as const,
@@ -126,4 +126,38 @@ test('sliding window limiter frees up after the window', () => {
   assert.equal(l.hit('k', 2, 1000).allowed, false);
   t = 1001;
   assert.equal(l.hit('k', 2, 1000).allowed, true);
+});
+
+test('no file under src/ or server/ holds the old product name, except the documented migration', () => {
+  const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+  const allowed = new Set([path.join('src', 'legacyProfileKey.ts')]);
+  const oldName = /(?<![a-z])greg(?![a-z])/i;
+  const hits: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      const rel = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(rel);
+      else if (!allowed.has(rel) && oldName.test(fs.readFileSync(path.join(root, rel), 'utf8'))) hits.push(rel);
+    }
+  };
+  walk('src');
+  walk('server');
+  assert.deepEqual(hits, []);
+});
+
+test('saved profile moves once from the old key to the new one', async () => {
+  const store = new Map<string, string>();
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+  };
+  const { legacyProfileKey } = await import('../src/legacyProfileKey');
+  const { loadProfile, saveProfile } = await import('../src/profile');
+  const p = { school: 'North High', room: '12', phoneOrExt: '' };
+  store.set(legacyProfileKey('A@d.test'), JSON.stringify(p));
+  assert.deepEqual(loadProfile('a@d.test'), p);
+  assert.ok(store.has('casper.profile.v2.a@d.test'));
+  saveProfile('a@d.test', { ...p, room: '14' });
+  assert.equal(loadProfile('a@d.test')?.room, '14');
+  delete (globalThis as any).localStorage;
 });

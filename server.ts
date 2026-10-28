@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
+import { BRAND_NAME } from './src/brand';
 import { loadConfig } from './server/config';
 import { createApp } from './server/app';
 import { UserStore } from './server/users';
@@ -42,7 +43,7 @@ async function main() {
   }
 
   app.listen(config.port, '0.0.0.0', () => {
-    console.log(`Casper help desk running on http://0.0.0.0:${config.port} (${config.isProduction ? 'production' : 'development'})`);
+    console.log(`${BRAND_NAME} help desk running on http://0.0.0.0:${config.port} (${config.isProduction ? 'production' : 'development'})`);
   });
 }
 

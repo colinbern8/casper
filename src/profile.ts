@@ -5,11 +5,18 @@ export interface Profile {
   phoneOrExt: string;
 }
 
-const key = (email: string) => `greg.profile.v2.${email.toLowerCase()}`;
+import { legacyProfileKey } from './legacyProfileKey';
+
+const key = (email: string) => `casper.profile.v2.${email.toLowerCase()}`;
 
 export function loadProfile(email: string): Profile | null {
   try {
-    const raw = localStorage.getItem(key(email));
+    let raw = localStorage.getItem(key(email));
+    if (!raw) {
+      // One-time migration from the previous name's key; see legacyProfileKey.ts.
+      raw = localStorage.getItem(legacyProfileKey(email));
+      if (raw) localStorage.setItem(key(email), raw);
+    }
     const p = raw ? (JSON.parse(raw) as Profile) : null;
     return p && p.school && p.room ? p : null;
   } catch {
