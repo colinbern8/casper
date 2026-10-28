@@ -57,23 +57,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
   ];
 
   const shown = users.filter(u => u.email.includes(filter.trim().toLowerCase()));
-  const field = 'border border-gray-300 rounded px-2 py-1.5 text-xs bg-white text-gray-900';
+  const field = 'border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white text-gray-900';
 
   return (
     <div className="w-full h-full overflow-y-auto space-y-4 pb-4 text-xs">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {stats.map(([label, value]) => (
-          <div key={label} className="bg-white border border-gray-200 rounded p-3">
+          <div key={label} className="bg-white border border-gray-200 rounded-lg p-3">
             <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">{label}</span>
             <div className="text-lg font-bold text-gray-900 mt-0.5">{value}</div>
           </div>
         ))}
       </div>
 
-      {error && <div role="alert" className="text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded">{error}</div>}
-      {message && <div className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded">{message}</div>}
+      {error && <div role="alert" className="text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">{error}</div>}
+      {message && <div className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">{message}</div>}
 
-      <section className="bg-white border border-gray-300 rounded-md">
+      <section className="bg-white border border-gray-300 rounded-lg">
         <div className="px-4 py-3 border-b border-gray-200">
           <h2 className="text-sm font-semibold text-gray-900">People and roles</h2>
           <p className="text-gray-500 mt-0.5">
@@ -95,7 +95,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
           <select aria-label="Role" value={newRole} onChange={e => setNewRole(e.target.value as StaffRole)} className={field}>
             {(Object.keys(ROLE_LABELS) as StaffRole[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
           </select>
-          <button type="submit" className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded font-semibold">Save</button>
+          <button type="submit" className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold">Save</button>
         </form>
 
         <div className="p-4 border-b border-gray-100 space-y-2">
@@ -113,7 +113,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
                 setMessage(`Added ${r.added}, already had a role ${r.skipped}, ignored ${r.ignoredOutsideDomain} outside @${domain}.`);
               })
             }
-            className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 font-medium disabled:opacity-50"
+            className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50"
           >
             Import
           </button>

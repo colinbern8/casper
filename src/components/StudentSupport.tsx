@@ -458,7 +458,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
     : t.placeholderSteps;
 
   return (
-    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-300 rounded-md shadow-xs overflow-hidden">
+    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
         <div>
           <h2 className="text-base font-semibold text-gray-900 leading-tight">Greg Bot</h2>
@@ -512,7 +512,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
       </div>
 
       <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 shrink-0">
-        {error && <p role="alert" className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
+        {error && <p role="alert" className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
         <form
           onSubmit={e => {
             e.preventDefault();

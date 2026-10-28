@@ -114,7 +114,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
   const getPriorityBadge = (priority: TicketPriority, role: string) => {
     if (priority === 'critical') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 border border-red-300">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-red-100 text-red-800 border border-red-300">
           <AlertTriangle className="w-3 h-3 text-red-700" />
           P1 Critical (Class in Session)
         </span>
@@ -122,7 +122,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     }
     if (priority === 'high') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-300">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-300">
           <Clock className="w-3 h-3 text-amber-700" />
           P2 High (Teacher Prep)
         </span>
@@ -130,13 +130,13 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     }
     if (role === 'student') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-100 text-blue-800 border border-blue-300">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-100 text-blue-800 border border-blue-300">
           Student Loaner Depot
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-300">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-300">
         Medium Priority
       </span>
     );
@@ -146,38 +146,38 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     switch (status) {
       case 'dispatched':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
             Dispatched (Field Tech En Route)
           </span>
         );
       case 'assigned':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
             Assigned
           </span>
         );
       case 'in_progress':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
             In Progress / Diagnostic
           </span>
         );
       case 'hardware_swap':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
             Hardware Swap / Loaner Issued
           </span>
         );
       case 'resolved':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Check className="w-3 h-3 text-emerald-600" />
             Resolved
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
             Open
           </span>
         );
@@ -185,7 +185,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       {/* Top Bar: Title & Controls */}
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50/70 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div>
@@ -205,7 +205,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
             type="button"
             onClick={handleRefreshClick}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-60"
             title="Refresh ticket queue"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -216,7 +216,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border-b border-gray-200 shrink-0 text-xs">
-        <div className="bg-white border border-gray-200 rounded p-2.5">
+        <div className="bg-white border border-gray-200 rounded-lg p-2.5">
           <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">
             Active Requests
           </span>
@@ -225,7 +225,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
           </div>
         </div>
 
-        <div className={`rounded p-2.5 border ${
+        <div className={`rounded-lg p-2.5 border ${
           criticalP1Count > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-white border-gray-200 text-gray-900'
         }`}>
           <div className="flex items-center justify-between">
@@ -241,7 +241,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-2.5">
+        <div className="bg-white border border-gray-200 rounded-lg p-2.5">
           <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">
             Student Loaner Depot
           </span>
@@ -250,7 +250,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-2.5">
+        <div className="bg-white border border-gray-200 rounded-lg p-2.5">
           <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">
             Resolved Today
           </span>
@@ -269,7 +269,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
             placeholder="Search by ticket #, teacher, student, room, or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:outline-hidden focus:border-gray-500"
+            className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-hidden focus:border-gray-500"
           />
           {searchQuery && (
             <button
@@ -286,7 +286,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value)}
-          className="text-xs border border-gray-300 rounded px-2.5 py-1.5 bg-white text-gray-700"
+          className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700"
         >
           <option value="all">All Priorities</option>
           <option value="critical">Critical (P1 Active Class)</option>
@@ -298,7 +298,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         <select
           value={filterSchool}
           onChange={(e) => setFilterSchool(e.target.value)}
-          className="text-xs border border-gray-300 rounded px-2.5 py-1.5 bg-white text-gray-700"
+          className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700"
         >
           <option value="all">All Schools</option>
           {Array.from(new Set(tickets.map(t => t.school))).sort().map(name => (
@@ -310,7 +310,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
-          className="text-xs border border-gray-300 rounded px-2.5 py-1.5 bg-white text-gray-700"
+          className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700"
         >
           <option value="all">All Roles</option>
           <option value="teacher">Teachers Only</option>
@@ -322,7 +322,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="text-xs border border-gray-300 rounded px-2.5 py-1.5 bg-white text-gray-700"
+          className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700"
         >
           <option value="active">Active Only</option>
           <option value="all">All Statuses</option>
@@ -378,7 +378,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         {ticket.school} • {ticket.room}
                       </span>
                       {ticket.assetTag && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                        <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">
                           <Tag className="w-2.5 h-2.5 text-gray-400" />
                           {ticket.assetTag}
                         </span>
@@ -397,7 +397,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     <button
                       type="button"
                       onClick={() => onViewDispatchSlip(ticket)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded"
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg"
                       title="View printable field dispatch slip or student loaner pass"
                     >
                       <FileText className="w-3.5 h-3.5 text-gray-500" />
@@ -408,7 +408,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     <select
                       value={ticket.status}
                       onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
-                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white font-medium text-gray-700"
+                      className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white font-medium text-gray-700"
                     >
                       <option value="open">Open</option>
                       <option value="assigned">Assigned</option>
@@ -422,7 +422,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     <button
                       type="button"
                       onClick={() => setExpandedTicketId(isExpanded ? null : ticket.id)}
-                      className="p-1 text-gray-500 hover:text-gray-900 border border-gray-200 rounded hover:bg-gray-100"
+                      className="p-1 text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-100"
                       aria-label="Toggle details"
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -436,7 +436,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     {/* Issue Description */}
                     <div>
                       <span className="font-semibold text-gray-700 block mb-0.5">Issue Description:</span>
-                      <p className="text-gray-800 bg-white p-2.5 rounded border border-gray-200 leading-relaxed">
+                      <p className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200 leading-relaxed">
                         {ticket.description}
                       </p>
                     </div>
@@ -447,7 +447,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         <span className="font-semibold text-gray-700 block mb-1">
                           Automated Troubleshooting Steps Tried Before Escalation:
                         </span>
-                        <ul className="bg-white p-2.5 rounded border border-gray-200 space-y-1 text-gray-700 list-disc list-inside">
+                        <ul className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1 text-gray-700 list-disc list-inside">
                           {ticket.troubleshootStepsAttempted.map((step, idx) => (
                             <li key={idx}>{step}</li>
                           ))}
@@ -456,7 +456,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     )}
 
                     {/* Requester Details Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2.5 rounded border border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2.5 rounded-lg border border-gray-200">
                       <div>
                         <span className="text-gray-500 text-[11px] block">Contact / Ext</span>
                         <span className="font-medium text-gray-800">{ticket.phoneOrExt || ticket.userEmail}</span>
@@ -475,7 +475,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     <div>
                       <span className="font-semibold text-gray-700 block mb-1">Internal Technician Notes:</span>
                       {ticket.techNotes ? (
-                        <div className="bg-white p-2.5 rounded border border-gray-200 font-mono text-[11px] text-gray-800 whitespace-pre-wrap mb-2">
+                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 font-mono text-[11px] text-gray-800 whitespace-pre-wrap mb-2">
                           {ticket.techNotes}
                         </div>
                       ) : (
@@ -495,13 +495,13 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                               handleAddNote(ticket.id);
                             }
                           }}
-                          className="flex-1 text-xs border border-gray-300 rounded px-2.5 py-1.5 bg-white text-gray-900 focus:outline-hidden focus:border-gray-500"
+                          className="flex-1 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-900 focus:outline-hidden focus:border-gray-500"
                         />
                         <button
                           type="button"
                           onClick={() => handleAddNote(ticket.id)}
                           disabled={!newNoteText[ticket.id]?.trim() || isSubmittingNote === ticket.id}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 hover:bg-gray-800 rounded disabled:opacity-40"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg disabled:opacity-40"
                         >
                           <Send className="w-3 h-3" />
                           <span>Save Note</span>
@@ -514,7 +514,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
 
                     {/* Student request limit: only on a student's request that is still open */}
                     {ticket.userRole === 'student' && ticket.status !== 'resolved' && (
-                      <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded border border-gray-200">
+                      <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-gray-200">
                         <div>
                           <span className="font-semibold text-gray-700 block">Student request limit</span>
                           <span className="text-gray-600">
@@ -526,7 +526,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         <button
                           type="button"
                           onClick={() => onUpdateTicket(ticket.id, { allowAnother: !ticket.allowsAnother })}
-                          className="px-3 py-1 text-xs font-medium text-gray-800 bg-white border border-gray-400 hover:bg-gray-50 rounded"
+                          className="px-3 py-1 text-xs font-medium text-gray-800 bg-white border border-gray-400 hover:bg-gray-50 rounded-lg"
                         >
                           {ticket.allowsAnother ? 'Withdraw permission' : 'Allow another request'}
                         </button>
@@ -540,7 +540,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         <select
                           value={ticket.assignedTech || ''}
                           onChange={(e) => handleAssignTech(ticket.id, e.target.value)}
-                          className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-800"
+                          className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-800"
                         >
                           <option value="">Unassigned</option>
                           {allTechs().map(t => (
@@ -554,7 +554,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         <button
                           type="button"
                           onClick={() => handleStatusChange(ticket.id, 'resolved')}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded"
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                           <span>Mark Resolved</span>
@@ -563,7 +563,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         <button
                           type="button"
                           onClick={() => handleStatusChange(ticket.id, 'open')}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded"
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg"
                         >
                           <span>Reopen Ticket</span>
                         </button>

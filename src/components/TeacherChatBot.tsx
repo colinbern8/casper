@@ -613,7 +613,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white border border-gray-300 rounded-md shadow-xs overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       {/* Context Subheader - Room & Status */}
       <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between text-xs text-gray-600 shrink-0">
         <div className="flex items-center gap-2 truncate">
@@ -638,7 +638,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
               aria-label="Your situation"
               value={userContext.role}
               onChange={e => onUpdateUserContext({ ...userContext, role: e.target.value as UserContext['role'] })}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium border ${
+              className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border ${
                 userContext.role === 'teacher_active' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-700 border-gray-200'
               }`}
             >
@@ -658,7 +658,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
             className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
-              className={`max-w-[92%] sm:max-w-[85%] text-xs sm:text-sm leading-relaxed p-3.5 rounded ${
+              className={`max-w-[92%] sm:max-w-[85%] text-xs sm:text-sm leading-relaxed p-3.5 rounded-lg ${
                 msg.sender === 'user'
                   ? 'bg-gray-800 text-white'
                   : msg.isSafetyBlocked
@@ -675,7 +675,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
               {/* Action Callout if provided */}
               {msg.actionCallout && (
-                <div className="mb-2.5 p-2 bg-white border border-gray-300 rounded text-xs font-medium text-gray-900">
+                <div className="mb-2.5 p-2 bg-white border border-gray-300 rounded-lg text-xs font-medium text-gray-900">
                   <span className="font-semibold text-gray-700 uppercase tracking-wider text-[10px] block text-gray-500 mb-0.5">
                     Recommended Action
                   </span>
@@ -692,7 +692,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
               {/* Numbered Steps List */}
               {msg.stepsList && msg.stepsList.length > 0 && (
-                <ol className="mt-2.5 list-decimal list-inside space-y-1 text-xs text-gray-700 bg-white p-2.5 rounded border border-gray-200">
+                <ol className="mt-2.5 list-decimal list-inside space-y-1 text-xs text-gray-700 bg-white p-2.5 rounded-lg border border-gray-200">
                   {msg.stepsList.map((step, idx) => (
                     <li key={idx} className="leading-snug">{step}</li>
                   ))}
@@ -718,12 +718,12 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
               {/* Escalation Ticket Details Box */}
               {msg.escalationTicket && (
-                <div className="mt-3 p-3 bg-white border border-gray-300 rounded text-xs space-y-2">
+                <div className="mt-3 p-3 bg-white border border-gray-300 rounded-lg text-xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-900">
                       {isStudent ? 'Media Center Loaner Request' : 'Technician Work Order'}
                     </span>
-                    <span className="font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                    <span className="font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">
                       {msg.escalationTicket.ticketNumber}
                     </span>
                   </div>
@@ -733,7 +733,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                   <button
                     type="button"
                     onClick={() => onViewDispatchSlip(msg.escalationTicket!)}
-                    className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded font-medium text-xs text-center border border-gray-300 transition"
+                    className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium text-xs text-center border border-gray-300 transition"
                   >
                     {isStudent ? 'Print Loaner Pass' : 'Print Dispatch Slip'}
                   </button>
@@ -755,7 +755,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                       key={idx}
                       type="button"
                       onClick={() => handleActionClick(action)}
-                      className={`text-xs px-2.5 py-1.5 rounded border transition font-medium text-left ${
+                      className={`text-xs px-2.5 py-1.5 rounded-lg border transition font-medium text-left ${
                         isPrimary
                           ? 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
                           : 'bg-gray-50 hover:bg-gray-100 border-gray-300 text-gray-700'
@@ -783,14 +783,14 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
       <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 shrink-0">
         {/* Rate limit warning */}
         {cooldownRemaining > 0 && (
-          <div className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded">
+          <div className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
             Rate limit active. Please wait <strong>{cooldownRemaining}s</strong> before sending another message.
           </div>
         )}
 
         {/* Spam warning */}
         {spamWarning && (
-          <div className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded">
+          <div className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">
             {spamWarning}
           </div>
         )}
@@ -815,13 +815,13 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                 : 'Describe your classroom IT issue...'
             }
             disabled={loading || cooldownRemaining > 0}
-            className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+            className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
           />
 
           <button
             type="submit"
             disabled={!inputValue.trim() || loading || cooldownRemaining > 0}
-            className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded transition shrink-0"
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
           >
             {cooldownRemaining > 0 ? `${cooldownRemaining}s` : 'Send'}
           </button>
@@ -857,7 +857,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
       {/* Edit Location Dialog */}
       {showLocationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white border border-gray-300 rounded-lg max-w-sm w-full p-5 text-gray-900 shadow-md">
+          <div className="bg-white border border-gray-200 rounded-lg max-w-sm w-full p-5 text-gray-900 shadow-md">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {isStudent ? 'Student Profile' : 'Classroom Location'}
             </h3>
@@ -871,7 +871,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                 <select
                   value={tempContext.school}
                   onChange={e => setTempContext({ ...tempContext, school: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900"
                 >
                   {SCHOOLS.map(sc => (
                     <option key={sc.id} value={sc.name}>{sc.name}</option>
@@ -885,7 +885,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                   type="text"
                   value={tempContext.room}
                   onChange={e => setTempContext({ ...tempContext, room: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900"
                 />
               </div>
 
@@ -895,7 +895,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                   type="text"
                   value={tempContext.phoneOrExt}
                   onChange={e => setTempContext({ ...tempContext, phoneOrExt: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900"
                 />
               </div>
             </div>
@@ -904,7 +904,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
               <button
                 type="button"
                 onClick={() => setShowLocationModal(false)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -914,7 +914,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                   onUpdateUserContext(tempContext);
                   setShowLocationModal(false);
                 }}
-                className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded font-medium"
+                className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium"
               >
                 Save
               </button>
@@ -926,7 +926,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
       {/* Guidelines Modal */}
       {showPolicyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white border border-gray-300 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md space-y-3">
+          <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-gray-200">
               <h3 className="text-sm font-semibold text-gray-900">District IT Help Desk Guidelines</h3>
               <button
@@ -958,7 +958,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPolicyModal(false)}
-                className="px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded"
+                className="px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg"
               >
                 Close
               </button>

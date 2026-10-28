@@ -21,7 +21,7 @@ export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) 
       <span className="text-lg font-semibold tracking-tight">Greg Bot</span>
       <span className="text-sm text-gray-600">IT Help Desk</span>
       {config.demoMode && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">Demo</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>
       )}
     </header>
 

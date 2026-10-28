@@ -24,11 +24,11 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ user, initial, onSav
     onSave({ school, room: room.trim(), phoneOrExt: phoneOrExt.trim() });
   };
 
-  const field = 'w-full bg-white border border-gray-300 rounded px-2.5 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700';
+  const field = 'w-full bg-white border border-gray-300 rounded-lg px-2.5 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700';
 
   return (
     <div className="w-full h-full flex items-center justify-center overflow-y-auto">
-      <form onSubmit={submit} className="w-full max-w-md bg-white border border-gray-300 rounded-md p-5 space-y-3.5 text-xs shadow-xs">
+      <form onSubmit={submit} className="w-full max-w-md bg-white border border-gray-200 rounded-lg p-5 space-y-3.5 text-xs shadow-sm">
         <div>
           <h2 className="text-sm font-semibold text-gray-900">{initial ? 'Where are you working?' : 'Where are you working today?'}</h2>
           <p className="text-gray-500 mt-0.5">Signed in as {user.name} ({user.email}). Technicians use your location to find you. It is saved on this device only.</p>
@@ -50,11 +50,11 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ user, initial, onSav
           <input id="pf-phone" className={field} value={phoneOrExt} onChange={e => setPhoneOrExt(e.target.value)} maxLength={40} />
         </div>
 
-        {error && <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded px-3 py-1.5">{error}</p>}
+        {error && <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-1">
-          {onCancel && <button type="button" onClick={onCancel} className="px-3.5 py-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Cancel</button>}
-          <button type="submit" className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded font-semibold">Continue</button>
+          {onCancel && <button type="button" onClick={onCancel} className="px-3.5 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">Cancel</button>}
+          <button type="submit" className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold">Continue</button>
         </div>
       </form>
     </div>
