@@ -638,7 +638,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
       {/* Message Feed - Single Column */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-        {messages.map(msg => (
+        {messages.map((msg, msgIdx) => (
           <div
             key={msg.id}
             className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
@@ -732,7 +732,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
             </div>
 
             {/* Suggested Action Buttons */}
-            {msg.suggestedActions && msg.suggestedActions.length > 0 && (
+            {msgIdx === messages.length - 1 && msg.suggestedActions && msg.suggestedActions.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2 max-w-[88%] sm:max-w-[80%]">
                 {msg.suggestedActions.map((action, idx) => {
                   return (

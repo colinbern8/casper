@@ -53,7 +53,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
     ['Open requests', open.length],
     ['Priority 1 open', open.filter(t => t.priority === 'critical').length],
     ['Student loaners open', open.filter(t => t.userRole === 'student').length],
-    ['Total tickets', tickets.length],
   ];
 
   const shown = users.filter(u => u.email.includes(filter.trim().toLowerCase()));
@@ -61,10 +60,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
 
   return (
     <div className="w-full h-full overflow-y-auto space-y-4 pb-4 text-xs">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
         {stats.map(([label, value]) => (
           <div key={label} className="bg-white border border-gray-200 rounded-lg p-3">
-            <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">{label}</span>
+            <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">{label}</span>
             <div className="text-lg font-bold text-gray-900 mt-0.5">{value}</div>
           </div>
         ))}

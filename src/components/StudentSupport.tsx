@@ -29,7 +29,6 @@ interface Chip {
 
 interface StudentSupportProps {
   onTicketCreated: (ticket: Ticket) => void;
-  onUseClassicChat: () => void;
 }
 
 const BUBBLE: Record<Kind | 'user', string> = {
@@ -59,7 +58,7 @@ const initialMessages = (): Msg[] => [{ id: 0, from: 'bot', text: LANGUAGE_PROMP
  * contact. The conversation is never cleared in this mode (there is no "Change language" or
  * "Start another request"), so the open request number stays on screen.
  */
-export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated, onUseClassicChat }) => {
+export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated }) => {
   const [lang, setLang] = useState<Language | null>(null);
   const [phase, setPhase] = useState<Phase>('language');
   const [messages, setMessages] = useState<Msg[]>(initialMessages);
@@ -465,10 +464,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated,
           <h2 className="text-base font-semibold text-gray-900 leading-tight"><Logo /></h2>
           <p className="text-xs text-gray-500">{t.headerTitle}</p>
         </div>
-        {limit ? null : lang ? (
+        {!limit && lang && (
           <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
-        ) : (
-          <button type="button" onClick={onUseClassicChat} className="text-sm text-gray-600 underline hover:text-gray-900">{STRINGS.en.classicChat}</button>
         )}
       </div>
 

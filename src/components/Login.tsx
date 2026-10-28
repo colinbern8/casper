@@ -112,7 +112,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
           <details open={!config.googleClientId}>
             <summary className="cursor-pointer text-xs text-gray-600 select-none">Testing only</summary>
             <div className="mt-2 border border-dashed border-amber-300 bg-amber-50/50 rounded-lg p-3 space-y-3">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 min-[460px]:grid-cols-4 gap-2">
                 {demoAccounts.map(([label, email]) => (
                   <button
                     key={email}

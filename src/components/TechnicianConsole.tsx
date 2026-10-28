@@ -114,7 +114,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
   const getPriorityBadge = (priority: TicketPriority, role: string) => {
     if (priority === 'critical') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-red-100 text-red-800 border border-red-300">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-300">
           <AlertTriangle className="w-3 h-3 text-red-700" />
           P1 Critical (Class in Session)
         </span>
@@ -122,7 +122,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     }
     if (priority === 'high') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-300">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
           <Clock className="w-3 h-3 text-amber-700" />
           P2 High (Teacher Prep)
         </span>
@@ -130,13 +130,13 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     }
     if (role === 'student') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-100 text-blue-800 border border-blue-300">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
           Student Loaner Depot
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-300">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
         Medium Priority
       </span>
     );
@@ -146,38 +146,38 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
     switch (status) {
       case 'dispatched':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 border border-red-200">
             Dispatched (Field Tech En Route)
           </span>
         );
       case 'assigned':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
             Assigned
           </span>
         );
       case 'in_progress':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
             In Progress / Diagnostic
           </span>
         );
       case 'hardware_swap':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
             Hardware Swap / Loaner Issued
           </span>
         );
       case 'resolved':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Check className="w-3 h-3 text-emerald-600" />
             Resolved
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
             Open
           </span>
         );
@@ -217,7 +217,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border-b border-gray-200 shrink-0 text-xs">
         <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-          <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">
+          <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">
             Active Requests
           </span>
           <div className="text-lg font-bold text-gray-900 mt-0.5">
@@ -229,7 +229,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
           criticalP1Count > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-white border-gray-200 text-gray-900'
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`block text-[11px] font-medium uppercase tracking-wider ${
+            <span className={`block text-xs font-medium uppercase tracking-wider ${
               criticalP1Count > 0 ? 'text-red-700' : 'text-gray-500'
             }`}>
               P1 Classroom Emergency
@@ -242,7 +242,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-          <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">
+          <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">
             Student Loaner Depot
           </span>
           <div className="text-lg font-bold text-gray-900 mt-0.5">
@@ -251,7 +251,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-          <span className="text-gray-500 block text-[11px] font-medium uppercase tracking-wider">
+          <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">
             Resolved Today
           </span>
           <div className="text-lg font-bold text-gray-900 mt-0.5">
@@ -359,7 +359,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                       </span>
                       {getPriorityBadge(ticket.priority, ticket.userRole)}
                       {getStatusBadge(ticket.status)}
-                      <span className="text-[11px] text-gray-400">
+                      <span className="text-xs text-gray-400">
                         {new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -368,7 +368,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                       {ticket.title}
                     </h3>
 
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-gray-600">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-gray-600">
                       <span className="inline-flex items-center gap-1 font-medium text-gray-800">
                         <User className="w-3 h-3 text-gray-400" />
                         {ticket.userName} ({ticket.userRole.startsWith('teacher') ? 'Teacher' : ticket.userRole === 'student' ? 'Student' : 'Staff'})
@@ -378,7 +378,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         {ticket.school} • {ticket.room}
                       </span>
                       {ticket.assetTag && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">
+                        <span className="inline-flex items-center gap-1 font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">
                           <Tag className="w-2.5 h-2.5 text-gray-400" />
                           {ticket.assetTag}
                         </span>
@@ -458,15 +458,15 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     {/* Requester Details Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2.5 rounded-lg border border-gray-200">
                       <div>
-                        <span className="text-gray-500 text-[11px] block">Contact / Ext</span>
+                        <span className="text-gray-500 text-xs block">Contact / Ext</span>
                         <span className="font-medium text-gray-800">{ticket.phoneOrExt || ticket.userEmail}</span>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-[11px] block">Hardware Model</span>
+                        <span className="text-gray-500 text-xs block">Hardware Model</span>
                         <span className="font-medium text-gray-800">{ticket.deviceModel || 'General District Asset'}</span>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-[11px] block">Teacher Availability</span>
+                        <span className="text-gray-500 text-xs block">Teacher Availability</span>
                         <span className="font-medium text-gray-800">{ticket.teacherAvailability || 'Standard School Hours'}</span>
                       </div>
                     </div>
@@ -475,11 +475,11 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                     <div>
                       <span className="font-semibold text-gray-700 block mb-1">Internal Technician Notes:</span>
                       {ticket.techNotes ? (
-                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 font-mono text-[11px] text-gray-800 whitespace-pre-wrap mb-2">
+                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 font-mono text-xs text-gray-800 whitespace-pre-wrap mb-2">
                           {ticket.techNotes}
                         </div>
                       ) : (
-                        <p className="text-gray-400 italic text-[11px] mb-2">No notes recorded yet.</p>
+                        <p className="text-gray-400 italic text-xs mb-2">No notes recorded yet.</p>
                       )}
 
                       {/* Add Tech Note Input */}
@@ -578,7 +578,7 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
       </div>
 
       {/* Footer Info */}
-      <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-[11px] text-gray-500 shrink-0">
+      <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-gray-500 shrink-0">
         <span>
           Showing {filteredTickets.length} of {tickets.length} total district requests
         </span>

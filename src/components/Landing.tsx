@@ -1,6 +1,7 @@
 import React from 'react';
 import type { PublicConfig, SessionUser } from '../types';
 import { Login } from './Login';
+import { DemoBadge } from './DemoBadge';
 import { Logo } from './Logo';
 
 interface LandingProps {
@@ -15,7 +16,7 @@ export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) 
       <div className="text-gray-900 leading-none"><Logo className="h-8" /></div>
       <span className="text-sm text-gray-600">IT Help Desk</span>
       {config.demoMode && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>
+        <DemoBadge />
       )}
     </header>
 

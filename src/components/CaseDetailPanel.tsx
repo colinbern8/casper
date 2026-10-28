@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { DispositionValue, SupportCase } from '../types';
 import { DISPOSITION_VALUES } from '../types';
 import { ApiError, fetchSupportCase, recordDisposition } from '../api';
+import { DemoBadge } from './DemoBadge';
 import { findSupportIssue } from '../data/supportContent';
 
 const DISPOSITION_LABELS: Record<DispositionValue, string> = {
@@ -17,7 +18,7 @@ const Section: React.FC<{ title: string; tag?: string; children: React.ReactNode
   <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
     <div className="flex flex-wrap items-center gap-2">
       <span className="font-semibold text-gray-700">{title}</span>
-      {tag && <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">{tag}</span>}
+      {tag && <DemoBadge>{tag}</DemoBadge>}
     </div>
     {children}
   </div>
@@ -67,7 +68,7 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
     <div className="space-y-2 border border-blue-200 bg-blue-50/40 rounded-lg p-2.5" data-testid="case-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold text-gray-800">Student-support case {data.caseNumber}</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Prototype demo, fictional data</span>
+        <DemoBadge>Prototype demo, fictional data</DemoBadge>
       </div>
 
       <Section title="Student-reported">
