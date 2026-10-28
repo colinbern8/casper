@@ -11,8 +11,8 @@ interface LandingProps {
 
 export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) => (
   <div className="min-h-[100dvh] flex flex-col bg-gray-50 text-gray-900 font-sans antialiased">
-    <header className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-4 flex items-baseline gap-2">
-      <Logo className="text-lg font-semibold tracking-tight" />
+    <header className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-4 flex items-center gap-2">
+      <div className="text-gray-900 leading-none"><Logo className="h-8" /></div>
       <span className="text-sm text-gray-600">IT Help Desk</span>
       {config.demoMode && (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>

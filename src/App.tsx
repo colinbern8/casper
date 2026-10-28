@@ -208,8 +208,8 @@ export default function App() {
       <header className="bg-white border-b border-gray-200 shrink-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div>
-            <div className="flex items-baseline gap-2 whitespace-nowrap">
-              <h1 className="text-base font-semibold text-gray-900 tracking-tight leading-tight"><Logo /></h1>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <h1 className="text-gray-900 leading-none"><Logo /></h1>
               <span className="text-xs text-gray-500 font-medium">IT Help Desk</span>
               {config.demoMode && (
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-1.5 py-0.5">Demo</span>
