@@ -13,19 +13,39 @@ This is the one file for planning. It says what the **prototype** needs, what th
 - **Prototype** means: it can be shown start to finish to district decision makers, in demo mode, with fictional accounts and data. No real students. Nothing is sent outside the app. The goal is to get a yes, answers to the district questions, and feedback.
 - **Final version** means: running on district hosting, with real Google sign-in, real schools, rooms and technicians, real messages sent, a passed privacy review, and testing on real devices.
 
-| Area | In the prototype | Added for the final version |
-| --- | --- | --- |
-| Sign-in | One clean sign-in page; demo accounts hidden for testing | Real Google sign-in on a district-owned Google project, HTTPS, secure cookie |
-| Teacher screens | All fixes: bug, colors, larger text, room autofill, required markers | Staff-side Spanish; teacher menu built from real past tickets |
-| Student chat | English and Spanish; language pop-up; spam guard; fuller keywords with Spanish matching | Goes straight to the chat after real sign-in; student's school learned from a pick or roster; no-red-tag rule |
-| Shared chat | One look for every role, built from one data file | Unmatched text logging (after privacy review) |
-| Technician | Claim, away status, self-resolved and blocked case screen (demo data) | Per-building scoping; real queue per school |
-| Messages | Status change shown in the app; unsent message preview | Real email or digest to requesters and technicians; live Slack/Teams webhook |
-| Admin | Analytics dashboard on demo data | Audit log, session revocation, admin-editable schools and rooms, roles from Google groups |
-| Data | JSON files, demo data | Real database, real campus, room and technician data |
-| Safety | Rate limits, abuse screening, spam guard | Retention rules, FERPA/COPPA review, testing-day limits |
-| Testing | Automated tests plus a browser check of each new screen | Real devices, web filter, printing, screen readers, load, Spanish quality |
-| Branding | Name Casper as plain text | Logo |
+- **Sign-in**
+  - **Prototype:** One clean sign-in page; demo accounts hidden for testing
+  - **Final version adds:** Real Google sign-in on a district-owned Google project, HTTPS, secure cookie
+- **Teacher screens**
+  - **Prototype:** All fixes: bug, colors, larger text, room autofill, required markers
+  - **Final version adds:** Staff-side Spanish; teacher menu built from real past tickets
+- **Student chat**
+  - **Prototype:** English and Spanish; language pop-up; spam guard; fuller keywords with Spanish matching
+  - **Final version adds:** Goes straight to the chat after real sign-in; student's school learned from a pick or roster; no-red-tag rule
+- **Shared chat**
+  - **Prototype:** One look for every role, built from one data file
+  - **Final version adds:** Unmatched text logging (after privacy review)
+- **Technician**
+  - **Prototype:** Claim, away status, self-resolved and blocked case screen (demo data)
+  - **Final version adds:** Per-building scoping; real queue per school
+- **Messages**
+  - **Prototype:** Status change shown in the app; unsent message preview
+  - **Final version adds:** Real email or digest to requesters and technicians; live Slack/Teams webhook
+- **Admin**
+  - **Prototype:** Analytics dashboard on demo data
+  - **Final version adds:** Audit log, session revocation, admin-editable schools and rooms, roles from Google groups
+- **Data**
+  - **Prototype:** JSON files, demo data
+  - **Final version adds:** Real database, real campus, room and technician data
+- **Safety**
+  - **Prototype:** Rate limits, abuse screening, spam guard
+  - **Final version adds:** Retention rules, FERPA/COPPA review, testing-day limits
+- **Testing**
+  - **Prototype:** Automated tests plus a browser check of each new screen
+  - **Final version adds:** Real devices, web filter, printing, screen readers, load, Spanish quality
+- **Branding**
+  - **Prototype:** Name Casper as plain text
+  - **Final version adds:** Logo
 
 ---
 
@@ -185,14 +205,24 @@ None of these have been tested yet.
 
 These need an answer from the district, not code. Ask early.
 
-| # | Decision | Blocks | Ask who |
-| --- | --- | --- | --- |
-| 1 | Hosting, and a district-owned Google OAuth project | F1, F2 | District IT |
-| 2 | Data retention, and the privacy and vendor review (FERPA and COPPA) | F3 (and unmatched text logging) | Whoever owns student-data privacy |
-| 3 | Real campus, room and technician data | F1 | District IT |
-| 4 | Who reviews the Spanish text, and who signs off the English wording | P2 wording, P4, P5, F4 | School or district communications |
-| 5 | What a student does if their Chromebook has no red tag | F3 | District IT |
-| 6 | Parent sign-in (on hold): (a) none, (b) email magic link limited to their child, needs a parent-to-student list, or (c) a parent portal from the student information system | F6 | District IT and administrators |
+1. **Hosting, and a district-owned Google OAuth project**
+   - Blocks: F1, F2
+   - Ask: District IT
+2. **Data retention, and the privacy and vendor review (FERPA and COPPA)**
+   - Blocks: F3 (and unmatched text logging)
+   - Ask: Whoever owns student-data privacy
+3. **Real campus, room and technician data**
+   - Blocks: F1
+   - Ask: District IT
+4. **Who reviews the Spanish text, and who signs off the English wording**
+   - Blocks: P2 wording, P4, P5, F4
+   - Ask: School or district communications
+5. **What a student does if their Chromebook has no red tag**
+   - Blocks: F3
+   - Ask: District IT
+6. **Parent sign-in (on hold): (a) none, (b) email magic link limited to their child, needs a parent-to-student list, or (c) a parent portal from the student information system**
+   - Blocks: F6
+   - Ask: District IT and administrators
 
 ---
 
@@ -200,18 +230,16 @@ These need an answer from the district, not code. Ask early.
 
 **Decided**
 
-| Decision | Chosen | Why |
-| --- | --- | --- |
-| Name | Casper (not Caspr) | Your choice. |
-| Logo | Later; plain text name for now | Your choice. |
-| Teacher chat vs student chat | Restyle only; teachers keep their own guided flow | Your choice. Rebuilding the 971-line teacher screen is not needed. |
-| Language change in chat | Reopens the pop-up and keeps the conversation | Your choice. Students should not lose progress. |
-| Spam limits | Warn at 3 bad messages, sign out at 5, 15-minute lockout, students only | Your choice. |
-| Where spam is enforced | On the server, in `attachUser` | The sign-in cookie cannot be revoked and the browser is not trusted. |
-| How the server sees typed chat | New `POST /api/support/message` | The server never sees browser-matched text today. |
-| Rename depth | Full: visible text, cookie, saved profile (with a one-time copy), package name | A half rename leaves the old name in error messages. |
-| Demo sign-in | Kept for testing, hidden from real users | Tests and demos need it; the server already refuses it in production. |
-| Order of work | Teacher fixes, sign-in page, rename, language pop-up, spam guard | Smallest and most visible first; the spam guard is largest so it goes last. |
+- **Name:** Casper (not Caspr). *Why:* Your choice.
+- **Logo:** Later; plain text name for now. *Why:* Your choice.
+- **Teacher chat vs student chat:** Restyle only; teachers keep their own guided flow. *Why:* Your choice. Rebuilding the 971-line teacher screen is not needed.
+- **Language change in chat:** Reopens the pop-up and keeps the conversation. *Why:* Your choice. Students should not lose progress.
+- **Spam limits:** Warn at 3 bad messages, sign out at 5, 15-minute lockout, students only. *Why:* Your choice.
+- **Where spam is enforced:** On the server, in `attachUser`. *Why:* The sign-in cookie cannot be revoked and the browser is not trusted.
+- **How the server sees typed chat:** New `POST /api/support/message`. *Why:* The server never sees browser-matched text today.
+- **Rename depth:** Full: visible text, cookie, saved profile (with a one-time copy), package name. *Why:* A half rename leaves the old name in error messages.
+- **Demo sign-in:** Kept for testing, hidden from real users. *Why:* Tests and demos need it; the server already refuses it in production.
+- **Order of work:** Teacher fixes, sign-in page, rename, language pop-up, spam guard. *Why:* Smallest and most visible first; the spam guard is largest so it goes last.
 
 **Assumptions** (tell me if any is wrong, otherwise they stand)
 
@@ -246,16 +274,14 @@ These need an answer from the district, not code. Ask early.
 
 ## 6. Progress
 
-| Phase | Status |
-| --- | --- |
-| P1 Teacher screen fixes | not started |
-| P2 Sign-in page cleanup | not started |
-| P3 Rename to Casper | not started |
-| P4 Student language pop-up | not started |
-| P5 Student spam guard | not started |
-| P6 Shared chat and smarter matching | not planned yet |
-| P7 Technician and admin demo screens | not planned yet |
-| F1 to F6 Final version | waiting on prototype approval and district answers |
+- [ ] **P1 Teacher screen fixes** (not started)
+- [ ] **P2 Sign-in page cleanup** (not started)
+- [ ] **P3 Rename to Casper** (not started)
+- [ ] **P4 Student language pop-up** (not started)
+- [ ] **P5 Student spam guard** (not started)
+- [ ] **P6 Shared chat and smarter matching** (not planned yet)
+- [ ] **P7 Technician and admin demo screens** (not planned yet)
+- [ ] **F1 to F6 Final version** (waiting on prototype approval and district answers)
 
 ---
 
