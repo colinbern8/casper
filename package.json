@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
-    "demo": "DEV_LOGIN=true DEMO_MODE=true DISTRICT_DOMAIN=demo.example.org ADMIN_EMAILS=demo.admin@demo.example.org tsx server.ts",
+    "demo": "tsx --env-file=.env.demo server.ts",
     "start": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview",
     "test": "tsx --test tests/*.test.ts",
