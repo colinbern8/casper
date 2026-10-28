@@ -57,28 +57,29 @@ Do these in order. Each phase is one chunk of work. All of them can start now.
 
 Do first: small, visible, and one is a bug. *Done when:* the last step shows each action once, the three buttons are color-coded, teacher text matches the student chat's sizes, and the working-today form shows red "*Required" markers and an autofill room list.
 
-- [ ] **Bug:** "Submit IT ticket" shows twice on the last troubleshooting step. Show it once. Students still see "Request loaner device" in that spot.
+- [x] **Bug:** "Submit IT ticket" shows twice on the last troubleshooting step. Show it once. Students still see "Request loaner device" in that spot.
   - Files: `src/data/stepActions.ts` (new), `src/components/TeacherChatBot.tsx` (lines 284-286, 317-319, 543-549, 581-583). Check: `npm test` with a new test of a pure `stepActions({ isLastStep, isStudent })` function.
-- [ ] Color-code the buttons: "Issue resolved" green, "Try next step" blue, "Submit IT ticket" orange. Keep the words so color is not the only cue. Text and background must pass 4.5:1 contrast.
+- [x] Color-code the buttons: "Issue resolved" green, "Try next step" blue, "Submit IT ticket" orange. Keep the words so color is not the only cue. Text and background must pass 4.5:1 contrast.
   - Files: `TeacherChatBot.tsx`, `stepActions.ts`. Check: `npm run lint && npm run build`, plus a browser screenshot at 390px and 1280px.
-- [ ] Make the teacher text larger, matching the student chat (`text-sm sm:text-base` for bubbles and chips). About 27 spots use tiny or custom sizes. Helper labels may stay small but not below 12px.
+- [x] Make the teacher text larger, matching the student chat (`text-sm sm:text-base` for bubbles and chips). About 27 spots use tiny or custom sizes. Helper labels may stay small but not below 12px. *Checked in a browser: chat text is 16px. Still under 12px: the shared header (Demo badge 10px, district name 11px) and the technician and admin badges (11px). See the open item under P1.*
   - Files: `TeacherChatBot.tsx`. Check: build, plus a screenshot next to the student chat.
-- [ ] "Where are you working today": if Continue is clicked with a required box empty, outline it in red, show "*Required" next to its label, move focus to it, and clear the marker when they type. Use text as well as color.
+- [x] "Where are you working today": if Continue is clicked with a required box empty, outline it in red, show "*Required" next to its label, move focus to it, and clear the marker when they type. Use text as well as color.
   - Files: `src/components/ProfileSetup.tsx`, `src/profile.ts` (a `missingFields` function with a unit test). Check: browser run.
-- [ ] "Where are you working today": make the room box an autofill dropdown that filters the school's rooms as the teacher types (matches anywhere in the name). Arrow keys and Enter pick a room. A typed location still works. Follow the ARIA combobox pattern so screen readers announce it.
+- [x] "Where are you working today": make the room box an autofill dropdown that filters the school's rooms as the teacher types (matches anywhere in the name). Arrow keys and Enter pick a room. A typed location still works. Follow the ARIA combobox pattern so screen readers announce it.
   - Files: `src/components/RoomPicker.tsx` (new), `ProfileSetup.tsx`. Check: unit test of `filterRooms`, plus a keyboard-only browser walk.
-- [ ] The teacher chat is **restyled** to look like the student chat (same look, text size, button style) but keeps its own guided flow. This is a decision; see section 5.
+- [x] The teacher chat is **restyled** to look like the student chat (same look, text size, button style) but keeps its own guided flow. This is a decision; see section 5.
+- [ ] Raise the remaining sub-12px text to 12px: `text-[10px]` and `text-[11px]` in `App.tsx`, `Landing.tsx`, `CaseDetailPanel.tsx`, `AdminPage.tsx` and `TechnicianConsole.tsx`. Found in the browser check. Check: build, plus a screenshot.
 
 ### P2. Sign-in page cleanup
 
 *Done when:* the signed-out page needs no scrolling at 1366x768 and 390x844, a real user sees one sign-in action, and the wording reads like plain school-office language.
 
-- [ ] Show one sign-in action: "Continue with Google". Today there is the Google button, four demo account buttons and a free email box. Keep demo accounts and the email box behind a small "Testing only" control, shown only when dev login is on. The server already refuses dev login in production, and that stays.
+- [x] Show one sign-in action: "Continue with Google". Today there is the Google button, four demo account buttons and a free email box. Keep demo accounts and the email box behind a small "Testing only" control, shown only when dev login is on. The server already refuses dev login in production, and that stays.
   - Files: `src/components/Login.tsx`. Check: `npm test && npm run build`, plus screenshots with dev login on and off.
-- [ ] Fit the page on one screen with no scrolling. Shorten or remove the three role descriptions. Keep the footer visible.
+- [x] Fit the page on one screen with no scrolling. Shorten or remove the three role descriptions. Keep the footer visible.
   - Files: `src/components/Landing.tsx`. Check: browser check that page height fits the window at both sizes.
-- [ ] Replace the generic icons with better ones, or remove them.
-- [ ] Rewrite the page text in short, plain sentences. Remove the bold-label bullet list and the headline-style wording.
+- [x] Replace the generic icons with better ones, or remove them.
+- [x] Rewrite the page text in short, plain sentences. Remove the bold-label bullet list and the headline-style wording.
   - Files: `Landing.tsx`, `Login.tsx`. The English wording goes to whoever signs it off (see section 4).
 
 *Moved to the final version:* checking that clicking sign-in opens the Google account chooser needs real Google credentials (see F1).
@@ -87,11 +88,11 @@ Do first: small, visible, and one is a bug. *Done when:* the last step shows eac
 
 *Done when:* searching the source for the old name finds nothing except a documented one-time migration, and lint, tests and build pass.
 
-- [ ] Put the name in one place: `BRAND_NAME` in `src/brand.ts`. Use it in the page title, headers, chat headers, server start message and README.
+- [x] Put the name in one place: `BRAND_NAME` in `src/brand.ts`. Use it in the page title, headers, chat headers, server start message and README.
   - Files: `src/brand.ts` (new), `index.html`, `Landing.tsx`, `src/App.tsx`, `StudentSupport.tsx`, `TeacherChatBot.tsx`, `server.ts`, `README.md`. Check: `npm run lint && npm test && npm run build`, plus a test that no file under `src/` or `server/` contains the old name.
-- [ ] Rename the internal names: sign-in cookie, saved browser profile key, the sign-out event, and the package name. Copy the old saved profile to the new key once so nobody loses it. Everyone is signed out once, which is fine because nothing is deployed.
+- [x] Rename the internal names: sign-in cookie, saved browser profile key, the sign-out event, and the package name. Copy the old saved profile to the new key once so nobody loses it. Everyone is signed out once, which is fine because nothing is deployed.
   - Files: `server/session.ts`, `src/profile.ts`, `src/api.ts`, `package.json`, `tests/units.test.ts`.
-- [ ] A small `Logo` component shows the plain text name for now.
+- [x] A small `Logo` component shows the name. It now shows the Casper wordmark (see F6).
   - Files: `src/components/Logo.tsx` (new), `Landing.tsx`, `App.tsx`, `StudentSupport.tsx`.
 
 *Not now:* the logo itself (see F6), and renaming the GitHub repository (you do that).
@@ -128,9 +129,9 @@ Students only. Staff and technicians are never signed out by this.
 Large. Gets its own detailed plan when picked up.
 
 - [ ] One chat layout for every role, with about 5 tappable common problems plus free typing, built from one shared data file. This is also what makes the teacher chat match the student chat.
-- [ ] Build a fuller keyword table so typed text matches common problems.
-- [ ] Match Spanish typed text.
-- [ ] Keep the chat to fixes only. The refusal for unmatched text is already in.
+- [x] Build a fuller keyword table so typed text matches common problems. *Done in `src/data/supportMatch.ts` with `tests/match.test.ts`.*
+- [x] Match Spanish typed text. *Checked in the browser: "mi chromebook no se conecta al wifi" matches Wi-Fi.*
+- [x] Keep the chat to fixes only. The refusal for unmatched text is already in.
 
 ### P7. Technician and admin demo screens
 
@@ -249,7 +250,7 @@ These need an answer from the district, not code. Ask early.
 3. Spam lockouts are kept in server memory, so a restart clears them.
 4. Button colors: "Issue resolved" green, "Try next step" blue, "Submit IT ticket" orange.
 5. Only the name inside `package.json` changes; the GitHub repository rename is yours to do.
-6. For checks I run `npm ci` first so the 59 existing tests can run, and use the pre-installed Chromium for one-off browser checks (not committed).
+6. For checks I run `npm ci` first so the 66 existing tests can run, and use the pre-installed Chromium for one-off browser checks (not committed).
 7. In the prototype, nothing is sent outside the app. Messages and alerts are previews only.
 
 **Always**
@@ -257,7 +258,7 @@ These need an answer from the district, not code. Ask early.
 - All chat wording stays fixed, reviewable text (no AI).
 - Every new student-facing message exists in English and Spanish.
 - The server stays in charge of identity, role and lockout.
-- The existing 59 tests keep passing.
+- The existing 66 tests keep passing.
 
 **Never**
 
@@ -275,12 +276,12 @@ These need an answer from the district, not code. Ask early.
 
 ## 6. Progress
 
-- [x] **P1 Teacher screen fixes** (done, on master)
+- [x] **P1 Teacher screen fixes** (done, on master; sub-12px text still to raise)
 - [x] **P2 Sign-in page cleanup** (done, on master)
 - [x] **P3 Rename to Casper** (done, on master, with the Casper wordmark logo in the page headers; the files are in `design/casper/`)
 - [ ] **P4 Student language pop-up** (not started)
 - [ ] **P5 Student spam guard** (not started)
-- [ ] **P6 Shared chat and smarter matching** (not planned yet)
+- [ ] **P6 Shared chat and smarter matching** (keyword matching and Spanish matching done; the one shared chat layout is not planned yet)
 - [ ] **P7 Technician and admin demo screens** (not planned yet)
 - [ ] **F1 to F6 Final version** (waiting on prototype approval and district answers)
 
@@ -292,4 +293,4 @@ These need an answer from the district, not code. Ask early.
 - **Teacher and staff:** guided troubleshooting chat (power, Wi-Fi, classroom display, audio, copier badge, account sign-in), ticket submission (class in session is Priority 1, planning period is Priority 2), and a drawer of their own tickets.
 - **Student:** English and Spanish chat with tappable problems (Wi-Fi, won't turn on, sign-in, damaged, something else) or typing matched by keywords. Red tag entry (exactly six digits) with name and tag confirmation. Fixed self-help steps, then fixed or ask for a technician. Up to 5 problems per ticket. One open request per student, and a technician can allow another; a student at the limit can still try the steps. "Something else" needs real words, is checked for abuse, and can be used once per request.
 - **Technician:** live queue with search and filters (priority, role, status, school), status changes, reassigning, timestamped notes, dispatch slips and loaner passes, and the student case view (red tag, steps tried, their words, recorded decision).
-- **Protection and operations:** off-topic filter (pattern-based, English only), rate limits, abuse screening, cross-site protection, production refuses demo or dev login, JSON data written safely with a backup script and health check, CI running lint, tests and build (59 tests pass).
+- **Protection and operations:** off-topic filter (pattern-based, English only), rate limits, abuse screening, cross-site protection, production refuses demo or dev login, JSON data written safely with a backup script and health check, CI running lint, tests and build (66 tests pass).
