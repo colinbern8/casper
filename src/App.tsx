@@ -305,7 +305,7 @@ export default function App() {
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+            <div className="flex items-center justify-between pb-3">
               <div>
                 <h3 className="text-sm font-semibold text-gray-900">District IT Help Desk</h3>
                 <p className="text-xs text-gray-500">Technology Services & Field Support</p>
