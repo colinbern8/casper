@@ -3,6 +3,8 @@ import type { PublicConfig, SessionUser } from '../types';
 import { Login } from './Login';
 import { DemoBadge } from './DemoBadge';
 import { Logo } from './Logo';
+import { SEAL_DISTRICT } from '../brand';
+import seal from '../assets/hamilton-township-seal.png';
 
 interface LandingProps {
   config: PublicConfig;
@@ -22,10 +24,15 @@ export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) 
       <section>
         <div className="enter" style={{ ['--i' as string]: 0 }}>
           <Logo className="h-20 sm:h-24 lg:h-28 -ml-2" />
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-base text-neutral-700">
-            IT Help Desk, {config.districtName}
-            {config.demoMode && <DemoBadge neutral />}
-          </p>
+          <div className="mt-5 flex items-center gap-4">
+            {config.districtName === SEAL_DISTRICT && (
+              <img src={seal} alt={`${config.districtName} seal`} width={72} height={72} className="h-[72px] w-[72px] shrink-0 rounded-full" />
+            )}
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-neutral-700">
+              IT Help Desk, {config.districtName}
+              {config.demoMode && <DemoBadge neutral />}
+            </p>
+          </div>
         </div>
 
         <h1 className="enter mt-10 font-display font-black tracking-tight leading-[0.95] text-[clamp(2.75rem,7vw,5.5rem)]" style={{ ['--i' as string]: 1 }}>
