@@ -33,9 +33,11 @@ interface LoginProps {
   onSignedIn: (user: SessionUser) => void;
   /** Rendered inside another page: no full-height wrapper. */
   embedded?: boolean;
+  /** No card of its own: sits on a surface the parent already draws. */
+  bare?: boolean;
 }
 
-export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedded }) => {
+export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedded, bare }) => {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,20 +92,20 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
 
   return (
     <div className={embedded ? 'w-full' : 'w-full h-full flex items-center justify-center overflow-y-auto py-6'}>
-      <div className="w-full max-w-lg bg-white border-2 border-neutral-900 rounded-lg p-6 space-y-4 text-sm">
+      <div className={bare ? 'w-full space-y-3 text-base' : 'w-full max-w-lg bg-white border-2 border-neutral-900 p-6 space-y-4 text-sm'}>
         <div>
           <h2 className="font-display text-2xl font-bold tracking-tight text-neutral-900">Sign in</h2>
           <p className="text-gray-600 mt-1">Use your @{config.domain} school account.</p>
         </div>
 
-        {notice && <p className="text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">{notice}</p>}
+        {notice && <p className="text-gray-700 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3">{notice}</p>}
 
         {config.googleClientId ? (
           <div className="flex justify-center min-h-[44px]">
             <div ref={buttonRef} />
           </div>
         ) : !config.devLogin ? (
-          <p className="text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-amber-900 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
             Sign-in is not set up yet. Ask IT to finish the setup.
           </p>
         ) : null}
@@ -111,7 +113,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
         {config.devLogin && (
           <details open={!config.googleClientId}>
             <summary className="cursor-pointer text-xs text-gray-600 select-none">Testing only</summary>
-            <div className="mt-2 border border-dashed border-amber-300 bg-amber-50/50 rounded-lg p-3 space-y-3">
+            <div className="mt-2 border border-dashed border-amber-300 bg-amber-50/50 rounded-2xl p-3 space-y-3">
               <div className="grid grid-cols-2 min-[460px]:grid-cols-4 gap-2">
                 {demoAccounts.map(([label, email]) => (
                   <button
@@ -119,7 +121,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
                     type="button"
                     disabled={busy}
                     onClick={() => dev(email)}
-                    className="px-2 py-2 text-xs border border-gray-300 bg-white rounded-lg hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:opacity-60 font-medium text-gray-900"
+                    className="px-2 py-2 text-xs border border-gray-300 bg-white rounded-full hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:opacity-60 font-medium text-gray-900"
                   >
                     {label}
                   </button>
@@ -129,15 +131,15 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
                 <label htmlFor="dev-email" className="sr-only">Test email address</label>
                 <input
                   id="dev-email" value={devEmail} onChange={e => setDevEmail(e.target.value)} placeholder={`anyone@${config.domain}`}
-                  className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+                  className="flex-1 min-w-0 border border-gray-300 rounded-full px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
                 />
-                <button type="submit" disabled={busy || !devEmail} className="px-4 py-2 text-sm font-semibold bg-blue-700 hover:bg-blue-800 text-white rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-700 disabled:opacity-50">Go</button>
+                <button type="submit" disabled={busy || !devEmail} className="px-4 py-2 text-sm font-semibold bg-blue-700 hover:bg-blue-800 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-700 disabled:opacity-50">Go</button>
               </form>
             </div>
           </details>
         )}
 
-        {error && <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</p>}
+        {error && <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{error}</p>}
       </div>
     </div>
   );
