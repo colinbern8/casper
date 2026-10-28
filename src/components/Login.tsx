@@ -109,7 +109,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
         ) : null}
 
         {config.devLogin && (
-          <div className="border border-dashed border-amber-300 bg-amber-50/50 rounded-lg p-4 sm:p-5 space-y-4">
+          <details open={!config.googleClientId} className="group">
+            <summary className="cursor-pointer text-sm font-medium text-amber-900 select-none">Demo accounts (testing only)</summary>
+          <div className="mt-3 border border-dashed border-amber-300 bg-amber-50/50 rounded-lg p-4 sm:p-5 space-y-4">
             <div>
               <p className="text-lg font-semibold text-amber-900">Demo sign-in</p>
               <p className="text-sm text-amber-900/80 mt-0.5">Fictional accounts for testing. Not for real use.</p>
@@ -138,6 +140,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
               </div>
             </form>
           </div>
+          </details>
         )}
 
         {error && <p role="alert" className="text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</p>}
