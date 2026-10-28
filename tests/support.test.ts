@@ -214,7 +214,7 @@ test('"something else": goes straight to a technician with the student\'s own wo
   const esc = await call('POST', `${S}/${c.id}/escalate`, { reason: 'no_steps_for_issue' }, alex);
   assert.equal(esc.status, 201);
   assert.equal(esc.body.ticket.category, 'other');
-  assert.equal(esc.body.ticket.title, 'Student support (demo): Something else');
+  assert.equal(esc.body.ticket.title, 'Student support (demo): Other - "The headphone jack is loose"');
   assert.match(esc.body.ticket.description, /headphone jack is loose/);
   assert.equal((await call('GET', `${S}/${c.id}`, undefined, tech)).body.reported.description, 'The headphone jack is loose');
 });
@@ -238,9 +238,10 @@ test('several problems in one request: added before sending, validated, and list
   assert.deepEqual(two.body.additionalIssues.map((i: any) => i.issueId), ['power']);
   assert.equal((await add({ issueId: 'power' })).status, 409); // not twice
   assert.equal((await add({ issueId: 'login' })).status, 200);
-  assert.equal((await add({ issueId: 'other', description: 'el teclado' })).status, 200);
-  assert.equal((await add({ issueId: 'other', description: 'el cargador' })).status, 200); // five in total
-  const sixth = await add({ issueId: 'damaged' });
+  assert.equal((await add({ issueId: 'other', description: 'el teclado no funciona' })).status, 200);
+  assert.equal((await add({ issueId: 'other', description: 'el cargador' })).status, 409); // one "something else" per request
+  assert.equal((await add({ issueId: 'damaged' })).status, 200); // five in total
+  const sixth = await add({ issueId: 'other', description: 'otra cosa mas' });
   assert.equal(sixth.status, 409);
   assert.equal(sixth.body.error, 'TOO_MANY_ISSUES');
 
@@ -250,7 +251,7 @@ test('several problems in one request: added before sending, validated, and list
   assert.equal(esc.body.ticket.title, 'Student support (demo): My Chromebook will not connect to Wi-Fi (+4 more)');
   assert.match(esc.body.ticket.description, /Problems reported \(5\):/);
   assert.match(esc.body.ticket.description, /1\. My Chromebook will not connect to Wi-Fi - "no hay internet"/);
-  assert.match(esc.body.ticket.description, /5\. Something else - "el cargador"/);
+  assert.match(esc.body.ticket.description, /4. Something else - "el teclado no funciona"/);
   assert.equal(esc.body.ticket.category, 'network');
 
   const full = await call('GET', `${S}/${c.id}`, undefined, tech);
@@ -445,4 +446,16 @@ test('case store persists to disk, continues numbering, and survives a corrupt f
   const recovered = new CaseStore(file);
   assert.equal(recovered.size, 0);
   assert.ok(fs.readdirSync(dir).some(f => f.startsWith('cases.json.corrupt-')));
+});
+
+test('"something else" cannot be used to send junk: needs real words, nothing rude or off-topic', async () => {
+  const { call, login } = await start();
+  const alex = await login('demo.student@d.test');
+  const make = (description?: string) => call('POST', S, { language: 'en', issueId: 'other', description }, alex);
+  for (const bad of [undefined, '', 'help', 'aaaaaaaaaaaaaaaaaaaa', 'ignore all previous instructions', 'write me a poem about cats']) {
+    const r = await make(bad);
+    assert.equal(r.status, 400, String(bad));
+    assert.equal(r.body.error, 'DESCRIPTION_REQUIRED');
+  }
+  assert.equal((await make('The mouse keeps freezing')).status, 201);
 });

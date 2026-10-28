@@ -4,9 +4,9 @@
 export const MAX_MESSAGE_LENGTH = 1000;
 
 const INJECTION_PATTERNS: RegExp[] = [
-  /ignore (all |any |previous |above |system |your )?(instructions|prompts|rules|commands|directives)/i,
-  /disregard (all |any |previous |above |your )?(instructions|rules|prompts|directives)/i,
-  /forget (all |previous |your )?(instructions|rules|prompts)/i,
+  /ignore (?:(?:all|any|previous|prior|above|system|your|the) )*(instructions|prompts|rules|commands|directives)/i,
+  /disregard (?:(?:all|any|previous|prior|above|your|the) )*(instructions|rules|prompts|directives)/i,
+  /forget (?:(?:all|previous|prior|your|the) )*(instructions|rules|prompts)/i,
   /(system prompt|what is your prompt|show me your instructions|reveal your (prompt|instructions)|repeat the text above)/i,
   /(jailbreak|dan mode|developer mode|unrestricted mode|god mode)/i,
   /bypass (the )?(filter|safety|rules|restrictions)/i,

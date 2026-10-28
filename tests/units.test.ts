@@ -102,7 +102,8 @@ test('built-in chat answers: matched by keyword, damage escalates, unknown text 
 
   const unknown = builtInReply(kid, 'zzz');
   assert.equal(unknown.needsEscalation, false);
-  assert.match(unknown.text, /Describe the problem/);
+  assert.match(unknown.text, /only help with school technology/);
+  assert.ok(unknown.suggestedActions.length >= 3 && !unknown.suggestedActions.includes('Request loaner device'));
   assert.deepEqual(Object.keys(unknown).sort(), ['needsEscalation', 'suggestedActions', 'text']);
 });
 
