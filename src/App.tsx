@@ -6,6 +6,7 @@ import { TechnicianConsole } from './components/TechnicianConsole';
 import { ProfileSetup } from './components/ProfileSetup';
 import { AdminPage } from './components/AdminPage';
 import { Login } from './components/Login';
+import { Landing } from './components/Landing';
 import { StudentSupport } from './components/StudentSupport';
 import { Phone, FileText, X } from 'lucide-react';
 import type { PublicConfig, Role, SessionUser, Ticket, TicketUpdateInput, UserContext, UserRole } from './types';
@@ -37,6 +38,7 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [path, setPath] = useState(window.location.pathname);
+  const [signingIn, setSigningIn] = useState(window.location.pathname === '/login');
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -153,11 +155,16 @@ export default function App() {
       setMyTickets([]);
       setNotice(null);
       setClassicStudentChat(false);
+      setSigningIn(false);
       navigate('/', true);
     }
   };
 
   // ---- Render gates ------------------------------------------------------
+  const openSignIn = () => {
+    setSigningIn(true);
+    navigate('/login');
+  };
   if (configError) {
     return (
       <div className="h-[100dvh] flex flex-col items-center justify-center gap-3 bg-gray-100 text-sm text-gray-700">
@@ -168,6 +175,11 @@ export default function App() {
   }
   if (booting || !config) {
     return <div className="h-[100dvh] flex items-center justify-center bg-gray-100 text-xs text-gray-500">Loading...</div>;
+  }
+
+  // Signed-out visitors see the public landing page first; "Sign in" (or /login, or a session-ended notice) shows the form.
+  if (!user && !signingIn && !notice) {
+    return <Landing config={config} onSignIn={openSignIn} />;
   }
 
   const isChatPage = page === 'student' || page === 'teacher';
