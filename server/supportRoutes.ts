@@ -4,10 +4,11 @@ import { requireRole } from './auth';
 import type { SlidingWindowLimiter } from './rateLimit';
 import type { TicketStore } from './store';
 import type { CaseStore } from './cases';
-import { clean, cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
+import { cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
 import { DEMO_SCHOOL, studentFor } from './supportFixtures';
 import { buildDraft, buildTicketBody, toStudentView } from './support';
 import { findSupportIssue } from '../src/data/supportContent';
+import { isRedTag, normalizeRedTag, RED_TAG_LENGTH } from '../src/data/redTag';
 import { DISPOSITION_VALUES, LANGUAGES, MAX_REPORTED_ISSUES, SUPPORT_ISSUE_IDS, type SupportCase } from '../src/types';
 import { HELP_DESK } from '../src/data/schools';
 
@@ -54,6 +55,13 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     return found;
   };
 
+  // Asked as soon as the student picks a language, so a student who is at the request limit is told
+  // straight away, instead of after walking through the whole conversation.
+  router.get('/limit', (req, res) => {
+    const open = store.openStudentTickets(req.user!.email);
+    res.json({ atLimit: open.length >= config.studentOpenTicketLimit, openTicketNumbers: open.map(t => t.ticketNumber) });
+  });
+
   router.post('/cases', (req, res) => {
     const user = req.user!;
     const { language, issueId } = req.body ?? {};
@@ -91,13 +99,14 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     res.json(toStudentView(found));
   });
 
-  // The red tag is recorded exactly as typed, for the technician to read. It is never looked up.
+  // The red tag (exactly six digits) is recorded as typed, for the technician to read. It is never looked up.
   router.post('/cases/:id/red-tag', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
     if (limited(res, `support-act:${req.user!.email}`, 60)) return;
-    const value = clean(req.body?.tag, 40);
-    if (!value) return bad(res, 'INVALID_TAG', 'Enter the number on the red tag.');
+    const tag = req.body?.tag;
+    if (!isRedTag(tag)) return bad(res, 'INVALID_TAG', `The red tag number is exactly ${RED_TAG_LENGTH} digits, numbers only.`);
+    const value = normalizeRedTag(tag);
 
     const at = new Date().toISOString();
     const saved = cases.save({
@@ -165,7 +174,17 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     // Same policy as POST /api/tickets, checked first so a blocked attempt does not use up the allowance.
     if (v.userRole === 'student') {
       const open = store.openStudentTickets(user.email);
-      if (open.length >= config.studentOpenTicketLimit) return res.status(429).json(openTicketLimitBody(open));
+      if (open.length >= config.studentOpenTicketLimit) {
+        // No ticket is created. Close the case as `blocked` so it is not left open forever.
+        const reason = typeof req.body?.reason === 'string' ? req.body.reason.slice(0, 40) : 'not given';
+        const body = openTicketLimitBody(open);
+        cases.save({
+          ...found,
+          outcome: 'blocked',
+          history: [...found.history, { at: new Date().toISOString(), by: user.name, action: 'blocked', detail: `at request limit (${body.openTicketNumbers.join(', ')}); reason: ${reason}` }],
+        });
+        return res.status(429).json(body);
+      }
     }
     // Same limits as POST /api/tickets, so this path cannot be used to get around them.
     const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);

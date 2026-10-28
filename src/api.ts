@@ -47,6 +47,8 @@ export const importStaff = (text: string) =>
   request<{ added: number; skipped: number; ignoredOutsideDomain: number }>('POST', '/api/admin/users/import', { text });
 
 // ---- Student-support prototype (demo mode only) ---------------------------------
+export const getSupportLimit = () =>
+  request<{ atLimit: boolean; openTicketNumbers: string[] }>('GET', '/api/support/limit');
 export const createSupportCase = (input: { language: Language; issueId: SupportIssueId; description?: string }) =>
   request<StudentCaseView>('POST', '/api/support/cases', input);
 export const recordRedTag = (id: string, tag: string) =>

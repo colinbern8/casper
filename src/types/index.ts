@@ -157,10 +157,14 @@ export interface SupportIssue {
   review: Record<Language, ReviewStatus>;
 }
 
-export type SupportOutcome = 'open' | 'resolved' | 'escalated';
+/**
+ * `blocked`: the student was at the open-request limit, so no ticket could be created.
+ * It is a finished case, like `resolved`, and it has no ticket.
+ */
+export type SupportOutcome = 'open' | 'resolved' | 'escalated' | 'blocked';
 
 /**
- * The number on the red tag on the student's Chromebook, exactly as they typed it.
+ * The number on the red tag on the student's Chromebook: exactly six digits, as they typed it.
  * The app never looks it up or judges it: it only shows it to the technician, who
  * uses it to find the Chromebook (and the student it belongs to) in their own records.
  */
@@ -214,7 +218,7 @@ export interface NotificationDraft {
 export interface CaseHistoryEntry {
   at: string;
   by: string;
-  action: 'case_started' | 'issue_added' | 'tag_recorded' | 'resolved' | 'escalated' | 'disposition_recorded';
+  action: 'case_started' | 'issue_added' | 'tag_recorded' | 'resolved' | 'escalated' | 'blocked' | 'disposition_recorded';
   detail?: string;
 }
 

@@ -33,7 +33,13 @@ export interface StudentStrings {
   alreadyListed: (issueTitle: string) => string;
   maxReached: string;
   requestIncludes: (issueTitles: string[]) => string;
-  limitReached: (ticketNumbers: string[]) => string;
+  /** Shown first when the student already has an open request. */
+  limitIntro: (ticketNumbers: string[]) => string;
+  /** Shown instead of sending: names the open request and says who to contact. */
+  limitContact: (ticketNumbers: string[]) => string;
+  notSureLimited: string;
+  anotherPrompt: string;
+  tryAnother: string;
   placeholderAddIssue: string;
   stepOf: (n: number, total: number) => string;
   fixed: string;
@@ -44,6 +50,7 @@ export interface StudentStrings {
   tagYes: string;
   tagNo: string;
   tagRetype: string;
+  tagInvalid: string;
   tagSaved: (tag: string) => string;
   resolvedTitle: string;
   resolvedBody: string;
@@ -71,13 +78,13 @@ export const STRINGS: Record<Language, StudentStrings> = {
     thisLooksLike: title => `This looks like: ${title}.`,
     notSure: 'I am not sure which one that is. Pick the closest one below, or choose "Something else" and a technician will look at it.',
     askDetails: 'Tell us what is wrong in a few words, or tap Skip.',
-    askTag: 'Look for the red tag on your Chromebook. Type the number on it here, or tap Skip.',
+    askTag: 'Look for the red tag on your Chromebook. Type the 6-digit number on it here.',
     skip: 'Skip',
     send: 'Send',
     working: 'Working...',
     placeholderIssue: 'Type your problem, or tap a choice...',
     placeholderDetails: 'Type what is wrong...',
-    placeholderTag: 'Type the red tag number...',
+    placeholderTag: 'Type the 6-digit red tag number...',
     placeholderConfirm: 'Tap a choice, or type the number again...',
     placeholderSteps: 'Tap a choice above...',
     placeholderDone: 'This request is finished',
@@ -90,8 +97,13 @@ export const STRINGS: Record<Language, StudentStrings> = {
     alreadyListed: title => `"${title}" is already on this request. Pick a different problem, or tap "No, send it".`,
     maxReached: 'That is the most we can put in one request. Sending it now.',
     requestIncludes: titles => `This request includes: ${titles.join('; ')}.`,
-    limitReached: nums =>
-      `Request limit reached. You already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. To send another one, please contact the main office or a technician.`,
+    limitIntro: nums =>
+      `You already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. I can still try some quick fixes, but I can't send a new request. If they don't work, please contact the main office or a technician.`,
+    limitContact: nums =>
+      `I can't send a new request because you already have ${nums.length === 1 ? 'an open request' : 'open requests'}${nums.length ? ` (${nums.join(', ')})` : ''}. Please contact the main office or a technician.`,
+    notSureLimited: 'I am not sure which one that is. Pick the closest one below.',
+    anotherPrompt: 'OK. Which problem do you want to try? Tap one below, or type it.',
+    tryAnother: 'Try another problem',
     placeholderAddIssue: 'Type another problem...',
     stepOf: (n, total) => `Step ${n} of ${total}`,
     fixed: 'This fixed it',
@@ -101,7 +113,8 @@ export const STRINGS: Record<Language, StudentStrings> = {
     confirmTag: tag => `You typed: ${tag}\nPlease check that it matches the number on the red tag on your Chromebook. Is that right?`,
     tagYes: 'Yes, that is right',
     tagNo: 'No, type it again',
-    tagRetype: 'No problem. Type the number on the red tag again, or tap Skip.',
+    tagRetype: 'No problem. Type the 6-digit number on the red tag again.',
+    tagInvalid: 'The red tag number is exactly 6 digits, numbers only. Please check the tag and type it again.',
     tagSaved: tag => `Thanks. We saved red tag ${tag}. A technician will use it to find your Chromebook.`,
     resolvedTitle: 'Glad it is fixed!',
     resolvedBody: 'We saved that this was fixed. You do not need to do anything else.',
@@ -126,13 +139,13 @@ export const STRINGS: Record<Language, StudentStrings> = {
     thisLooksLike: title => `Esto parece ser: ${title}.`,
     notSure: 'No estoy seguro de cuál es. Elige la más parecida de abajo, o elige "Otra cosa" y un técnico lo revisará.',
     askDetails: 'Cuéntanos qué pasa en pocas palabras, o toca Omitir.',
-    askTag: 'Busca la etiqueta roja de tu Chromebook. Escribe aquí el número que tiene, o toca Omitir.',
+    askTag: 'Busca la etiqueta roja de tu Chromebook. Escribe aquí el número de 6 dígitos que tiene.',
     skip: 'Omitir',
     send: 'Enviar',
     working: 'Procesando...',
     placeholderIssue: 'Escribe tu problema, o toca una opción...',
     placeholderDetails: 'Escribe qué pasa...',
-    placeholderTag: 'Escribe el número de la etiqueta roja...',
+    placeholderTag: 'Escribe el número de 6 dígitos de la etiqueta roja...',
     placeholderConfirm: 'Toca una opción, o escribe el número otra vez...',
     placeholderSteps: 'Toca una opción de arriba...',
     placeholderDone: 'Esta solicitud ya terminó',
@@ -145,8 +158,13 @@ export const STRINGS: Record<Language, StudentStrings> = {
     alreadyListed: title => `"${title}" ya está en esta solicitud. Elige otro problema, o toca "No, enviarla".`,
     maxReached: 'Ese es el máximo que cabe en una solicitud. La enviamos ahora.',
     requestIncludes: titles => `Esta solicitud incluye: ${titles.join('; ')}.`,
-    limitReached: nums =>
-      `Se alcanzó el límite de solicitudes. Ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Para enviar otra, por favor comunícate con la oficina principal o con un técnico.`,
+    limitIntro: nums =>
+      `Ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Todavía puedo probar algunas soluciones rápidas, pero no puedo enviar una solicitud nueva. Si no funcionan, por favor comunícate con la oficina principal o con un técnico.`,
+    limitContact: nums =>
+      `No puedo enviar una solicitud nueva porque ya tienes ${nums.length === 1 ? 'una solicitud abierta' : 'solicitudes abiertas'}${nums.length ? ` (${nums.join(', ')})` : ''}. Por favor, comunícate con la oficina principal o con un técnico.`,
+    notSureLimited: 'No estoy seguro de cuál es. Elige la más parecida de abajo.',
+    anotherPrompt: 'Está bien. ¿Qué problema quieres probar? Toca una opción de abajo o escríbelo.',
+    tryAnother: 'Probar otro problema',
     placeholderAddIssue: 'Escribe otro problema...',
     stepOf: (n, total) => `Paso ${n} de ${total}`,
     fixed: 'Esto lo arregló',
@@ -156,7 +174,8 @@ export const STRINGS: Record<Language, StudentStrings> = {
     confirmTag: tag => `Escribiste: ${tag}\nPor favor, revisa que sea igual al número de la etiqueta roja de tu Chromebook. ¿Es correcto?`,
     tagYes: 'Sí, es correcto',
     tagNo: 'No, escribirlo otra vez',
-    tagRetype: 'No hay problema. Escribe otra vez el número de la etiqueta roja, o toca Omitir.',
+    tagRetype: 'No hay problema. Escribe otra vez el número de 6 dígitos de la etiqueta roja.',
+    tagInvalid: 'El número de la etiqueta roja tiene exactamente 6 dígitos, solo números. Por favor, revisa la etiqueta y escríbelo otra vez.',
     tagSaved: tag => `Gracias. Guardamos la etiqueta roja ${tag}. Un técnico la usará para encontrar tu Chromebook.`,
     resolvedTitle: '¡Qué bueno que se arregló!',
     resolvedBody: 'Guardamos que esto se arregló. No necesitas hacer nada más.',
