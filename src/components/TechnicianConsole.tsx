@@ -16,10 +16,11 @@ import {
   X
 } from 'lucide-react';
 import { Ticket, TicketPriority, TicketStatus, TicketUpdateInput } from '../types';
-import { allTechs } from '../data/schools';
+import { allTechs, schoolsFor } from '../data/schools';
 import { CaseDetailPanel } from './CaseDetailPanel';
 
 interface TechnicianConsoleProps {
+  demoMode: boolean;
   districtName: string;
   tickets: Ticket[];
   onRefresh: () => void;
@@ -28,6 +29,7 @@ interface TechnicianConsoleProps {
 }
 
 export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
+  demoMode,
   districtName,
   tickets,
   onRefresh,
@@ -532,6 +534,22 @@ export const TechnicianConsole: React.FC<TechnicianConsoleProps> = ({
                         </button>
                       </div>
                     )}
+
+                    {/* Correct the school if the requester picked the wrong one */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                      <span className="text-gray-600 font-medium">School:</span>
+                      <select
+                        value={ticket.school}
+                        onChange={(e) => onUpdateTicket(ticket.id, { school: e.target.value })}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-800"
+                      >
+                        {!schoolsFor(demoMode).some(s => s.name === ticket.school) && <option value={ticket.school}>{ticket.school}</option>}
+                        {schoolsFor(demoMode).map(s => (
+                          <option key={s.id} value={s.name}>{s.name}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-500">Fix it here if the school was picked wrongly.</span>
+                    </div>
 
                     {/* Quick Reassign Technician */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200">

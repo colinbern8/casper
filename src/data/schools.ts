@@ -13,6 +13,8 @@ export interface School {
   rooms: string[];
   /** Default technician for staff tickets from this campus. */
   leadTech: string;
+  /** Fictional campus used only when DEMO_MODE is on. Hidden from pickers and refused for tickets otherwise. */
+  demoOnly?: boolean;
 }
 
 /** Students are always routed here, regardless of campus. */
@@ -30,6 +32,7 @@ export const SCHOOLS: School[] = [
     name: 'Demo Middle School',
     rooms: ['Room 114', 'Room 115', 'Library / Media Center'],
     leadTech: 'Demo Technician',
+    demoOnly: true,
   },
   {
     id: 'hhsw',
@@ -51,8 +54,13 @@ export const SCHOOLS: School[] = [
   },
 ];
 
-export function findSchool(name: string): School | undefined {
-  return SCHOOLS.find(s => s.name === name);
+/** Schools people may pick: the real campuses, plus the fictional one in demo mode. */
+export function schoolsFor(demoMode: boolean): School[] {
+  return SCHOOLS.filter(s => demoMode || !s.demoOnly);
+}
+
+export function findSchool(name: string, demoMode = true): School | undefined {
+  return schoolsFor(demoMode).find(s => s.name === name);
 }
 
 /** Every name a ticket can be assigned to. */

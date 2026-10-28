@@ -426,3 +426,29 @@ test('unknown API routes and malformed JSON return JSON errors, not stack traces
   assert.equal(body.error, 'BAD_REQUEST');
   assert.ok(!JSON.stringify(body).includes('SyntaxError'));
 });
+
+test('demo school: refused unless DEMO_MODE is on', async () => {
+  const off = await start();
+  const staff = await off.login('t@d.test');
+  assert.equal((await off.call('POST', '/api/tickets', ticketBody({ school: 'Demo Middle School', room: 'Room 114' }), staff)).status, 400);
+  assert.equal((await off.call('POST', '/api/tickets', ticketBody(), staff)).status, 201);
+
+  const on = await start({ DEMO_MODE: 'true' });
+  const staff2 = await on.login('t@d.test');
+  assert.equal((await on.call('POST', '/api/tickets', ticketBody({ school: 'Demo Middle School', room: 'Room 114' }), staff2)).status, 201);
+});
+
+test('technician can correct a wrongly picked school; it is recorded in the notes', async () => {
+  const { call, login, users } = await start();
+  users.set('tech@d.test', 'tech', 'test');
+  const tech = await login('tech@d.test', 'Tina Tech');
+  const kid = await login('kid@d.test');
+  const t = (await call('POST', '/api/tickets', ticketBody({ userRole: 'student' }), kid)).body;
+
+  assert.equal((await call('PATCH', `/api/tickets/${t.id}`, { school: 'Nowhere High' }, tech)).status, 400);
+  assert.equal((await call('PATCH', `/api/tickets/${t.id}`, { school: 'Yardville Elementary School' }, kid)).status, 403);
+  const fixed = await call('PATCH', `/api/tickets/${t.id}`, { school: 'Yardville Elementary School' }, tech);
+  assert.equal(fixed.status, 200);
+  assert.equal(fixed.body.school, 'Yardville Elementary School');
+  assert.match(fixed.body.techNotes, /Corrected the school from "Hamilton High School West" to "Yardville Elementary School"/);
+});

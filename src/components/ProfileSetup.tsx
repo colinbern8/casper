@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import type { SessionUser } from '../types';
 import type { Profile } from '../profile';
-import { SCHOOLS, findSchool } from '../data/schools';
+import { schoolsFor, findSchool } from '../data/schools';
 
 interface ProfileSetupProps {
   user: SessionUser;
   initial?: Profile | null;
   onSave: (profile: Profile) => void;
   onCancel?: () => void;
+  demoMode: boolean;
 }
 
-export const ProfileSetup: React.FC<ProfileSetupProps> = ({ user, initial, onSave, onCancel }) => {
-  const [school, setSchool] = useState(initial?.school || SCHOOLS[0].name);
+export const ProfileSetup: React.FC<ProfileSetupProps> = ({ user, initial, onSave, onCancel, demoMode }) => {
+  const schools = schoolsFor(demoMode);
+  const [school, setSchool] = useState(initial?.school && findSchool(initial.school, demoMode) ? initial.school : schools[0].name);
   const [room, setRoom] = useState(initial?.room || '');
   const [phoneOrExt, setPhoneOrExt] = useState(initial?.phoneOrExt || '');
   const [error, setError] = useState<string | null>(null);
 
-  const rooms = findSchool(school)?.rooms || [];
+  const rooms = findSchool(school, demoMode)?.rooms || [];
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +39,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ user, initial, onSav
         <div>
           <label htmlFor="pf-school" className="block text-gray-700 font-medium mb-1">School</label>
           <select id="pf-school" className={field} value={school} onChange={e => setSchool(e.target.value)}>
-            {SCHOOLS.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            {schools.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
           </select>
         </div>
         <div>

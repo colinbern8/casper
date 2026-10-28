@@ -181,7 +181,7 @@ All settings are in `.env.example`.
 | `DATA_DIR`, `PORT`, `TRUST_PROXY` | Storage location, port, and reverse-proxy count |
 | `NOTIFY_WEBHOOK_URL` | Optional alert for urgent staff tickets |
 
-`src/data/schools.ts` is placeholder data (a few made-up campuses, rooms and technicians). Replace it before any real use.
+Schools are listed in `src/data/schools.ts`. "Demo Middle School" is marked `demoOnly`: it appears in pickers and is accepted for tickets only when `DEMO_MODE=true`, so real campuses can be added alongside it and demo mode can be retired later. A technician can correct a ticket's school from the expanded ticket (the change is written into the notes). `src/data/schools.ts` is placeholder data (a few made-up campuses, rooms and technicians). Replace it before any real use.
 
 ## Security model and known limits
 

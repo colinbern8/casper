@@ -261,7 +261,7 @@ export default function App() {
         {!user ? (
           <Login config={config} notice={notice} onSignedIn={u => { setUser(u); setNotice(null); }} />
         ) : needsProfile ? (
-          <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
+          <ProfileSetup demoMode={config.demoMode} user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
         ) : supportDemo ? (
           <StudentSupport onTicketCreated={handleTicketCreated} onUseClassicChat={() => setClassicStudentChat(true)} />
         ) : page === 'admin' ? (
@@ -269,10 +269,11 @@ export default function App() {
         ) : page === 'tech' ? (
           <>
             {techError && <div role="alert" className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded shrink-0">{techError}</div>}
-            <TechnicianConsole districtName={config.districtName} tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onViewDispatchSlip={setSelectedTicketForSlip} />
+            <TechnicianConsole demoMode={config.demoMode} districtName={config.districtName} tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onViewDispatchSlip={setSelectedTicketForSlip} />
           </>
         ) : userContext ? (
           <TeacherChatBot
+            demoMode={config.demoMode}
             userContext={userContext}
             onUpdateUserContext={handleUpdateUserContext}
             onTicketCreated={handleTicketCreated}

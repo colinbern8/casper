@@ -183,7 +183,7 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     const found = ownOpenCase(req, res);
     if (!found) return;
     const user = req.user!;
-    const parsed = parseTicketInput(buildTicketBody(found), user);
+    const parsed = parseTicketInput(buildTicketBody(found), user, config.demoMode);
     if (!parsed.ok) return bad(res, parsed.error, parsed.message);
     const v = parsed.value;
     // Same policy as POST /api/tickets, checked first so a blocked attempt does not use up the allowance.

@@ -44,14 +44,14 @@ export function triage(role: UserRole): { priority: TicketPriority; reason: stri
   }
 }
 
-export function parseTicketInput(body: any, who: { name: string; email: string; role: Role }): ParseResult<NewTicket> {
+export function parseTicketInput(body: any, who: { name: string; email: string; role: Role }, demoMode = true): ParseResult<NewTicket> {
   if (!body || typeof body !== 'object') return fail('INVALID_BODY', 'Request body must be JSON.');
 
   const role = ticketRoleFor(who.role, body.userRole);
   const userName = clean(who.name, 80) || who.email.split('@')[0];
   const userEmail = who.email.toLowerCase();
 
-  const school = findSchool(clean(body.school, 120));
+  const school = findSchool(clean(body.school, 120), demoMode);
   if (!school) return fail('INVALID_SCHOOL', 'Choose a school from the list.');
 
   const room = clean(body.room, 80);
@@ -94,7 +94,7 @@ export function parseTicketInput(body: any, who: { name: string; email: string; 
   };
 }
 
-export function parseTicketUpdate(body: any): ParseResult<TicketUpdateInput> {
+export function parseTicketUpdate(body: any, demoMode = true): ParseResult<TicketUpdateInput> {
   if (!body || typeof body !== 'object') return fail('INVALID_BODY', 'Request body must be JSON.');
   const out: TicketUpdateInput = {};
 
@@ -110,6 +110,12 @@ export function parseTicketUpdate(body: any): ParseResult<TicketUpdateInput> {
     const tech = clean(body.assignedTech, 80);
     if (tech && !allTechs().includes(tech)) return fail('INVALID_TECH', 'Unknown technician.');
     out.assignedTech = tech;
+  }
+  if (body.school !== undefined) {
+    // A technician correcting a school a student or teacher picked wrongly.
+    const school = findSchool(clean(body.school, 120), demoMode);
+    if (!school) return fail('INVALID_SCHOOL', 'Choose a school from the list.');
+    out.school = school.name;
   }
   if (body.addNote !== undefined) {
     const note = cleanMultiline(body.addNote, 1000);

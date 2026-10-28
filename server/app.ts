@@ -144,7 +144,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   // ---- Tickets ---------------------------------------------------------
   app.post('/api/tickets', requireRole('student'), (req, res) => {
     const user = req.user!;
-    const parsed = parseTicketInput(req.body, user);
+    const parsed = parseTicketInput(req.body, user, config.demoMode);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
@@ -185,7 +185,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   });
 
   app.patch('/api/tickets/:id', requireRole('tech'), (req, res) => {
-    const parsed = parseTicketUpdate(req.body);
+    const parsed = parseTicketUpdate(req.body, config.demoMode);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
@@ -196,6 +196,9 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
 
     const target = store.get(req.params.id);
     const notes: string[] = [];
+    if (fields.school && target && fields.school !== target.school) {
+      notes.push(`Corrected the school from "${target.school}" to "${fields.school}".`);
+    }
     if (allowAnother !== undefined) {
       if (target && target.userRole !== 'student') {
         res.status(400).json({ error: 'NOT_A_STUDENT_TICKET', message: 'Only a student request can be released this way.' });

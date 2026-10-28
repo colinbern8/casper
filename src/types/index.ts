@@ -105,6 +105,8 @@ export interface TicketCreateInput {
 export interface TicketUpdateInput {
   status?: TicketStatus;
   assignedTech?: string;
+  /** Correct the school the requester picked. The change is recorded in the ticket notes. */
+  school?: string;
   /** Appended (with a timestamp) to the ticket's notes by the server. */
   addNote?: string;
   priority?: TicketPriority;

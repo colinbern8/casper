@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserContext, Ticket, IssueCategory } from '../types';
 import { ApiError, createTicket, sendChat } from '../api';
-import { HELP_DESK, SCHOOLS } from '../data/schools';
+import { HELP_DESK, schoolsFor } from '../data/schools';
 
 const MAX_MESSAGE_LENGTH = 1000;
 
@@ -37,6 +37,7 @@ interface TeacherChatBotProps {
   onTicketCreated: (ticket: Ticket) => void;
   onViewDispatchSlip: (ticket: Ticket) => void;
   onContactIT?: () => void;
+  demoMode: boolean;
 }
 
 export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
@@ -44,7 +45,8 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
   onUpdateUserContext,
   onTicketCreated,
   onViewDispatchSlip,
-  onContactIT
+  onContactIT,
+  demoMode
 }) => {
   const isStudent = userContext.role === 'student';
 
@@ -873,7 +875,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                   onChange={e => setTempContext({ ...tempContext, school: e.target.value })}
                   className="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900"
                 >
-                  {SCHOOLS.map(sc => (
+                  {schoolsFor(demoMode).map(sc => (
                     <option key={sc.id} value={sc.name}>{sc.name}</option>
                   ))}
                 </select>
