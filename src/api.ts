@@ -63,3 +63,14 @@ export const escalateSupportCase = (id: string, reason: string) =>
 export const fetchSupportCase = (id: string) => request<SupportCase>('GET', `/api/support/cases/${id}`);
 export const recordDisposition = (id: string, value: DispositionValue, note?: string) =>
   request<SupportCase>('POST', `/api/support/cases/${id}/disposition`, { value, note });
+
+/** The built-in help chat's reply. Safety-blocked and rate-limited replies use the same shape. */
+export interface ChatReplyBody {
+  text: string;
+  isSafetyBlocked?: boolean;
+  needsEscalation?: boolean;
+  suggestedActions?: string[];
+}
+/** A 429 rejects with an ApiError whose `details` carry `text` and `cooldownSeconds`. */
+export const sendChat = (messages: { role: 'user' | 'model'; content: string }[], userContext: Record<string, unknown>) =>
+  request<ChatReplyBody>('POST', '/api/chat', { messages, userContext });

@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "tsx --test tests/*.test.ts",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "backup": "tsx scripts/backup.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

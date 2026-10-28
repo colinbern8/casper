@@ -24,12 +24,16 @@ export interface AppDeps {
   /** Student-support demo cases. Defaults to an in-memory store. */
   cases?: CaseStore;
   limiter?: SlidingWindowLimiter;
+  /** Throws if the server cannot do its job (for example, the data folder is not writable). Used by /api/health. */
+  healthCheck?: () => void;
+  /** Log one line per API request (method, path, status, time). No bodies, emails or query strings. */
+  accessLog?: boolean;
 }
 
 const FIFTEEN_MIN = 15 * 60_000;
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
-export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter() }: AppDeps) {
+export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), healthCheck, accessLog = false }: AppDeps) {
   const app = express();
   const sessions = createSessions(config.sessionSecret, config.isProduction);
 
@@ -41,6 +45,16 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     res.setHeader('Referrer-Policy', 'no-referrer');
     next();
   });
+  if (accessLog) {
+    app.use('/api', (req, res, next) => {
+      const started = Date.now();
+      res.on('finish', () => {
+        if (req.path === '/health') return;
+        console.log(`${req.method} /api${req.path} ${res.statusCode} ${Date.now() - started}ms`);
+      });
+      next();
+    });
+  }
   app.use('/api', (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     next();
@@ -49,7 +63,13 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   app.use('/api', attachUser(sessions, users, config));
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true });
+    try {
+      healthCheck?.();
+      res.json({ ok: true });
+    } catch (err) {
+      console.error('Health check failed:', (err as Error).message);
+      res.status(503).json({ ok: false });
+    }
   });
 
   app.get('/api/config', (_req, res) => {
@@ -311,8 +331,9 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   });
 
   // JSON parse errors and anything unexpected. No stack traces to clients.
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    if (err?.type === 'entity.parse.failed' || err?.type === 'entity.too.large') {
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const type = (err as { type?: string } | null)?.type;
+    if (type === 'entity.parse.failed' || type === 'entity.too.large') {
       res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid request body.' });
       return;
     }

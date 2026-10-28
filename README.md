@@ -148,6 +148,7 @@ server/                    app (routes), auth, session, users (roles), google, c
 src/                       React client: App (routing by role), Login, AdminPage, TeacherChatBot,
                            TechnicianConsole, StudentSupport (the student chat), CaseDetailPanel
 src/data/schools.ts        campuses, lead technicians, help desk contact (PLACEHOLDER data)
+scripts/backup.ts          nightly copy of the data files
 src/data/supportContent.ts the fixed troubleshooting steps in English and Spanish
 src/data/supportMatch.ts   keyword matching for what students type
 src/i18n/                  student-facing strings for the demo
@@ -164,6 +165,7 @@ tests/                     node:test suites: API, units, integrations, support d
 | `npm start` | Production server (`NODE_ENV=production`) |
 | `npm test` | Run all tests |
 | `npm run lint` | Type-check (`tsc --noEmit`) |
+| `npm run backup` | Copy `DATA_DIR/*.json` to a timestamped folder in `BACKUP_DIR` (default `./backups`), keeping the newest `BACKUP_KEEP` (default 14) |
 
 ### Configuration
 
@@ -221,9 +223,10 @@ Requirements and checklist:
 3. Serve over HTTPS. Session cookies are marked `Secure` in production.
 4. Set `TRUST_PROXY=1` behind a load balancer, otherwise rate limits see the proxy's IP.
 5. Put `DATA_DIR` on a persistent disk and run a **single instance**. Serverless platforms whose filesystem is wiped on restart do not work with the JSON stores.
-6. Sign in as an admin, import your staff list, and add your technicians.
-7. Replace the placeholder data in `src/data/schools.ts`.
-8. Leave `DEV_LOGIN` and `DEMO_MODE` off. The server refuses to start in production if either is on.
+6. Schedule `npm run backup` (for example nightly from cron) and copy `BACKUP_DIR` off the machine. Point your uptime monitor at `/api/health`, which returns 503 if the data folder is not writable.
+7. Sign in as an admin, import your staff list, and add your technicians.
+8. Replace the placeholder data in `src/data/schools.ts`.
+9. Leave `DEV_LOGIN` and `DEMO_MODE` off. The server refuses to start in production if either is on.
 
 ### Before a pilot
 
