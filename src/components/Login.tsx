@@ -133,7 +133,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
                   id="dev-email" value={devEmail} onChange={e => setDevEmail(e.target.value)} placeholder={`anyone@${config.domain}`}
                   className="flex-1 min-w-0 border border-gray-300 rounded-full px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
                 />
-                <button type="submit" disabled={busy || !devEmail} className="px-4 py-2 text-sm font-semibold bg-blue-700 hover:bg-blue-800 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-700 disabled:opacity-50">Go</button>
+                <button type="submit" disabled={busy || !devEmail} className="px-4 py-2 text-sm font-semibold bg-[#3b5a9d] hover:bg-[#2f4a85] text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-700 disabled:opacity-50">Go</button>
               </form>
             </div>
           </details>
