@@ -166,7 +166,7 @@ Files to touch: `server/spamGuard.ts` (new), `server/app.ts`, `server/supportRou
 - Blocked by: 5.3, 4.2 (language is known at warn time)
 
 ### Phase 6: Shared chat layout and production student chat (fog until Phases 1 to 5 land)
-Not specified. It gets its own plan file when picked up. Open question that must be answered first: see "Not yet specified".
+Not specified. It gets its own plan file when picked up. The teacher chat is restyled to match the student chat, not rebuilt (decided); the shared chat layout and data file apply that look to every role.
 
 ### Phase 7: Technician tools, notifications, admin dashboard, launch testing (fog)
 Not specified. Each gets its own plan file when picked up.
@@ -183,12 +183,12 @@ Not specified. Each gets its own plan file when picked up.
 | Spam thresholds | Warn at 3 bad events, sign out at 5, 15 minute lockout | User choice. |
 | Spam scope | Students only | User choice; staff and technicians are never signed out by this guard. |
 | Order of phases | Quick teacher fixes first, then sign-in page, rename, language pop-up, spam guard | Smallest and most visible first; the spam guard is the largest of the first five so it goes last. |
-| Teacher fixes vs shared chat | Phase 1 restyles the teacher chat (text size, colors); full matching of the student chat is Phase 6 | The teacher flow is a 971-line server-driven chat; rebuilding it is not a quick fix. Needs your confirmation (see Not yet specified). |
+| Teacher chat vs student chat | Restyle only: same look, text size and button style as the student chat; teachers keep their own guided flow | User choice. Rebuilding the 971-line teacher screen on the student design is not needed. |
 | Demo sign-in | Kept for testing, hidden from real users | The server already refuses dev login in production; tests and demos still need it. |
 
 ## Not yet specified
 - Phase 3: lockout persistence across server restarts. Assumed in-memory (see Assumptions below).
-- Phase 6: should the teacher chat be restyled to look like the student chat but keep its own guided flow (recommended, much smaller), or be rebuilt on the student chat's step-by-step design (cleaner, a large rewrite)?
+- Phase 6: the teacher chat is restyled, not rebuilt (decided). Remaining question when picked up: how the shared data file of common problems is shaped.
 - Phase 2: Google chooser behavior (account picker vs "Continue with Google" popup) can only be checked with real Google credentials, so it waits on district decision 1.
 - Phase 7: fog.
 
