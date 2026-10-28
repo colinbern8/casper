@@ -613,9 +613,9 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       {/* Context Subheader - Room & Status */}
-      <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between text-xs text-gray-600 shrink-0">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 text-sm text-gray-600 shrink-0">
         <div className="flex items-center gap-2 truncate">
           <span className="font-medium text-gray-900">{userContext.school}</span>
           <span className="text-gray-300">•</span>
@@ -626,7 +626,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
               setTempContext(userContext);
               setShowLocationModal(true);
             }}
-            className="text-blue-700 hover:text-blue-900 underline text-[11px]"
+            className="text-gray-600 hover:text-gray-900 underline text-sm"
           >
             Change
           </button>
@@ -638,7 +638,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
               aria-label="Your situation"
               value={userContext.role}
               onChange={e => onUpdateUserContext({ ...userContext, role: e.target.value as UserContext['role'] })}
-              className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border ${
+              className={`px-2 py-0.5 rounded-lg text-xs font-medium border ${
                 userContext.role === 'teacher_active' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-700 border-gray-200'
               }`}
             >
@@ -651,14 +651,14 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
       </div>
 
       {/* Message Feed - Single Column */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
         {messages.map(msg => (
           <div
             key={msg.id}
             className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
-              className={`max-w-[92%] sm:max-w-[85%] text-xs sm:text-sm leading-relaxed p-3.5 rounded-lg ${
+              className={`max-w-[88%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed px-4 py-2.5 rounded-lg ${
                 msg.sender === 'user'
                   ? 'bg-gray-800 text-white'
                   : msg.isSafetyBlocked
@@ -668,15 +668,15 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
             >
               {/* Safety notice indicator */}
               {msg.isSafetyBlocked && (
-                <div className="text-[11px] font-semibold text-amber-900 uppercase tracking-wider pb-1 mb-2 border-b border-amber-200">
+                <div className="text-xs font-semibold text-amber-900 uppercase tracking-wider pb-1 mb-2 border-b border-amber-200">
                   {msg.isRateLimited ? 'Rate Limit Notice' : 'Policy Notice'}
                 </div>
               )}
 
               {/* Action Callout if provided */}
               {msg.actionCallout && (
-                <div className="mb-2.5 p-2 bg-white border border-gray-300 rounded-lg text-xs font-medium text-gray-900">
-                  <span className="font-semibold text-gray-700 uppercase tracking-wider text-[10px] block text-gray-500 mb-0.5">
+                <div className="mb-2.5 p-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-900">
+                  <span className="font-semibold text-gray-700 uppercase tracking-wider text-xs block text-gray-500 mb-0.5">
                     Recommended Action
                   </span>
                   {msg.actionCallout}
@@ -692,7 +692,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
               {/* Numbered Steps List */}
               {msg.stepsList && msg.stepsList.length > 0 && (
-                <ol className="mt-2.5 list-decimal list-inside space-y-1 text-xs text-gray-700 bg-white p-2.5 rounded-lg border border-gray-200">
+                <ol className="mt-2.5 list-decimal list-inside space-y-1 text-sm text-gray-700 bg-white p-2.5 rounded-lg border border-gray-200">
                   {msg.stepsList.map((step, idx) => (
                     <li key={idx} className="leading-snug">{step}</li>
                   ))}
@@ -701,14 +701,14 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
               {/* Understated Note */}
               {msg.note && (
-                <p className="mt-2 text-xs text-gray-500 italic">
+                <p className="mt-2 text-sm text-gray-500 italic">
                   Note: {msg.note}
                 </p>
               )}
 
               {/* Reference link: only shown when a real article URL is configured */}
               {msg.kbSource?.url && (
-                <div className="mt-2 pt-2 border-t border-gray-200/80 text-[11px] text-gray-500">
+                <div className="mt-2 pt-2 border-t border-gray-200/80 text-xs text-gray-500">
                   <span className="text-gray-400">Reference: </span>
                   <a href={msg.kbSource.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">
                     {msg.kbSource.title}
@@ -718,7 +718,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
 
               {/* Escalation Ticket Details Box */}
               {msg.escalationTicket && (
-                <div className="mt-3 p-3 bg-white border border-gray-300 rounded-lg text-xs space-y-2">
+                <div className="mt-3 p-3 bg-white border border-gray-300 rounded-lg text-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-900">
                       {isStudent ? 'Media Center Loaner Request' : 'Technician Work Order'}
@@ -733,21 +733,21 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                   <button
                     type="button"
                     onClick={() => onViewDispatchSlip(msg.escalationTicket!)}
-                    className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium text-xs text-center border border-gray-300 transition"
+                    className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium text-sm text-center border border-gray-300 transition"
                   >
                     {isStudent ? 'Print Loaner Pass' : 'Print Dispatch Slip'}
                   </button>
                 </div>
               )}
 
-              <span className={`block text-[10px] mt-1.5 text-right ${msg.sender === 'user' ? 'text-gray-300' : 'text-gray-400'}`}>
+              <span className={`block text-xs mt-1.5 text-right ${msg.sender === 'user' ? 'text-gray-300' : 'text-gray-400'}`}>
                 {msg.timestamp}
               </span>
             </div>
 
             {/* Suggested Action Buttons */}
             {msg.suggestedActions && msg.suggestedActions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2 max-w-[92%] sm:max-w-[85%]">
+              <div className="flex flex-wrap gap-2 mt-2 max-w-[88%] sm:max-w-[80%]">
                 {msg.suggestedActions.map((action, idx) => {
                   const isPrimary = action.includes('resolved') || action.includes('next step') || action.includes('Next step');
                   return (
@@ -755,10 +755,10 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                       key={idx}
                       type="button"
                       onClick={() => handleActionClick(action)}
-                      className={`text-xs px-2.5 py-1.5 rounded-lg border transition font-medium text-left ${
+                      className={`text-sm sm:text-base px-4 py-2 rounded-full border font-medium text-left transition ${
                         isPrimary
-                          ? 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
-                          : 'bg-gray-50 hover:bg-gray-100 border-gray-300 text-gray-700'
+                          ? 'bg-blue-700 hover:bg-blue-800 border-blue-700 text-white'
+                          : 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
                       }`}
                     >
                       {action}
@@ -771,7 +771,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
         ))}
 
         {loading && (
-          <div className="text-xs text-gray-500 italic p-2">
+          <div className="text-sm text-gray-500 italic">
             Checking troubleshooting steps...
           </div>
         )}
@@ -783,14 +783,14 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
       <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 shrink-0">
         {/* Rate limit warning */}
         {cooldownRemaining > 0 && (
-          <div className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+          <div className="mb-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
             Rate limit active. Please wait <strong>{cooldownRemaining}s</strong> before sending another message.
           </div>
         )}
 
         {/* Spam warning */}
         {spamWarning && (
-          <div className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">
+          <div className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">
             {spamWarning}
           </div>
         )}
@@ -815,20 +815,20 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
                 : 'Describe your classroom IT issue...'
             }
             disabled={loading || cooldownRemaining > 0}
-            className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+            className="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
           />
 
           <button
             type="submit"
             disabled={!inputValue.trim() || loading || cooldownRemaining > 0}
-            className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
+            className="px-4 py-2.5 text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
           >
             {cooldownRemaining > 0 ? `${cooldownRemaining}s` : 'Send'}
           </button>
         </form>
 
         {/* Quiet Footer Links */}
-        <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center gap-3">
             <button
               type="button"
