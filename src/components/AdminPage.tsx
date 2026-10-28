@@ -63,7 +63,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
       <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
         {stats.map(([label, value]) => (
           <div key={label} className="bg-white border border-gray-200 rounded-lg p-3">
-            <span className="text-gray-500 block text-xs font-medium uppercase tracking-wider">{label}</span>
+            <span className="text-gray-500 block text-xs font-medium">{label}</span>
             <div className="text-lg font-bold text-gray-900 mt-0.5">{value}</div>
           </div>
         ))}

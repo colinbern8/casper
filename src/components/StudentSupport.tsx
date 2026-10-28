@@ -6,7 +6,6 @@ import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
 import { isRedTag, normalizeRedTag } from '../data/redTag';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
-import { Logo } from './Logo';
 
 type Phase =
   | 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff'
@@ -37,7 +36,7 @@ const BUBBLE: Record<Kind | 'user', string> = {
   info: 'bg-blue-50 border border-blue-200 text-gray-900',
   success: 'bg-emerald-50 border border-emerald-200 text-gray-900',
   handoff: 'bg-blue-50 border border-blue-200 text-gray-900',
-  notice: 'bg-amber-50 border border-amber-300 text-gray-900',
+  notice: 'bg-gray-100 text-gray-900',
 };
 
 /** Every problem on a request, the first one first. */
@@ -461,15 +460,14 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated 
     <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
         <div>
-          <h2 className="text-base font-semibold text-gray-900 leading-tight"><Logo /></h2>
-          <p className="text-xs text-gray-500">{t.headerTitle}</p>
+          <h2 className="text-xl font-semibold text-gray-900 leading-tight">{t.headerTitle}</h2>
         </div>
         {!limit && lang && (
           <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
         )}
       </div>
 
-      <div role="note" className="flex gap-2 items-start text-xs text-amber-900 bg-amber-50 border-b border-amber-200 px-4 py-2 shrink-0">
+      <div role="note" className="flex gap-2 items-start text-xs text-gray-700 bg-gray-100 px-4 py-2 shrink-0">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <p className="font-semibold">{t.demoBanner}</p>
