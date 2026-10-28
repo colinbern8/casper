@@ -59,3 +59,9 @@ export function findSchool(name: string): School | undefined {
 export function allTechs(): string[] {
   return Array.from(new Set([MEDIA_CENTER_DESK, ...SCHOOLS.map(s => s.leadTech)])).sort();
 }
+
+/** Rooms whose name contains the query anywhere, case-insensitive. An empty query returns all rooms. */
+export function filterRooms(rooms: string[], query: string): string[] {
+  const q = query.trim().toLowerCase();
+  return q ? rooms.filter(r => r.toLowerCase().includes(q)) : rooms;
+}
