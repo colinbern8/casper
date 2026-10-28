@@ -3,7 +3,6 @@ import type { PublicConfig, SessionUser } from '../types';
 import { Login } from './Login';
 import { DemoBadge } from './DemoBadge';
 import { Logo } from './Logo';
-import { HeroArt } from './HeroArt';
 
 interface LandingProps {
   config: PublicConfig;
@@ -75,15 +74,13 @@ export const Landing: React.FC<LandingProps> = ({ config, notice, onSignedIn }) 
             </p>
           </div>
 
-          <h1 className="enter mt-12 lg:mt-14 font-display font-black tracking-tight leading-[0.92] text-[clamp(3.25rem,8.6vw,7.5rem)]" style={{ ['--i' as string]: 1 }}>
+          <h1 className="enter mt-12 lg:mt-24 font-display font-black tracking-tight leading-[0.92] text-[clamp(3.25rem,8.6vw,7.5rem)]" style={{ ['--i' as string]: 1 }}>
             What’s not working?
           </h1>
 
           <p className="mt-8 max-w-[34rem] text-lg leading-relaxed">
             Tell us what’s wrong. We’ll try a few fixes with you first. If they don’t work, a technician takes your request.
           </p>
-
-          <HeroArt className="enter hidden lg:block mt-4 w-full max-w-[27rem] h-auto" />
         </section>
 
         {/* The chat window: the page's object. Quick replies fill the conversation; the composer is the sign-in. */}
