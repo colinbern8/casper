@@ -1,5 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import type { Config } from './config';
+import { LIMITS, type Config } from './config';
 import { attachUser, emailInDomain, requireRole, sameOriginForWrites } from './auth';
 import { createSessions } from './session';
 import type { GoogleVerifier } from './google';
@@ -30,7 +30,6 @@ export interface AppDeps {
   accessLog?: boolean;
 }
 
-const FIFTEEN_MIN = 15 * 60_000;
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
 export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), healthCheck, accessLog = false }: AppDeps) {
@@ -39,7 +38,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
 
   if (config.trustProxy) app.set('trust proxy', config.trustProxy);
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '200kb' }));
+  app.use(express.json({ limit: LIMITS.bodyLimit }));
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -94,7 +93,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   });
 
   app.post('/api/auth/google', async (req, res) => {
-    const hit = limiter.hit(`auth-ip:${req.ip || 'unknown'}`, 30, 10 * 60_000);
+    const hit = limiter.hit(`auth-ip:${req.ip || 'unknown'}`, LIMITS.signIn.perIp, LIMITS.signIn.windowMs);
     if (!hit.allowed) {
       res.status(429).json({ error: 'TOO_MANY_ATTEMPTS', message: 'Too many sign-in attempts. Try again in a few minutes.' });
       return;
@@ -158,8 +157,9 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
         return;
       }
     }
-    const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);
-    const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, 60, FIFTEEN_MIN);
+    const { perStudent, perStaff, perIp: ipMax, windowMs } = LIMITS.tickets;
+    const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? perStudent : perStaff, windowMs);
+    const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, ipMax, windowMs);
     if (!perUser.allowed || !perIp.allowed) {
       res.status(429).json({
         error: 'TICKET_LIMIT_EXCEEDED',
@@ -289,8 +289,8 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     const uc = req.body?.userContext && typeof req.body.userContext === 'object' ? req.body.userContext : {};
 
     // Schools share one public IP, so the per-IP ceiling is generous; the per-user limit is the tight one.
-    const ipCheck = limiter.hit(`chat-ip:${req.ip || 'unknown'}`, 120, 60_000);
-    const userCheck = limiter.hit(`chat-user:${user.email}`, 5, 30_000);
+    const ipCheck = limiter.hit(`chat-ip:${req.ip || 'unknown'}`, LIMITS.chat.perIp, LIMITS.chat.ipWindowMs);
+    const userCheck = limiter.hit(`chat-user:${user.email}`, LIMITS.chat.perUser, LIMITS.chat.userWindowMs);
     if (!ipCheck.allowed || !userCheck.allowed) {
       const wait = Math.max(1, Math.ceil(Math.max(ipCheck.retryAfterMs, userCheck.retryAfterMs) / 1000));
       res.status(429).json({

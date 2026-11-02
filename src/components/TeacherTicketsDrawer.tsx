@@ -54,7 +54,7 @@ export const TeacherTicketsDrawer: React.FC<TeacherTicketsDrawerProps> = ({
               <div className="text-center py-12 text-gray-500 space-y-1">
                 <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                 <p className="font-medium text-gray-700 text-xs">No requests yet</p>
-                <p className="text-xs text-gray-400">Requests you submit from this device show up here.</p>
+                <p className="text-xs text-gray-400">Requests sent from your account, on any device, show up here.</p>
               </div>
             ) : (
               tickets.map(ticket => (

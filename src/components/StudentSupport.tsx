@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Info, Send } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { MAX_REPORTED_ISSUES, type Language, type StudentCaseView, type SupportIssue, type SupportIssueId, type Ticket } from '../types';
 import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, getSupportLimit, recordRedTag, recordSupportAttempt } from '../api';
 import { SUPPORT_ISSUES, findSupportIssue } from '../data/supportContent';
 import { matchIssue } from '../data/supportMatch';
 import { isRedTag, normalizeRedTag } from '../data/redTag';
 import { LANGUAGE_PROMPT, PLACEHOLDER_CHOOSE_LANGUAGE, STRINGS } from '../i18n/studentStrings';
+import { MAX_SUPPORT_INPUT } from '../data/limits';
+import { ChatBubble, ChatFrame, ChatInput, ChoiceChips, type BubbleTone, type Choice } from './chat/ChatParts';
 
 type Phase =
   | 'language' | 'issue' | 'details' | 'tag' | 'confirmTag' | 'steps' | 'handoff'
   | 'addMore' | 'addIssue' | 'addDetails'
   | 'done';
-type Kind = 'plain' | 'info' | 'success' | 'handoff' | 'notice';
+type Kind = BubbleTone;
 
 interface Msg {
   id: number;
@@ -20,24 +22,9 @@ interface Msg {
   kind?: Kind;
 }
 
-interface Chip {
-  key: string;
-  label: string;
-  primary?: boolean;
-}
-
 interface StudentSupportProps {
   onTicketCreated: (ticket: Ticket) => void;
 }
-
-const BUBBLE: Record<Kind | 'user', string> = {
-  user: 'bg-gray-800 text-white',
-  plain: 'bg-gray-50 border border-gray-200 text-gray-800',
-  info: 'bg-blue-50 border border-blue-200 text-gray-900',
-  success: 'bg-emerald-50 border border-emerald-200 text-gray-900',
-  handoff: 'bg-blue-50 border border-blue-200 text-gray-900',
-  notice: 'bg-gray-100 text-gray-900',
-};
 
 /** Every problem on a request, the first one first. */
 const idsOf = (c: StudentCaseView): SupportIssueId[] => [c.reported.issueId, ...(c.additionalIssues ?? []).map(i => i.issueId)];
@@ -72,16 +59,11 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated 
   /** Open request numbers when the student is at the request limit (limit mode); null otherwise. */
   const [limit, setLimit] = useState<string[] | null>(null);
   const nextId = useRef(1);
-  const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const t = STRINGS[lang ?? 'en'];
   const step = issue && !issue.escalateOnly ? issue.steps[stepIndex] : undefined;
   const listedIds = current ? idsOf(current) : [];
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
-  }, [messages, phase, busy]);
 
   const inputEnabled = !busy && phase !== 'language' && phase !== 'done';
   useEffect(() => {
@@ -262,7 +244,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated 
     setCurrent(res.case);
     onTicketCreated(res.ticket);
     const includes = ids.length > 1 ? `\n${t.requestIncludes(ids.map(id => findSupportIssue(id)!.title[lang]))}` : '';
-    push('bot', `${t.escalatedTitle}\n${t.escalatedBody}\n${t.ticketNumber}: ${res.ticket.ticketNumber}\n${t.caseNumber}: ${res.case.caseNumber}${includes}`, 'handoff');
+    push('bot', `${t.escalatedTitle}\n${t.escalatedBody}\n${t.ticketNumber}: ${res.ticket.ticketNumber}\n${t.caseNumber}: ${res.case.caseNumber}${includes}`, 'info');
     setPhase('done');
   };
 
@@ -369,7 +351,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated 
 
   // ---- Choices shown under the latest bot message --------------------------
 
-  const chips: Chip[] = (() => {
+  const chips: Choice[] = (() => {
     if (busy || !lang && phase !== 'language') return [];
     switch (phase) {
       case 'language':
@@ -381,30 +363,30 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated 
       case 'tag':
         return []; // the red tag is required: no Skip
       case 'confirmTag':
-        return [{ key: 'tag-yes', label: t.tagYes, primary: true }, { key: 'tag-no', label: t.tagNo }];
+        return [{ key: 'tag-yes', label: t.tagYes, tone: 'primary' as const }, { key: 'tag-no', label: t.tagNo }];
       case 'steps':
         return step
           ? [
-              { key: 'worked', label: t.fixed, primary: true },
+              { key: 'worked', label: t.fixed, tone: 'primary' as const },
               { key: 'not_worked', label: t.notFixed },
               { key: 'tech', label: t.askTechnician },
             ]
-          : [{ key: 'tech', label: t.askTechnician, primary: true }];
+          : [{ key: 'tech', label: t.askTechnician, tone: 'primary' as const }];
       case 'handoff':
-        return [{ key: 'tech', label: t.askTechnician, primary: true }];
+        return [{ key: 'tech', label: t.askTechnician, tone: 'primary' as const }];
       case 'addMore':
-        return [{ key: 'more-no', label: t.addMoreNo, primary: true }, { key: 'more-yes', label: t.addMoreYes }];
+        return [{ key: 'more-no', label: t.addMoreNo, tone: 'primary' as const }, { key: 'more-yes', label: t.addMoreYes }];
       case 'addIssue':
         return [
           ...SUPPORT_ISSUES.filter(i => i.id === 'other' || !listedIds.includes(i.id)).map(i => ({ key: `addissue:${i.id}`, label: i.title[lang!] })),
-          { key: 'more-no', label: t.addMoreNo, primary: true },
+          { key: 'more-no', label: t.addMoreNo, tone: 'primary' as const },
         ];
       case 'addDetails':
         return [];
       case 'done':
         return limit
-          ? [{ key: 'another', label: t.tryAnother, primary: true }]
-          : [{ key: 'again', label: t.startAnother, primary: true }];
+          ? [{ key: 'another', label: t.tryAnother, tone: 'primary' as const }]
+          : [{ key: 'again', label: t.startAnother, tone: 'primary' as const }];
     }
   })();
 
@@ -457,88 +439,47 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ onTicketCreated 
     : t.placeholderSteps;
 
   return (
-    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 leading-tight">{t.headerTitle}</h2>
-        </div>
-        {!limit && lang && (
-          <button type="button" onClick={reset} className="text-sm text-gray-600 underline hover:text-gray-900">{t.changeLanguage}</button>
-        )}
-      </div>
-
-      <div role="note" className="flex gap-2 items-start text-xs text-gray-700 bg-gray-100 px-4 py-2 shrink-0">
-        <Info className="w-4 h-4 mt-0.5 shrink-0" />
-        <div>
-          <p className="font-semibold">{t.demoBanner}</p>
-          {t.reviewBanner && <p className="mt-0.5">{t.reviewBanner}</p>}
-        </div>
-      </div>
-
-      <div role="log" aria-live="polite" aria-label="Conversation" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-        {messages.map(m => (
-          <div key={m.id} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[88%] sm:max-w-[80%] whitespace-pre-line text-sm sm:text-base leading-relaxed px-4 py-2.5 rounded-lg ${BUBBLE[m.from === 'user' ? 'user' : m.kind ?? 'plain']}`}>
-              {m.text}
-            </div>
+    <ChatFrame
+      lang={lang ?? undefined}
+      logLabel={t.conversation}
+      scrollKey={`${messages.length}-${phase}-${busy}`}
+      title={<h2 className="text-xl font-semibold text-gray-900 leading-tight">{t.headerTitle}</h2>}
+      headerActions={
+        !limit && lang && (
+          <button type="button" onClick={reset} className="text-sm text-gray-700 underline hover:text-gray-900">{t.changeLanguage}</button>
+        )
+      }
+      banner={
+        <div role="note" className="flex gap-2 items-start text-xs text-gray-800 bg-gray-100 px-4 py-2 shrink-0">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">{t.demoBanner}</p>
+            {t.reviewBanner && <p className="mt-0.5">{t.reviewBanner}</p>}
           </div>
-        ))}
-
-        {busy && <p className="text-sm text-gray-500 italic">{t.working}</p>}
-
-        {chips.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1" role="group" aria-label="Choices">
-            {chips.map(c => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => onChip(c.key)}
-                className={`text-sm sm:text-base px-4 py-2 rounded-full border font-medium text-left transition ${
-                  c.primary
-                    ? 'bg-blue-700 hover:bg-blue-800 border-blue-700 text-white'
-                    : 'bg-white hover:bg-gray-50 border-gray-400 text-gray-900'
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-
-      <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 shrink-0">
-        {error && <p role="alert" className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            submit(input);
-          }}
-          className="flex items-center gap-2"
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            aria-label={placeholder}
+        </div>
+      }
+      footer={
+        <>
+          {error && <p role="alert" className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+          <ChatInput
+            inputRef={inputRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
-            maxLength={500}
-            inputMode={phase === 'tag' ? 'numeric' : 'text'}
+            onChange={setInput}
+            onSubmit={() => submit(input)}
             placeholder={placeholder}
             disabled={!inputEnabled}
-            className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:bg-gray-100"
+            sendLabel={t.send}
+            maxLength={MAX_SUPPORT_INPUT}
+            inputMode={phase === 'tag' ? 'numeric' : 'text'}
           />
-          <button
-            type="submit"
-            aria-label={t.send}
-            disabled={!inputEnabled || !input.trim()}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
-          >
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">{t.send}</span>
-          </button>
-        </form>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {messages.map(m => (
+        <ChatBubble key={m.id} from={m.from} tone={m.kind}>{m.text}</ChatBubble>
+      ))}
+      {busy && <p className="text-sm text-gray-600 italic">{t.working}</p>}
+      <ChoiceChips choices={chips} onPick={onChip} label={t.choices} />
+    </ChatFrame>
   );
 };

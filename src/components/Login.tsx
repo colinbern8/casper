@@ -2,9 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { PublicConfig, SessionUser } from '../types';
 import { ApiError, loginDev, loginGoogle } from '../api';
 
+/** The small part of Google Identity Services this page uses. */
+interface GoogleIdentity {
+  accounts: {
+    id: {
+      initialize(options: { client_id: string; callback: (resp: { credential: string }) => void }): void;
+      renderButton(parent: HTMLElement, options: Record<string, unknown>): void;
+    };
+  };
+}
+
 declare global {
   interface Window {
-    google?: any;
+    google?: GoogleIdentity;
   }
 }
 
@@ -49,8 +59,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
     loadGoogleScript()
       .then(() => {
         if (cancelled || !buttonRef.current) return;
-        window.google.accounts.id.initialize({
-          client_id: config.googleClientId,
+        const gsi = window.google!.accounts.id;
+        gsi.initialize({
+          client_id: config.googleClientId!,
           callback: async (resp: { credential: string }) => {
             setBusy(true);
             setError(null);
@@ -63,7 +74,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
             }
           },
         });
-        window.google.accounts.id.renderButton(buttonRef.current, { theme: 'outline', size: 'large', text: 'continue_with', width: 320 });
+        gsi.renderButton(buttonRef.current, { theme: 'outline', size: 'large', text: 'continue_with', width: 320 });
       })
       .catch(() => setError('Google sign-in could not load. Check your connection, or ask IT to allow accounts.google.com.'));
     return () => {

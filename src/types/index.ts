@@ -15,6 +15,7 @@ export interface UserRecord {
   role: Exclude<Role, 'student'>;
   addedBy: string;
   addedAt: string;
+  /** Set for admins defined in ADMIN_EMAILS; they cannot be changed in the app. */
   locked?: boolean;
 }
 

@@ -8,13 +8,15 @@ export interface StudentStrings {
   demoBanner: string;
   reviewBanner: string | null;
   headerTitle: string;
+  /** Screen-reader names for the conversation log and the group of choices. */
+  conversation: string;
+  choices: string;
   changeLanguage: string;
   greeting: string;
   thisLooksLike: (issueTitle: string) => string;
   notSure: string;
   askDetails: string;
   askTag: string;
-  skip: string;
   send: string;
   working: string;
   placeholderIssue: string;
@@ -71,13 +73,14 @@ export const STRINGS: Record<Language, StudentStrings> = {
     demoBanner: 'DEMO with fictional data. Nothing you enter is sent to anyone.',
     reviewBanner: null,
     headerTitle: 'Student help',
+    conversation: 'Conversation',
+    choices: 'Choices',
     changeLanguage: 'Change language',
     greeting: 'Hi! I can help with your Chromebook. What is the problem? Tap one below, or type it.',
     thisLooksLike: title => `This looks like: ${title}.`,
     notSure: 'I am not sure which one that is. Pick the closest one below, or choose "Something else" and a technician will look at it.',
     askDetails: 'Tell us what is wrong in a few words.',
     askTag: 'Look for the red tag on your Chromebook. Type the 6-digit number on it here.',
-    skip: 'Skip',
     send: 'Send',
     working: 'Working...',
     placeholderIssue: 'Type your problem, or tap a choice...',
@@ -131,13 +134,14 @@ export const STRINGS: Record<Language, StudentStrings> = {
     demoBanner: 'DEMOSTRACIÓN con datos ficticios. Nada de lo que escribas se envía a nadie.',
     reviewBanner: 'Texto en español pendiente de revisión humana.',
     headerTitle: 'Ayuda para estudiantes',
+    conversation: 'Conversación',
+    choices: 'Opciones',
     changeLanguage: 'Cambiar idioma',
     greeting: '¡Hola! Puedo ayudarte con tu Chromebook. ¿Cuál es el problema? Toca una opción o escríbelo.',
     thisLooksLike: title => `Esto parece ser: ${title}.`,
     notSure: 'No estoy seguro de cuál es. Elige la más parecida de abajo, o elige "Otra cosa" y un técnico lo revisará.',
     askDetails: 'Cuéntanos qué pasa en pocas palabras.',
     askTag: 'Busca la etiqueta roja de tu Chromebook. Escribe aquí el número de 6 dígitos que tiene.',
-    skip: 'Omitir',
     send: 'Enviar',
     working: 'Procesando...',
     placeholderIssue: 'Escribe tu problema, o toca una opción...',

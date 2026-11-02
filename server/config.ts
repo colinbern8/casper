@@ -70,3 +70,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     studentOpenTicketLimit: openLimit,
   };
 }
+
+const MINUTE = 60_000;
+
+/**
+ * Every abuse limit in one place. These are not environment settings on purpose: changing one
+ * should be a reviewed code change. Counts are per window.
+ */
+export const LIMITS = {
+  /** How long a sign-in lasts. */
+  sessionTtlMs: 8 * 60 * MINUTE,
+  /** JSON request bodies larger than this are refused. */
+  bodyLimit: '200kb',
+  /** Sign-in attempts per IP address. */
+  signIn: { perIp: 30, windowMs: 10 * MINUTE },
+  /** New tickets per person and per IP address (schools share one public IP, so that one is generous). */
+  tickets: { perStudent: 2, perStaff: 3, perIp: 60, windowMs: 15 * MINUTE },
+  /** The built-in help chat. */
+  chat: { perUser: 5, userWindowMs: 30_000, perIp: 120, ipWindowMs: MINUTE },
+  /** Student-support chat: new cases, other case changes, and typed messages. */
+  support: { createPerUser: 10, actionsPerUser: 60, windowMs: 15 * MINUTE, messagesPerUser: 6, messageWindowMs: 30_000 },
+  /** Student spam guard: warn at `warnAt` bad messages, sign out and lock out at `signOutAt`. */
+  spam: { warnAt: 3, signOutAt: 5, lockoutMs: 15 * MINUTE, strikeWindowMs: 15 * MINUTE, repeatWindowMs: 2 * MINUTE },
+  /** Most distinct keys the in-memory rate limiter keeps before dropping the oldest. */
+  limiterMaxKeys: 50_000,
+} as const;

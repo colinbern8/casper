@@ -118,6 +118,32 @@ test('config: production refuses to start without sign-in and admin settings', (
   assert.equal(loadConfig({ DEV_LOGIN: 'true' } as NodeJS.ProcessEnv).devLogin, true);
 });
 
+test('data files of the wrong shape are moved aside, never overwritten', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'casper-shape-'));
+  const file = path.join(dir, 'tickets.json');
+  fs.writeFileSync(file, JSON.stringify({ tickets: 'not a list' }));
+  const s = new TicketStore(file);
+  assert.equal(s.size, 0);
+  assert.ok(fs.readdirSync(dir).some(f => f.startsWith('tickets.json.corrupt-')), 'the bad file is kept for inspection');
+  const users = path.join(dir, 'users.json');
+  fs.writeFileSync(users, JSON.stringify([{ email: 'x@d.test', role: 'superuser' }]));
+  assert.equal(new UserStore(users, []).roleFor('x@d.test'), 'student');
+  assert.ok(fs.readdirSync(dir).some(f => f.startsWith('users.json.corrupt-')));
+});
+
+test('sliding window limiter keeps memory bounded: keys expire on their own window and the oldest is dropped past the cap', () => {
+  let t = 0;
+  const l = new SlidingWindowLimiter(() => t, 3);
+  l.hit('a', 5, 1000);
+  l.hit('b', 5, 10 * 60_000);
+  l.hit('c', 5, 1000);
+  l.hit('d', 5, 1000);
+  assert.equal(l.size, 3, 'capped at three keys');
+  t = 61_000;
+  l.hit('e', 5, 1000);
+  assert.equal(l.size, 2, 'expired short-window keys pruned; the long-window key survives');
+});
+
 test('sliding window limiter frees up after the window', () => {
   let t = 0;
   const l = new SlidingWindowLimiter(() => t);
@@ -128,36 +154,18 @@ test('sliding window limiter frees up after the window', () => {
   assert.equal(l.hit('k', 2, 1000).allowed, true);
 });
 
-test('no file under src/ or server/ holds the old product name, except the documented migration', () => {
+test('no file under src/ or server/ holds the old product name', () => {
   const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
-  const allowed = new Set([path.join('src', 'legacyProfileKey.ts')]);
   const oldName = /(?<![a-z])greg(?![a-z])/i;
   const hits: string[] = [];
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
       const rel = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(rel);
-      else if (!allowed.has(rel) && oldName.test(fs.readFileSync(path.join(root, rel), 'utf8'))) hits.push(rel);
+      else if (oldName.test(fs.readFileSync(path.join(root, rel), 'utf8'))) hits.push(rel);
     }
   };
   walk('src');
   walk('server');
   assert.deepEqual(hits, []);
-});
-
-test('saved profile moves once from the old key to the new one', async () => {
-  const store = new Map<string, string>();
-  (globalThis as any).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-  };
-  const { legacyProfileKey } = await import('../src/legacyProfileKey');
-  const { loadProfile, saveProfile } = await import('../src/profile');
-  const p = { school: 'North High', room: '12', phoneOrExt: '' };
-  store.set(legacyProfileKey('A@d.test'), JSON.stringify(p));
-  assert.deepEqual(loadProfile('a@d.test'), p);
-  assert.ok(store.has('casper.profile.v2.a@d.test'));
-  saveProfile('a@d.test', { ...p, room: '14' });
-  assert.equal(loadProfile('a@d.test')?.room, '14');
-  delete (globalThis as any).localStorage;
 });

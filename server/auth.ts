@@ -1,14 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Config } from './config';
-import type { Role } from '../src/types';
+import type { Role, SessionUser } from '../src/types';
 import type { Sessions } from './session';
 import { RANK, type UserStore } from './users';
-
-export interface SessionUser {
-  email: string;
-  name: string;
-  role: Role;
-}
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace

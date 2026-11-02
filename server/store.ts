@@ -1,7 +1,6 @@
-import fs from 'fs';
-import path from 'path';
 import crypto from 'crypto';
 import type { Ticket } from '../src/types';
+import { isRecord, readJsonFile, writeJsonFile } from './jsonFile';
 
 export type NewTicket = Omit<Ticket, 'id' | 'ticketNumber' | 'createdAt'>;
 
@@ -9,6 +8,9 @@ interface StoreFile {
   counter: number;
   tickets: Ticket[];
 }
+
+const isStoreFile = (v: unknown): v is StoreFile =>
+  isRecord(v) && Number.isInteger(v.counter) && Array.isArray(v.tickets) && v.tickets.every(t => isRecord(t) && typeof t.id === 'string');
 
 /**
  * Tickets in a JSON file, written atomically after every change. Good for a
@@ -19,17 +21,7 @@ export class TicketStore {
   private data: StoreFile = { counter: 0, tickets: [] };
 
   constructor(private file: string | null, private ticketPrefix = 'HTSD') {
-    if (file && fs.existsSync(file)) {
-      try {
-        const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as StoreFile;
-        if (Array.isArray(parsed.tickets) && typeof parsed.counter === 'number') this.data = parsed;
-      } catch (err) {
-        // Keep the unreadable file for inspection rather than overwriting it.
-        const backup = `${file}.corrupt-${Date.now()}`;
-        fs.renameSync(file, backup);
-        console.error(`Ticket file was unreadable; moved to ${backup}. Starting empty.`, err);
-      }
-    }
+    this.data = readJsonFile(file, isStoreFile, 'Ticket') ?? this.data;
   }
 
   get size(): number {
@@ -84,10 +76,6 @@ export class TicketStore {
   }
 
   private persist() {
-    if (!this.file) return;
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    const tmp = `${this.file}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
-    fs.renameSync(tmp, this.file);
+    writeJsonFile(this.file, this.data);
   }
 }

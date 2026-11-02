@@ -21,8 +21,8 @@ export interface ChatReply {
   suggestedActions: string[];
 }
 
-export const STUDENT_TOPICS = ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login', 'Chromebook is broken or damaged'];
-export const STAFF_TOPICS = ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers', 'Cannot sign in to my account'];
+const STUDENT_TOPICS = ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login', 'Chromebook is broken or damaged'];
+const STAFF_TOPICS = ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers', 'Cannot sign in to my account'];
 
 const MAX_HISTORY = 10;
 const MAX_MODEL_TURN_CHARS = 1500;
@@ -52,9 +52,10 @@ export function normalizeHistory(raw: unknown): ChatTurn[] | null {
   return merged;
 }
 
-export function suggestedActionsFor(isStudent: boolean, needsEscalation: boolean): string[] {
+function suggestedActionsFor(isStudent: boolean, needsEscalation: boolean): string[] {
   const escalate = isStudent ? 'Request loaner device' : 'Submit IT ticket';
-  return needsEscalation ? [escalate, 'Issue resolved', 'Contact IT'] : ['Issue resolved', 'Try next step', escalate];
+  // Built-in answers list every step at once, so there is never a "next step" to offer.
+  return needsEscalation ? [escalate, 'Issue resolved', 'Contact IT'] : ['Issue resolved', escalate, 'Contact IT'];
 }
 
 /** The reply to a free-text question: fixed text chosen by keyword matching. */

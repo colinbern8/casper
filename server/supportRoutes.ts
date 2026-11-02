@@ -1,11 +1,11 @@
 import express, { type Response } from 'express';
-import type { Config } from './config';
+import { LIMITS, type Config } from './config';
 import { requireRole } from './auth';
 import type { SlidingWindowLimiter } from './rateLimit';
 import type { TicketStore } from './store';
 import type { CaseStore } from './cases';
 import { screenMessage } from './safety';
-import { cleanMultiline, openTicketLimitBody, parseTicketInput } from './tickets';
+import { cleanMultiline, oneOf, openTicketLimitBody, parseTicketInput } from './tickets';
 import { DEMO_SCHOOL, studentFor } from './supportFixtures';
 import { buildDraft, buildTicketBody, toStudentView } from './support';
 import { findSupportIssue } from '../src/data/supportContent';
@@ -20,9 +20,8 @@ export interface SupportDeps {
   limiter: SlidingWindowLimiter;
 }
 
-const FIFTEEN_MIN = 15 * 60_000;
 /** "Something else" is the only free text a student can send a technician, so it must say something real. */
-export const MIN_OTHER_WORDS = 8;
+const MIN_OTHER_WORDS = 8;
 const otherWordsProblem = (description: string | undefined): string | null => {
   if (!description || description.length < MIN_OTHER_WORDS) return `Say what is wrong in a few words (at least ${MIN_OTHER_WORDS} characters).`;
   const screen = screenMessage(description);
@@ -44,7 +43,7 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
   router.use(requireRole('student'));
 
   const limited = (res: Response, key: string, limit: number): boolean => {
-    if (limiter.hit(key, limit, FIFTEEN_MIN).allowed) return false;
+    if (limiter.hit(key, limit, LIMITS.support.windowMs).allowed) return false;
     bad(res, 'RATE_LIMITED', 'Too many requests. Please wait a few minutes.', 429);
     return true;
   };
@@ -73,9 +72,9 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
   router.post('/cases', (req, res) => {
     const user = req.user!;
     const { language, issueId } = req.body ?? {};
-    if (!LANGUAGES.includes(language)) return bad(res, 'INVALID_LANGUAGE', 'Choose English or Spanish.');
-    if (!SUPPORT_ISSUE_IDS.includes(issueId)) return bad(res, 'INVALID_ISSUE', 'Choose an issue from the list.');
-    if (limited(res, `support-create:${user.email}`, 10)) return;
+    if (!oneOf(LANGUAGES, language)) return bad(res, 'INVALID_LANGUAGE', 'Choose English or Spanish.');
+    if (!oneOf(SUPPORT_ISSUE_IDS, issueId)) return bad(res, 'INVALID_ISSUE', 'Choose an issue from the list.');
+    if (limited(res, `support-create:${user.email}`, LIMITS.support.createPerUser)) return;
 
     const fixture = studentFor(user.email, config.domain);
     const description = cleanMultiline(req.body?.description, 500) || undefined;
@@ -115,7 +114,7 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
   router.post('/cases/:id/red-tag', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
-    if (limited(res, `support-act:${req.user!.email}`, 60)) return;
+    if (limited(res, `support-act:${req.user!.email}`, LIMITS.support.actionsPerUser)) return;
     const tag = req.body?.tag;
     if (!isRedTag(tag)) return bad(res, 'INVALID_TAG', `The red tag number is exactly ${RED_TAG_LENGTH} digits, numbers only.`);
     const value = normalizeRedTag(tag);
@@ -133,9 +132,9 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
   router.post('/cases/:id/issues', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
-    if (limited(res, `support-act:${req.user!.email}`, 60)) return;
+    if (limited(res, `support-act:${req.user!.email}`, LIMITS.support.actionsPerUser)) return;
     const { issueId } = req.body ?? {};
-    if (!SUPPORT_ISSUE_IDS.includes(issueId)) return bad(res, 'INVALID_ISSUE', 'Choose an issue from the list.');
+    if (!oneOf(SUPPORT_ISSUE_IDS, issueId)) return bad(res, 'INVALID_ISSUE', 'Choose an issue from the list.');
 
     const extras = found.additionalIssues ?? [];
     if (1 + extras.length >= MAX_REPORTED_ISSUES) {
@@ -163,7 +162,7 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
   router.post('/cases/:id/attempts', (req, res) => {
     const found = ownOpenCase(req, res);
     if (!found) return;
-    if (limited(res, `support-act:${req.user!.email}`, 60)) return;
+    if (limited(res, `support-act:${req.user!.email}`, LIMITS.support.actionsPerUser)) return;
     const issue = findSupportIssue(found.reported.issueId)!;
     const { stepId, result } = req.body ?? {};
     if (!issue.steps.some(s => s.id === stepId)) return bad(res, 'INVALID_STEP', 'Unknown step for this issue.');
@@ -202,8 +201,9 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
       }
     }
     // Same limits as POST /api/tickets, so this path cannot be used to get around them.
-    const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);
-    const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, 60, FIFTEEN_MIN);
+    const { perStudent, perStaff, perIp: ipMax, windowMs } = LIMITS.tickets;
+    const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? perStudent : perStaff, windowMs);
+    const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, ipMax, windowMs);
     if (!perUser.allowed || !perIp.allowed) {
       return bad(
         res,
@@ -234,7 +234,7 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     if (!found) return bad(res, 'NOT_FOUND', 'Case not found.', 404);
     if (found.outcome !== 'escalated') return bad(res, 'NOT_ESCALATED', 'Only escalated cases take a disposition.', 409);
     const value = req.body?.value;
-    if (!DISPOSITION_VALUES.includes(value)) return bad(res, 'INVALID_DISPOSITION', 'Unknown disposition.');
+    if (!oneOf(DISPOSITION_VALUES, value)) return bad(res, 'INVALID_DISPOSITION', 'Unknown disposition.');
 
     const now = new Date();
     const note = cleanMultiline(req.body?.note, 300) || undefined;

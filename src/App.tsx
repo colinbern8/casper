@@ -11,9 +11,10 @@ import { SEAL_DISTRICT } from './brand';
 import seal from './assets/hamilton-township-seal.png';
 import { Logo } from './components/Logo';
 import { StudentSupport } from './components/StudentSupport';
-import { Phone, FileText, X } from 'lucide-react';
+import { Phone, FileText } from 'lucide-react';
+import { ContactDialog } from './components/ContactDialog';
+import { POLL_MS } from './data/limits';
 import type { PublicConfig, Role, SessionUser, Ticket, TicketUpdateInput, UserContext, UserRole } from './types';
-import { HELP_DESK } from './data/schools';
 import { ApiError, UNAUTHORIZED_EVENT, fetchAllTickets, fetchMyTickets, getConfig, getMe, logout, updateTicket } from './api';
 import { loadProfile, saveProfile, type Profile } from './profile';
 
@@ -115,7 +116,7 @@ export default function App() {
   }, [email]);
   useEffect(() => {
     refreshMine();
-    const t = setInterval(refreshMine, 30_000);
+    const t = setInterval(refreshMine, POLL_MS.myTickets);
     return () => clearInterval(t);
   }, [refreshMine]);
 
@@ -131,7 +132,7 @@ export default function App() {
   useEffect(() => {
     if (page !== 'tech') return;
     refreshAll();
-    const t = setInterval(refreshAll, 20_000);
+    const t = setInterval(refreshAll, POLL_MS.techQueue);
     return () => clearInterval(t);
   }, [page, refreshAll]);
 
@@ -241,15 +242,15 @@ export default function App() {
             )}
 
             {user && isChatPage && myTickets.length > 0 && (
-              <button type="button" onClick={() => setIsDrawerOpen(true)} className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white/10 text-white hover:bg-white/20 rounded-full font-medium">
-                <FileText className="w-3.5 h-3.5" />
+              <button type="button" onClick={() => setIsDrawerOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white/10 text-white hover:bg-white/20 rounded-full font-medium">
+                <FileText className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Requests ({myTickets.length})</span>
               </button>
             )}
 
             <button type="button" onClick={() => setShowContactModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 hover:bg-white/20 rounded-full transition">
-              <Phone className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Contact IT</span>
+              <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Contact IT</span>
             </button>
 
             {user && (
@@ -302,39 +303,7 @@ export default function App() {
 
       {selectedTicketForSlip && <DispatchSlipModal districtName={config.districtName} ticket={selectedTicketForSlip} onClose={() => setSelectedTicketForSlip(null)} />}
 
-      {showContactModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md">
-            <div className="flex items-center justify-between pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">District IT Help Desk</h3>
-                <p className="text-xs text-gray-500">Technology Services & Field Support</p>
-              </div>
-              <button type="button" onClick={() => setShowContactModal(false)} className="text-gray-400 hover:text-gray-700 p-1" aria-label="Close">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="mt-4 space-y-3 text-xs text-gray-700">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <span className="font-semibold block text-gray-900">Phone</span>
-                <p className="text-gray-600 mt-0.5">Call <strong>{HELP_DESK.ext}</strong> from any classroom or office phone.</p>
-                <p className="text-gray-500 text-xs mt-1">Available {HELP_DESK.hours}.</p>
-              </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <span className="font-semibold block text-gray-900">Media Center Tech Desk (students)</span>
-                <p className="text-gray-600 mt-0.5">Walk in to the school library for Chromebook loaners and charger replacements.</p>
-              </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <span className="font-semibold block text-gray-900">Email</span>
-                <p className="text-gray-600 mt-0.5">{HELP_DESK.email}</p>
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <button type="button" onClick={() => setShowContactModal(false)} className="px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showContactModal && <ContactDialog onClose={() => setShowContactModal(false)} />}
     </div>
   );
 }
