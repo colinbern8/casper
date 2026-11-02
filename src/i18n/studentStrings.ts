@@ -12,6 +12,8 @@ export interface StudentStrings {
   conversation: string;
   choices: string;
   changeLanguage: string;
+  /** Said in the new language after "Change language". The conversation is kept. */
+  languageChanged: string;
   greeting: string;
   thisLooksLike: (issueTitle: string) => string;
   notSure: string;
@@ -64,9 +66,11 @@ export interface StudentStrings {
   genericError: string;
 }
 
-/** Shown before a language is chosen, so it is in both. */
-export const LANGUAGE_PROMPT = 'Hi! Please choose your language.\n¡Hola! Por favor, elige tu idioma.';
-export const PLACEHOLDER_CHOOSE_LANGUAGE = 'Pick a language / Elige idioma';
+/** The language pop-up is shown before a language is known, so its text is in both languages. */
+export const LANGUAGE_DIALOG = {
+  title: 'Choose your language · Elige tu idioma',
+  description: 'You can change it later. · Puedes cambiarlo después.',
+} as const;
 
 export const STRINGS: Record<Language, StudentStrings> = {
   en: {
@@ -76,6 +80,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     conversation: 'Conversation',
     choices: 'Choices',
     changeLanguage: 'Change language',
+    languageChanged: 'OK, I will continue in English.',
     greeting: 'Hi! I can help with your Chromebook. What is the problem? Tap one below, or type it.',
     thisLooksLike: title => `This looks like: ${title}.`,
     notSure: 'I am not sure which one that is. Pick the closest one below, or choose "Something else" and a technician will look at it.',
@@ -137,6 +142,7 @@ export const STRINGS: Record<Language, StudentStrings> = {
     conversation: 'Conversación',
     choices: 'Opciones',
     changeLanguage: 'Cambiar idioma',
+    languageChanged: 'Está bien, sigo en español.',
     greeting: '¡Hola! Puedo ayudarte con tu Chromebook. ¿Cuál es el problema? Toca una opción o escríbelo.',
     thisLooksLike: title => `Esto parece ser: ${title}.`,
     notSure: 'No estoy seguro de cuál es. Elige la más parecida de abajo, o elige "Otra cosa" y un técnico lo revisará.',

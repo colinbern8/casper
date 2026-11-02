@@ -29,7 +29,17 @@ export const Dialog: React.FC<DialogProps> = ({ title, description, onClose, chi
     const previous = document.activeElement as HTMLElement | null;
     const first = ref.current?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? ref.current)?.focus();
-    return () => previous?.focus?.();
+    // Keep focus inside while the dialog is open, wherever it tries to go.
+    const keep = (e: FocusEvent) => {
+      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) {
+        (ref.current.querySelector<HTMLElement>(FOCUSABLE) ?? ref.current).focus();
+      }
+    };
+    document.addEventListener('focusin', keep);
+    return () => {
+      document.removeEventListener('focusin', keep);
+      previous?.focus?.();
+    };
   }, []);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -56,7 +66,12 @@ export const Dialog: React.FC<DialogProps> = ({ title, description, onClose, chi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={e => e.target === e.currentTarget && onClose?.()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onMouseDown={e => {
+        if (e.target !== e.currentTarget) return;
+        // Clicking outside never moves focus out of the dialog. It closes it only when closing is allowed.
+        e.preventDefault();
+        onClose?.();
+      }}>
       <div
         ref={ref}
         role="dialog"

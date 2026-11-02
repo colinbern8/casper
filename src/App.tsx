@@ -10,7 +10,7 @@ import { DemoBadge } from './components/DemoBadge';
 import { SEAL_DISTRICT } from './brand';
 import seal from './assets/hamilton-township-seal.png';
 import { Logo } from './components/Logo';
-import { StudentSupport } from './components/StudentSupport';
+import { StudentSupport } from './components/student/StudentSupport';
 import { Phone, FileText } from 'lucide-react';
 import { ContactDialog } from './components/ContactDialog';
 import { POLL_MS } from './data/limits';
@@ -271,7 +271,7 @@ export default function App() {
         {needsProfile ? (
           <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
         ) : supportDemo ? (
-          <StudentSupport onTicketCreated={handleTicketCreated} />
+          <StudentSupport key={user.email} email={user.email} onTicketCreated={handleTicketCreated} />
         ) : page === 'admin' ? (
           <AdminPage user={user} domain={config.domain} />
         ) : page === 'tech' ? (
