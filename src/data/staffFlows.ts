@@ -171,6 +171,14 @@ const GENERAL: GuidedFlow = {
 /** Words that mean "this is a device problem" without saying which kind: they get the general check. */
 const DEVICE_WORDS = /\b(chromebook|laptop|computer|device|keyboard|trackpad|mouse)\b/i;
 
+/** The guided flow with this id. */
+export function flowById(id: FlowId): GuidedFlow {
+  const found = FLOWS.find(f => f.id === id);
+  if (!found) return GENERAL;
+  const { keywords: _k, ...flow } = found;
+  return flow;
+}
+
 /** The guided flow for something typed or tapped, or null when no keyword matches. */
 export function matchFlow(text: string): GuidedFlow | null {
   const found = FLOWS.find(f => f.keywords.test(text));
@@ -186,20 +194,3 @@ export function inferCategory(text: string): IssueCategory {
   return matchFlow(text)?.category ?? 'other';
 }
 
-/** The tappable problems at the start of the chat. */
-export const CHAT_MENU = {
-  staff: [
-    'Smartboard or display shows "No Signal"',
-    'Student Chromebook cannot connect to Wi-Fi',
-    'Audio playing from laptop instead of room speakers',
-    'Copier badge reader not responding',
-    'Student locked out of district Google account',
-  ],
-  student: [
-    'Chromebook will not turn on',
-    'Cannot connect to school Wi-Fi',
-    'Forgot account password or login',
-    'Headphones or microphone not working',
-    'Chromebook damaged or need loaner',
-  ],
-} as const;

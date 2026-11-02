@@ -9,7 +9,7 @@ import { SlidingWindowLimiter } from './rateLimit';
 import { screenMessage } from './safety';
 import { TicketStore } from './store';
 import { openTicketLimitBody, parseTicketInput, parseTicketUpdate } from './tickets';
-import { builtInReply, normalizeHistory, type ChatContext } from './chat';
+import { builtInReply, normalizeHistory, topicsFor, type ChatContext } from './chat';
 import { notifyUrgentTicket } from './notify';
 import { CaseStore } from './cases';
 import { createSupportRouter } from './supportRoutes';
@@ -334,9 +334,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
         text: screen.blocked ? screen.message : 'You already sent that message. Please describe the problem in different words, or pick one below.',
         isSafetyBlocked: true,
         needsEscalation: false,
-        suggestedActions: isStudent
-          ? ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login']
-          : ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers'],
+        suggestedActions: topicsFor(isStudent),
         ...strikeFields(strike, user.email),
       });
       return;

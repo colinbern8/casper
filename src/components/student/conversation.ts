@@ -1,5 +1,6 @@
 import { MAX_REPORTED_ISSUES, type Language, type StudentCaseView, type SupportIssueId } from '../../types';
 import { SUPPORT_ISSUES } from '../../data/supportContent';
+import { COMMON_PROBLEMS } from '../../data/commonProblems';
 import type { StudentStrings } from '../../i18n/studentStrings';
 import type { Choice } from '../chat/ChatParts';
 
@@ -31,7 +32,8 @@ interface ChoiceState {
 export function choicesFor({ phase, lang, hasStep, listedIds, atLimit }: ChoiceState, t: StudentStrings): Choice[] {
   switch (phase) {
     case 'issue':
-      return SUPPORT_ISSUES.map(i => ({ key: `issue:${i.id}`, label: i.title[lang] }));
+      // The shared list of common problems (src/data/commonProblems.ts).
+      return COMMON_PROBLEMS.student.flatMap(p => ('issue' in p.start ? [{ key: `issue:${p.start.issue}`, label: p.label[lang] }] : []));
     case 'details':
     case 'tag': // the red tag is required: no Skip
     case 'addDetails':

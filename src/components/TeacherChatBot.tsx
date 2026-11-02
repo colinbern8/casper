@@ -3,7 +3,8 @@ import type { Ticket, UserContext } from '../types';
 import { ApiError, createTicket, sendChat, signalSignedOut } from '../api';
 import { HELP_DESK } from '../data/schools';
 import { stepActions, actionKind } from '../data/stepActions';
-import { CHAT_MENU, DAMAGE_WORDS, inferCategory, matchFlow, type GuidedFlow } from '../data/staffFlows';
+import { DAMAGE_WORDS, flowById, inferCategory, matchFlow, type FlowId, type GuidedFlow } from '../data/staffFlows';
+import { COMMON_PROBLEMS, type CommonProblem } from '../data/commonProblems';
 import { MAX_MESSAGE_LENGTH, SIGN_OUT_NOTICE_MS } from '../data/limits';
 import { BRAND_NAME } from '../brand';
 import { ChatBubble, ChatFrame, ChatInput, ChoiceChips, type BubbleTone, type Choice } from './chat/ChatParts';
@@ -32,8 +33,13 @@ interface TeacherChatBotProps {
 
 const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-/** A button label (from the step list or the server) as a choice with its colour. */
+/** The student support issues as staff-chat flows, for the student chat when demo mode is off. */
+const ISSUE_FLOW: Partial<Record<string, FlowId>> = { wifi: 'wifi', power: 'power', login: 'account' };
+
+/** A button label (from the step list, the problem list or the server) as a choice with its colour. */
 const asChoice = (label: string): Choice => {
+  const problem = [...COMMON_PROBLEMS.student, ...COMMON_PROBLEMS.staff].findIndex(p => p.label.en === label);
+  if (problem >= 0) return { key: `problem:${problem}`, label };
   const kind = actionKind(label);
   if (kind === 'resolved') return { key: 'resolved', label, tone: 'resolved' };
   if (kind === 'next') return { key: 'next', label, tone: 'next' };
@@ -50,15 +56,10 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
   const isStudent = userContext.role === 'student';
   const escalateLabel = isStudent ? 'Request loaner device' : 'Submit IT ticket';
   const nextId = useRef(1);
+  const menu = () => COMMON_PROBLEMS[isStudent ? 'student' : 'staff'].map(p => asChoice(p.label.en));
 
   const welcome = (): Message[] => [
-    {
-      id: 0,
-      from: 'bot',
-      text: "Describe your IT issue, and I'll help you find the next step.",
-      time: now(),
-      choices: CHAT_MENU[isStudent ? 'student' : 'staff'].map(asChoice),
-    },
+    { id: 0, from: 'bot', text: "Describe your IT issue, and I'll help you find the next step.", time: now(), choices: menu() },
   ];
 
   const [messages, setMessages] = useState<Message[]>(welcome);
@@ -175,6 +176,26 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
     }
   };
 
+  /** Physical damage cannot be fixed with steps. */
+  const damaged = () =>
+    add({
+      from: 'bot',
+      text: isStudent
+        ? 'Damaged devices cannot be fixed with troubleshooting steps. A technician at the Media Center Tech Desk will swap it for a loaner so you do not miss assignments.\n\nSelect "Request loaner device" to log it, then bring your Chromebook to the desk.'
+        : 'Physically damaged equipment needs a technician or a replacement.\n\nSelect "Submit IT ticket" and a technician will follow up.',
+      choices: [asChoice(escalateLabel), { key: 'contact', label: 'Contact IT' }],
+    });
+
+  /** A tapped common problem: starts its steps directly, no keyword guessing. */
+  const startProblem = (p: CommonProblem) => {
+    add({ from: 'user', text: p.label.en });
+    if ('flow' in p.start) return startFlow(flowById(p.start.flow));
+    if ('describe' in p.start || p.start.issue === 'other') return add({ from: 'bot', text: 'Tell me what is wrong in a few words.' });
+    if (p.start.issue === 'damaged') return damaged();
+    const flow = ISSUE_FLOW[p.start.issue];
+    if (flow) startFlow(flowById(flow));
+  };
+
   const send = async (raw: string) => {
     const text = raw.trim();
     if (!text || loading || ended) return;
@@ -186,18 +207,13 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
     setInput('');
     add({ from: 'user', text });
 
-    if (DAMAGE_WORDS.test(text)) {
-      add({
-        from: 'bot',
-        text: isStudent
-          ? 'Damaged devices cannot be fixed with troubleshooting steps. A technician at the Media Center Tech Desk will swap it for a loaner so you do not miss assignments.\n\nSelect "Request loaner device" to log it, then bring your Chromebook to the desk.'
-          : 'Physically damaged equipment needs a technician or a replacement.\n\nSelect "Submit IT ticket" and a technician will follow up.',
-        choices: [asChoice(escalateLabel), { key: 'contact', label: 'Contact IT' }],
-      });
-      return;
-    }
     const matched = matchFlow(text);
-    if (matched) return startFlow(matched);
+    // Staff text that matches is answered here. A student's typed text always goes to the server first,
+    // so it is screened and counted by the spam guard; nothing is stored.
+    if (!isStudent) {
+      if (DAMAGE_WORDS.test(text)) return damaged();
+      if (matched) return startFlow(matched);
+    }
 
     setLoading(true);
     try {
@@ -211,10 +227,12 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
         return;
       }
       if (data.isSafetyBlocked) {
-        add({ from: 'bot', text: data.text, tone: 'warning', label: 'Policy notice', choices: (data.suggestedActions ?? CHAT_MENU[isStudent ? 'student' : 'staff']).map(asChoice) });
+        add({ from: 'bot', text: data.text, tone: 'warning', label: 'Policy notice', choices: data.suggestedActions?.map(asChoice) ?? menu() });
         if (data.warning) add({ from: 'bot', text: data.warning, tone: 'warning', label: 'Warning' });
         return;
       }
+      if (DAMAGE_WORDS.test(text)) return damaged();
+      if (matched) return startFlow(matched);
       add({
         from: 'bot',
         text: data.text,
@@ -258,7 +276,8 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
     else if (key === 'new') {
       setFlow(null);
       setMessages(welcome());
-    } else if (key.startsWith('text:')) void send(key.slice(5));
+    } else if (key.startsWith('problem:')) startProblem([...COMMON_PROBLEMS.student, ...COMMON_PROBLEMS.staff][Number(key.slice(8))]);
+    else if (key.startsWith('text:')) void send(key.slice(5));
   };
 
   const latest = messages[messages.length - 1];
@@ -269,12 +288,15 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
         logLabel="Conversation"
         scrollKey={`${messages.length}-${loading}`}
         title={
-          <p className="flex flex-wrap items-center gap-x-2 text-sm sm:text-base text-gray-700">
+          <>
+          <h2 className="text-xl font-semibold text-gray-900 leading-tight">{isStudent ? 'Student help' : 'Teacher and staff help'}</h2>
+          <p className="flex flex-wrap items-center gap-x-2 text-sm text-gray-700 mt-0.5">
             <span className="font-semibold text-gray-900">{userContext.school}</span>
             <span aria-hidden="true" className="text-gray-400">•</span>
             <span>{userContext.room}</span>
             <button type="button" onClick={() => setDialog('location')} className="underline text-gray-700 hover:text-gray-900">Change<span className="sr-only"> location</span></button>
           </p>
+          </>
         }
         headerActions={
           !isStudent && (
