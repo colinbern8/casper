@@ -1,6 +1,6 @@
 # Casper IT Help Desk: Roadmap and To-Do
 
-Casper (formerly Greg Bot) is a school IT help desk. It uses no AI: every answer is fixed, reviewable text. Today it is a working prototype that has not been deployed or reviewed for student-data privacy.
+Casper (formerly Greg Bot) is a school IT help desk. It uses no AI: every answer is fixed, reviewable text. Today it is a demo-ready prototype (P1 to P7 done) that has not been deployed or reviewed for student-data privacy.
 
 This is the one file for planning. It says what the **prototype** needs, what the **final version** needs, and how to build each in order.
 
@@ -101,13 +101,13 @@ Do first: small, visible, and one is a bug. *Done when:* the last step shows eac
 
 *Done when:* a signed-in student sees a small language dialog first, cannot reach the chat until they pick, and the chat starts in that language with no language message in the transcript.
 
-- [ ] Build the pop-up: English and Español, each labelled in its own language. Focus is trapped, it is labelled for screen readers, and Esc and clicking outside do not close it, because a choice is required.
-  - Files: `src/components/LanguageDialog.tsx` (new). Check: keyboard-only browser walk.
-- [ ] Remove the language choice from inside the chat (the `language` phase and the first language message).
-  - Files: `src/components/StudentSupport.tsx`, `src/i18n/studentStrings.ts`, `src/App.tsx`. Check: browser runs of the English and Spanish paths through to the red tag prompt.
-- [ ] "Change language" in the chat header reopens the pop-up and **keeps the conversation** (today it wipes it). The request-limit check runs right after a pick, as it does now.
-- [ ] Remember the choice per account in the browser. Students only; staff chat stays English.
-  - Files: `src/profile.ts` (with a unit test).
+- [x] Build the pop-up: English and Español, each labelled in its own language. Focus is trapped, it is labelled for screen readers, and Esc and clicking outside do not close it, because a choice is required.
+  - Files: `src/components/student/LanguageDialog.tsx` on the shared `Dialog`. *Checked: keyboard-only Chromium walk at both sizes.*
+- [x] Remove the language choice from inside the chat (the `language` phase and the first language message).
+  - *Checked: English and Spanish paths to the red tag prompt in the browser; `tests/studentChat.test.ts`.*
+- [x] "Change language" in the chat header reopens the pop-up and **keeps the conversation**, repeating the current step or red tag question in the new language. The request-limit check runs right after the first pick.
+- [x] Remember the choice per account in the browser. Students only; staff chat stays English.
+  - Files: `src/profile.ts`, `tests/profile.test.ts`.
 
 ### P5. Student spam guard
 
@@ -115,33 +115,33 @@ Students only. Staff and technicians are never signed out by this.
 
 *Done when:* server tests show the 3rd bad message warns, the 5th ends the session and blocks sign-in until the lockout expires, and the student chat shows the warning and then the signed-out page with a clear reason.
 
-- [ ] Build the strike counter and lockout list. A bad message is one that the abuse or off-topic check blocks, the same message repeated, or too many messages too fast. Button taps, red tag digits and yes/no answers never count. It takes a clock as input so it can be tested.
+- [x] Build the strike counter and lockout list. A bad message is one that the abuse or off-topic check blocks, the same message repeated, or too many messages too fast. Button taps, red tag digits and yes/no answers never count. It takes a clock as input so it can be tested.
   - Files: `server/spamGuard.ts` (new), `server/config.ts`, `tests/spamguard.test.ts` (new). Check: `npm test`.
-- [ ] Enforce it on the server: at 3 bad messages, warn. At 5, sign the student out and lock them out for 15 minutes. A locked-out student cannot sign back in until the time is up. The check sits in `attachUser`, because the sign-in cookie cannot be revoked.
+- [x] Enforce it on the server: at 3 bad messages, warn. At 5, sign the student out and lock them out for 15 minutes. A locked-out student cannot sign back in until the time is up. The check sits in `attachUser`, because the sign-in cookie cannot be revoked.
   - Files: `server/auth.ts`, `server/app.ts`, `tests/api.test.ts`. Check: an API test that sends junk to the warning, then to the sign-out, then tries to sign in, then moves the clock forward and signs in.
-- [ ] Add `POST /api/support/message`. The student chat matches typed text in the browser, so the server never sees it today. The browser calls this for every typed message (not red tag digits or yes/no) so the server can screen it and count strikes. The existing `/api/chat` reports strikes too.
+- [x] Add `POST /api/support/message`. The student chat matches typed text in the browser, so the server never sees it today. The browser calls this for every typed message (not red tag digits or yes/no) so the server can screen it and count strikes. The existing `/api/chat` reports strikes too.
   - Files: `server/supportRoutes.ts`, `server/app.ts`, `src/api.ts`. Check: `npm test`.
-- [ ] Show the warning and the sign-out message in English and Spanish. The chat stays usable after a warning. After a sign-out, input is disabled and the student lands on the signed-out page with the lockout message.
-  - Files: `StudentSupport.tsx`, `studentStrings.ts`, `src/api.ts`. Needs P4 first so the language is known.
+- [x] Show the warning and the sign-out message in English and Spanish. The chat stays usable after a warning. After a sign-out, input is disabled and the student lands on the signed-out page with the lockout message.
+  - Files: `StudentSupport.tsx`, `studentStrings.ts`, `src/api.ts`. *Checked: API test with a fake clock, and a Chromium walk in English and Spanish through warning, sign-out and refused sign-in.*
+- [x] The classic student chat (`/api/chat`, the production path) counts strikes too, and every typed student message now reaches the server.
 
 ### P6. Shared chat layout and smarter matching
 
-Large. Gets its own detailed plan when picked up.
-
-- [ ] One chat layout for every role, with about 5 tappable common problems plus free typing, built from one shared data file. This is also what makes the teacher chat match the student chat.
+- [x] One chat layout for every role, with about 5 tappable common problems plus free typing, built from one shared data file. *Done: `src/components/chat/ChatParts.tsx` and `src/data/commonProblems.ts` (also used by the server's replies); `tests/commonProblems.test.ts`.*
 - [x] Build a fuller keyword table so typed text matches common problems. *Done in `src/data/supportMatch.ts` with `tests/match.test.ts`.*
 - [x] Match Spanish typed text. *Checked in the browser: "mi chromebook no se conecta al wifi" matches Wi-Fi.*
 - [x] Keep the chat to fixes only. The refusal for unmatched text is already in.
 
 ### P7. Technician and admin demo screens
 
-Large. Gets its own detailed plan when picked up. Uses demo data only.
+Uses demo data only.
 
-- [ ] Technician: shared queue per school, a "Claim" button on each ticket, and a way to mark yourself away.
-- [ ] Technician: a screen for self-resolved and blocked student cases.
-- [ ] Requester: show a ticket's status change in the app, and a preview of the message that would be sent. Nothing is actually sent.
-- [ ] Technician: show what a student-ticket alert would look like (email or digest preview). Nothing is actually sent.
-- [ ] Admin: analytics dashboard on demo data. Tickets per school, priority, time to resolve and top categories.
+- [x] Technician: shared queue per school, a "Claim" button on each ticket, and a way to mark yourself away. While a lead is away, new staff tickets go to the school's backup, or to the shared queue. *`tests/coverage.test.ts`.*
+- [x] Technician: a screen for self-resolved and blocked student cases ("Student self-help" tab).
+- [x] Requester: show a ticket's status change in the app, and a preview of the message that would be sent (students in their language). Nothing is sent. *`tests/statusUpdates.test.ts`.*
+- [x] Technician: show what a student-ticket alert would look like (per-ticket alert and a daily digest preview). Nothing is sent.
+- [x] Admin: analytics dashboard on demo data: tickets per school, time to resolve by priority, top categories, and the student self-help rate, each with a table view. *`tests/analytics.test.ts`.*
+- [x] Demo data for every new screen (fixed seed, `server/demoData.ts`), and a browser walkthrough of every role (`npm run e2e`).
 
 ---
 
@@ -161,8 +161,8 @@ Do these after the prototype is approved. Most of them wait on the district.
 
 ### F2. Real messages
 
-- [ ] Tell the requester by email when their ticket changes. Nothing is sent today.
-- [ ] Alert technicians about student tickets by email or a digest. Today they must watch the queue, and the Slack/Teams webhook skips students.
+- [ ] Tell the requester by email when their ticket changes. Today the app shows the change and a preview (`src/data/messagePreviews.ts`); nothing is sent.
+- [ ] Alert technicians about student tickets by email or a digest. The alert and digest text exist as previews; nothing is sent, and the Slack/Teams webhook skips students.
 - [ ] Test a live Slack/Teams webhook.
 
 ### F3. Privacy and safety
@@ -173,6 +173,8 @@ Do these after the prototype is approved. Most of them wait on the district.
 - [ ] Audit log.
 - [ ] Session revocation.
 - [ ] Testing-day limits for students.
+- [ ] Keep spam-guard lockouts and strikes across restarts (in memory today).
+- [ ] Decide whether to self-host the web font: the page loads Fraunces from Google Fonts (no user data, but a request to Google).
 
 ### F4. Testing before go-live
 
@@ -180,7 +182,7 @@ None of these have been tested yet.
 
 - [ ] Printing dispatch slips and loaner passes.
 - [ ] Managed Chromebooks and the district web filter.
-- [ ] Screen readers, plus browser end-to-end tests and an accessibility check.
+- [ ] Screen readers and a full accessibility audit. (A browser walkthrough with text-size and contrast checks exists: `npm run e2e`.)
 - [ ] Load.
 - [ ] Spanish quality. *Needs a reviewer, district decision 4.*
 
@@ -190,12 +192,13 @@ None of these have been tested yet.
 - [ ] Admins edit schools, rooms and technicians in the app (a source file today).
 - [ ] Roles set automatically from Google Workspace groups.
 - [ ] Limit technicians to the buildings they cover.
+- [ ] Technician roster and backups as data (today the leads and backups are in `src/data/schools.ts`).
 - [ ] Check the red tag against a Chromebook inventory export.
 
 ### F6. Polish and later
 
 - [x] Casper logo: the wordmark is done (`design/casper/`) and shown in the sign-in page, app header and student chat header. No ghost, since "Casper the Friendly Ghost" is a trademarked character.
-- [ ] Browser tab icon (favicon) for Casper. A full wordmark is unreadable at tab size, so this needs a decision on a small mark.
+- [x] Browser tab icon: a plain "C" lettermark (`public/favicon.svg`) for now. Replace when the logo is decided.
 - [ ] Staff-side Spanish.
 - [ ] Teacher menu built from the most common real past tickets (needs ticket history).
 - [ ] Photo upload. Needs a storage and retention decision first.
@@ -234,7 +237,7 @@ These need an answer from the district, not code. Ask early.
 
 - **Name:** Casper (not Caspr). *Why:* Your choice.
 - **Logo:** Later; plain text name for now. *Why:* Your choice.
-- **Teacher chat vs student chat:** Restyle only; teachers keep their own guided flow. *Why:* Your choice. Rebuilding the 971-line teacher screen is not needed.
+- **Teacher chat vs student chat:** Restyle only; teachers keep their own guided flow. *Why:* Your choice. Rebuilding the teacher flow is not needed.
 - **Language change in chat:** Reopens the pop-up and keeps the conversation. *Why:* Your choice. Students should not lose progress.
 - **Spam limits:** Warn at 3 bad messages, sign out at 5, 15-minute lockout, students only. *Why:* Your choice.
 - **Where spam is enforced:** On the server, in `attachUser`. *Why:* The sign-in cookie cannot be revoked and the browser is not trusted.
@@ -242,7 +245,11 @@ These need an answer from the district, not code. Ask early.
 - **Rename depth:** Full: visible text, cookie, saved profile (with a one-time copy), package name. *Why:* A half rename leaves the old name in error messages.
 - **Demo sign-in:** Kept for testing, hidden from real users. *Why:* Tests and demos need it; the server already refuses it in production.
 - **Classic student chat:** Removed. Students no longer get a "use the classic help chat" option. *Why:* Your choice.
-- **Order of work:** Teacher fixes, sign-in page, rename, language pop-up, spam guard. *Why:* Smallest and most visible first; the spam guard is largest so it goes last.
+- **Order of work:** Teacher fixes, sign-in page, rename, language pop-up, spam guard, shared chat, technician and admin screens. *Why:* Smallest and most visible first.
+- **Demo-ready pass (November 2026):** all of P4 to P7; medium cleanup (split the three large screens, no storage change); fictional data only; local demo only (no hosted preview); message previews in the app only, no email provider; a simple "C" favicon; Spanish stays flagged for review and staff screens stay English; analytics shows tickets per school, time to resolve, top categories and the self-help rate. *Why:* Your choice.
+- **Common-problem list shape (P6):** `src/data/commonProblems.ts`, five per audience; each entry starts a student issue or a staff flow. *Why:* One list that the chats and the server share.
+- **Spam guard details:** a repeat means the same text again within 2 minutes; "too fast" means more than 6 typed messages in 30 seconds; strikes older than 15 minutes are forgotten. *Why:* Chosen to match "the same message repeated, or too many too fast"; change in `LIMITS.spam`.
+- **Away routing:** lead, then the school's backup, then the school's shared queue. *Why:* Matches "fall back to a backup technician or the shared queue".
 
 **Assumptions** (tell me if any is wrong, otherwise they stand)
 
@@ -251,15 +258,16 @@ These need an answer from the district, not code. Ask early.
 3. Spam lockouts are kept in server memory, so a restart clears them.
 4. Button colors: "Issue resolved" green, "Try next step" blue, "Submit IT ticket" orange.
 5. Only the name inside `package.json` changes; the GitHub repository rename is yours to do.
-6. For checks I run `npm ci` first so the 66 existing tests can run, and use the pre-installed Chromium for one-off browser checks (not committed).
+6. For checks I run `npm ci`, `npm run lint`, `npm test`, `npm run build`, and `npm run e2e` with the pre-installed Chromium.
 7. In the prototype, nothing is sent outside the app. Messages and alerts are previews only.
+8. Status-change notices are remembered per browser, like the language and profile.
 
 **Always**
 
 - All chat wording stays fixed, reviewable text (no AI).
 - Every new student-facing message exists in English and Spanish.
 - The server stays in charge of identity, role and lockout.
-- The existing 66 tests keep passing.
+- Lint, tests, build and the e2e walkthrough keep passing.
 
 **Never**
 
@@ -270,8 +278,8 @@ These need an answer from the district, not code. Ask early.
 
 **Not yet decided**
 
-- How the shared data file of common problems is shaped (P6).
-- Whether the prototype should use some real (non-student) data for the district demo.
+- Whether the prototype should use some real (non-student) data for the district demo (fictional for now). Two placeholder campus names match real Hamilton Township schools.
+- Whether loaner problems should free a student's request slot automatically (today a technician taps "Allow another request").
 
 ---
 
@@ -280,10 +288,10 @@ These need an answer from the district, not code. Ask early.
 - [x] **P1 Teacher screen fixes** (done, on master)
 - [x] **P2 Sign-in page cleanup** (done, on master)
 - [x] **P3 Rename to Casper** (done, on master, with the Casper wordmark logo in the page headers; the files are in `design/casper/`)
-- [ ] **P4 Student language pop-up** (not started)
-- [ ] **P5 Student spam guard** (not started)
-- [ ] **P6 Shared chat and smarter matching** (keyword matching and Spanish matching done; the one shared chat layout is not planned yet)
-- [ ] **P7 Technician and admin demo screens** (not planned yet)
+- [x] **P4 Student language pop-up** (done)
+- [x] **P5 Student spam guard** (done)
+- [x] **P6 Shared chat and smarter matching** (done)
+- [x] **P7 Technician and admin demo screens** (done, with demo data and the e2e walkthrough)
 - [ ] **F1 to F6 Final version** (waiting on prototype approval and district answers)
 
 ---
@@ -292,6 +300,8 @@ These need an answer from the district, not code. Ask early.
 
 - **Sign-in and roles:** Google sign-in with domain and verified-account checks (tested with a mock only). Four roles: Student (the default for anyone in the domain), Teacher/Staff, Technician and Admin. The role is looked up on every request, and pages and APIs are enforced on the server. Tickets are tied to the signed-in email, and the server sets identity, role, priority and routing. Admins can add or remove technicians and admins and import a staff list.
 - **Teacher and staff:** guided troubleshooting chat (power, Wi-Fi, classroom display, audio, copier badge, account sign-in), ticket submission (class in session is Priority 1, planning period is Priority 2), and a drawer of their own tickets.
-- **Student:** English and Spanish chat with tappable problems (Wi-Fi, won't turn on, sign-in, damaged, something else) or typing matched by keywords. Red tag entry (exactly six digits) with name and tag confirmation. Fixed self-help steps, then fixed or ask for a technician. Up to 5 problems per ticket. One open request per student, and a technician can allow another; a student at the limit can still try the steps. "Something else" needs real words, is checked for abuse, and can be used once per request.
-- **Technician:** live queue with search and filters (priority, role, status, school), status changes, reassigning, timestamped notes, dispatch slips and loaner passes, and the student case view (red tag, steps tried, their words, recorded decision).
-- **Protection and operations:** off-topic filter (pattern-based, English only), rate limits, abuse screening, cross-site protection, production refuses demo or dev login, JSON data written safely with a backup script and health check, CI running lint, tests and build (66 tests pass).
+- **Student:** a language pop-up first (remembered per account), then English and Spanish chat with tappable problems (Wi-Fi, won't turn on, sign-in, damaged, something else) or typing matched by keywords. Red tag entry (exactly six digits) with name and tag confirmation. Fixed self-help steps, then fixed or ask for a technician. Up to 5 problems per ticket. One open request per student, and a technician can allow another; a student at the limit can still try the steps. "Something else" needs real words, is checked for abuse, and can be used once per request.
+- **Technician:** live queue with search and filters, shared queue per school, Claim, away status with routing to a backup, status changes, reassigning, timestamped notes, dispatch slips and loaner passes, the student case view, the self-help case list, and alert and digest previews.
+- **Requester:** status changes shown in the app with a preview of the message that would be sent.
+- **Admin:** roles and staff import, and analytics on the demo data.
+- **Protection and operations:** off-topic filter (pattern-based, English only), rate limits, abuse screening, the student spam guard, cross-site protection, production refuses demo or dev login, JSON data written safely (wrong-shape files kept aside) with a backup script and health check, CI running lint, tests and build, and a browser walkthrough (`npm run e2e`).

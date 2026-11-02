@@ -71,10 +71,34 @@ const ok = (cond, msg) => {
   checks += 1;
 };
 
-/** Every visible piece of text is at least 12px. */
+/** Every visible piece of text is at least 12px and has at least 4.5:1 contrast with its background. */
 async function assertTextSizes(page, where) {
-  const small = await page.evaluate(() => {
+  await page.waitForTimeout(400); // let colour transitions (150ms) finish before measuring
+  const { small, faint } = await page.evaluate(() => {
     const out = [];
+    const low = [];
+    // Any CSS colour (Tailwind 4 uses oklch) to [r, g, b, alpha] through a 1x1 canvas.
+    const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true });
+    const rgb = c => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = '#000';
+      ctx.fillStyle = c;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r, g, b, a / 255];
+    };
+    const lum = ([r, g, b]) => {
+      const f = v => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const background = el => {
+      for (let e = el; e; e = e.parentElement) {
+        const c = rgb(getComputedStyle(e).backgroundColor);
+        if (c[3] === 1) return c.slice(0, 3);
+      }
+      return [255, 255, 255];
+    };
+    const blocked = el => el.closest('[aria-hidden="true"], button:disabled, [role="dialog"] ~ *') || document.querySelector('[role="dialog"]') && !el.closest('[role="dialog"]');
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const n = walker.currentNode;
@@ -84,10 +108,16 @@ async function assertTextSizes(page, where) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || cs.visibility === 'hidden' || el.closest('.sr-only')) continue;
       if (parseFloat(cs.fontSize) < 12) out.push(`${cs.fontSize} "${n.textContent.trim().slice(0, 40)}"`);
+      const fg = rgb(cs.color);
+      if (blocked(el) || fg[3] < 1 || parseFloat(cs.opacity) < 1) continue;
+      const [a, b] = [lum(fg.slice(0, 3)), lum(background(el))].sort((x, y) => y - x);
+      const ratio = (a + 0.05) / (b + 0.05);
+      if (ratio < 4.5) low.push(`${ratio.toFixed(2)} "${n.textContent.trim().slice(0, 30)}"`);
     }
-    return out;
+    return { small: out, faint: [...new Set(low)] };
   });
   ok(small.length === 0, `${where}: text under 12px: ${small.join(', ')}`);
+  ok(faint.length === 0, `${where}: text under 4.5:1 contrast: ${faint.join(', ')}`);
 }
 
 async function walk(browser, [width, height, tag]) {
@@ -167,6 +197,7 @@ async function walk(browser, [width, height, tag]) {
     const teacherTicket = (await logged.textContent()).match(/HTSD-\d{4}-\d+/)[0];
     await btn(/Requests \(/).click();
     await page.getByRole('dialog', { name: 'My requests' }).getByText('Technician on the way').first().waitFor();
+    await assertTextSizes(page, 'teacher requests drawer');
     await shot('03-teacher-requests');
     await page.keyboard.press('Escape');
     await assertTextSizes(page, 'teacher chat');
@@ -195,6 +226,7 @@ async function walk(browser, [width, height, tag]) {
     await page.getByText('Actualización de tu solicitud').first().waitFor();
     await btn('Preview alert').click();
     await page.getByRole('dialog', { name: 'Technician alert preview' }).getByText(`New student request ${studentTicket}`).waitFor();
+    await assertTextSizes(page, 'technician alert preview');
     await shot('04-tech-alert-preview');
     await btn('Close', true).click();
     await page.getByLabel(`Status of ${studentTicket}`).selectOption('hardware_swap');
@@ -202,6 +234,7 @@ async function walk(browser, [width, height, tag]) {
     await page.getByLabel(`Status of ${teacherTicket}`).selectOption('dispatched');
     await page.waitForTimeout(400);
     await page.getByRole('searchbox', { name: 'Search tickets' }).fill('');
+    await assertTextSizes(page, 'technician queue');
     await shot('05-tech-queue');
     await page.getByRole('tab', { name: 'Student self-help' }).click();
     await page.getByText(/fixed by the steps, \d+ blocked/).waitFor();
@@ -220,6 +253,7 @@ async function walk(browser, [width, height, tag]) {
     const preview = page.getByRole('dialog', { name: 'Message preview' });
     await preview.getByText('Nothing is sent').waitFor();
     ok(await preview.getByText(`Update on your request ${teacherTicket}`).isVisible(), 'teacher preview subject');
+    await assertTextSizes(page, 'teacher message preview');
     await shot('07-teacher-status-preview');
     await btn('Close', true).click();
     await btn('Dismiss', true).click();
@@ -231,6 +265,7 @@ async function walk(browser, [width, height, tag]) {
     await page.getByText('Ya tienes una solicitud abierta').waitFor();
     await btn('Ver el mensaje que enviaríamos').click();
     await page.getByRole('dialog', { name: 'Vista previa del mensaje' }).getByText('Solo vista previa').waitFor();
+    await assertTextSizes(page, 'student message preview (Spanish)');
     await shot('08-student-status-es');
     await btn('Cerrar', true).click();
     await signOut();
@@ -258,6 +293,7 @@ async function walk(browser, [width, height, tag]) {
     await page.getByText('You have been signed out for 15 minutes').waitFor();
     await page.getByRole('heading', { name: 'Sign in' }).waitFor({ timeout: 15_000 });
     await page.getByText('You can sign in again in 15 minutes').waitFor();
+    await assertTextSizes(page, 'signed-out page');
     await shot('10-spam-signed-out');
 
     ok(errors.length === 0, `no browser errors: ${errors.join(' | ')}`);

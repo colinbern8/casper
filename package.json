@@ -10,6 +10,7 @@
     "dev": "tsx server.ts",
     "build": "vite build",
     "demo": "tsx --env-file=.env.demo server.ts",
+    "demo:reset": "node -e \"require('fs').rmSync('data-demo', { recursive: true, force: true }); console.log('Demo data deleted. npm run demo re-seeds it.')\"",
     "start": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview",
     "test": "tsx --test tests/*.test.ts",
