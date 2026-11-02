@@ -13,8 +13,11 @@ import { builtInReply, normalizeHistory, topicsFor, type ChatContext } from './c
 import { notifyUrgentTicket } from './notify';
 import { CaseStore } from './cases';
 import { createSupportRouter } from './supportRoutes';
-import { HELP_DESK } from '../src/data/schools';
-import type { PublicConfig } from '../src/types';
+import { HELP_DESK, SCHOOLS, allTechs } from '../src/data/schools';
+import type { PublicConfig, TechnicianStatus } from '../src/types';
+import { PresenceStore } from './presence';
+import { computeAnalytics } from './analytics';
+import { demoNameFor } from './demoData';
 
 export interface AppDeps {
   config: Config;
@@ -27,6 +30,8 @@ export interface AppDeps {
   limiter?: SlidingWindowLimiter;
   /** Student strike counter and lockouts. Tests pass one with a fake clock. */
   spamGuard?: SpamGuard;
+  /** Which technicians are marked away. Defaults to an in-memory store. */
+  presence?: PresenceStore;
   /** Throws if the server cannot do its job (for example, the data folder is not writable). Used by /api/health. */
   healthCheck?: () => void;
   /** Log one line per API request (method, path, status, time). No bodies, emails or query strings. */
@@ -35,7 +40,7 @@ export interface AppDeps {
 
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
-export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), spamGuard = new SpamGuard(), healthCheck, accessLog = false }: AppDeps) {
+export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), spamGuard = new SpamGuard(), presence = new PresenceStore(null), healthCheck, accessLog = false }: AppDeps) {
   const app = express();
   const sessions = createSessions(config.sessionSecret, config.isProduction);
 
@@ -50,9 +55,11 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   if (accessLog) {
     app.use('/api', (req, res, next) => {
       const started = Date.now();
+      // Read the path now: once routing finishes, req.path no longer has the /api mount stripped.
+      const route = req.path;
       res.on('finish', () => {
-        if (req.path === '/health') return;
-        console.log(`${req.method} /api${req.path} ${res.statusCode} ${Date.now() - started}ms`);
+        if (route === '/health') return;
+        console.log(`${req.method} /api${route} ${res.statusCode} ${Date.now() - started}ms`);
       });
       next();
     });
@@ -144,7 +151,9 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       return;
     }
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const name = typeof req.body?.name === 'string' && req.body.name.trim() ? req.body.name.trim().slice(0, 80) : email.split('@')[0];
+    const given = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 80) : '';
+    // Demo accounts get their fictional name, so screens show a person rather than "demo.tech".
+    const name = given || (config.demoMode ? demoNameFor(email, config.domain) : undefined) || email.split('@')[0];
     if (!emailInDomain(email, config.domain)) {
       res.status(400).json({ error: 'WRONG_ACCOUNT', message: `Use an @${config.domain} address.` });
       return;
@@ -161,7 +170,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   // ---- Tickets ---------------------------------------------------------
   app.post('/api/tickets', requireRole('student'), (req, res) => {
     const user = req.user!;
-    const parsed = parseTicketInput(req.body, user);
+    const parsed = parseTicketInput(req.body, user, presence.isAway);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
@@ -203,7 +212,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   });
 
   app.patch('/api/tickets/:id', requireRole('tech'), (req, res) => {
-    const parsed = parseTicketUpdate(req.body);
+    const parsed = parseTicketUpdate(req.body, [req.user!.name]);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
@@ -234,6 +243,59 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       return;
     }
     res.json(updated);
+  });
+
+  // A technician takes a ticket: it is assigned to them (from the session, never the body).
+  app.post('/api/tickets/:id/claim', requireRole('tech'), (req, res) => {
+    const target = store.get(req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Ticket not found.' });
+      return;
+    }
+    if (target.status === 'resolved') {
+      res.status(409).json({ error: 'RESOLVED', message: 'This ticket is already resolved. Reopen it first.' });
+      return;
+    }
+    const me = req.user!.name;
+    if (target.assignedTech === me) {
+      res.json(target);
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const entry = `[${stamp} UTC, ${me}] Claimed this ticket${target.assignedTech ? ` from ${target.assignedTech}` : ' from the shared queue'}.`;
+    res.json(
+      store.update(target.id, {
+        assignedTech: me,
+        status: target.status === 'open' ? 'assigned' : target.status,
+        techNotes: target.techNotes ? `${target.techNotes}\n${entry}` : entry,
+      }),
+    );
+  });
+
+  // ---- Technician coverage: who is away -----------------------------------
+  app.get('/api/techs', requireRole('tech'), (req, res) => {
+    const names = Array.from(new Set([...allTechs().filter(n => SCHOOLS.some(s => s.leadTech === n || s.backupTech === n)), req.user!.name])).sort();
+    const list: TechnicianStatus[] = names.map(name => ({
+      name,
+      leads: SCHOOLS.filter(s => s.leadTech === name).map(s => s.name),
+      backs: SCHOOLS.filter(s => s.backupTech === name).map(s => s.name),
+      ...presence.get(name),
+    }));
+    res.json({ me: req.user!.name, technicians: list });
+  });
+
+  // Technicians mark only themselves away or back.
+  app.put('/api/techs/me', requireRole('tech'), (req, res) => {
+    if (typeof req.body?.away !== 'boolean') {
+      res.status(400).json({ error: 'INVALID_AWAY', message: 'away must be true or false.' });
+      return;
+    }
+    res.json({ name: req.user!.name, ...presence.set(req.user!.name, req.body.away) });
+  });
+
+  // ---- Admin: analytics ----------------------------------------------------
+  app.get('/api/admin/analytics', requireRole('admin'), (_req, res) => {
+    res.json(computeAnalytics(store.list(), cases.list()));
   });
 
   // ---- Admin: who has which role ----------------------------------------

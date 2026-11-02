@@ -95,7 +95,7 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
         <p className="text-gray-800">Student: {data.student.displayName}{data.student.onRoster ? '' : ' (not on demo roster)'} · {data.student.school}, {data.student.room}</p>
         {problems.length === 1 && (
           <p className="text-gray-800 whitespace-pre-wrap">
-            Own words: {problems[0].words ? <span className="italic">"{problems[0].words}"</span> : <span className="text-gray-400">none given</span>}
+            Own words: {problems[0].words ? <span className="italic">"{problems[0].words}"</span> : <span className="text-gray-600">none given</span>}
           </p>
         )}
       </Section>
@@ -107,13 +107,13 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
             <p className="text-gray-600">Use this number to find the Chromebook, and the student it belongs to, in your own records. This app does not check it.</p>
           </>
         ) : (
-          <p className="text-gray-400">The student did not enter a tag.</p>
+          <p className="text-gray-600">The student did not enter a tag.</p>
         )}
       </Section>
 
       <Section title="Troubleshooting attempts">
         {data.attempts.length === 0 ? (
-          <p className="text-gray-400">No steps were tried.</p>
+          <p className="text-gray-600">No steps were tried.</p>
         ) : (
           <ul className="list-disc list-inside text-gray-800">
             {data.attempts.map(a => (
@@ -125,6 +125,7 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
         )}
       </Section>
 
+      {data.outcome === 'escalated' && (<>
       <Section title="Technician disposition" tag="Demo decision, no real action taken">
         {data.disposition && (
           <p className="text-gray-800">
@@ -153,9 +154,10 @@ export const CaseDetailPanel: React.FC<{ caseId: string }> = ({ caseId }) => {
             <p className="text-gray-800 whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-2">{data.notificationDraft.body}</p>
           </div>
         ) : (
-          <p className="text-gray-400">A draft is created when a disposition is recorded.</p>
+          <p className="text-gray-600">A draft is created when a disposition is recorded.</p>
         )}
       </Section>
+      </>)}
 
       <Section title="Confirmed external actions">
         <p className="text-gray-800">None. This prototype sends no messages and changes no outside system.</p>

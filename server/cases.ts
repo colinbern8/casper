@@ -27,6 +27,11 @@ export class CaseStore {
     return this.data.cases.length;
   }
 
+  /** Newest first. */
+  list(): SupportCase[] {
+    return [...this.data.cases].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
   get(id: string): SupportCase | undefined {
     return this.data.cases.find(c => c.id === id);
   }

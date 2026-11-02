@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import type { SessionUser, Ticket, UserRecord } from '../types';
-import { ApiError, fetchAllTickets, importStaff, listUsers, removeUser, setUserRole } from '../api';
+import type { SessionUser, UserRecord } from '../types';
+import { ApiError, importStaff, listUsers, removeUser, setUserRole } from '../api';
+import { Analytics } from './admin/Analytics';
 
 type StaffRole = UserRecord['role'];
 const ROLE_LABELS: Record<StaffRole, string> = { staff: 'Teacher / staff', tech: 'Technician', admin: 'Admin' };
@@ -11,8 +12,8 @@ interface AdminPageProps {
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
+  const [tab, setTab] = useState<'analytics' | 'people'>('analytics');
   const [users, setUsers] = useState<UserRecord[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [newEmail, setNewEmail] = useState('');
@@ -24,9 +25,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
 
   const refresh = useCallback(async () => {
     try {
-      const [u, t] = await Promise.all([listUsers(), fetchAllTickets()]);
-      setUsers(u);
-      setTickets(t);
+      setUsers(await listUsers());
     } catch (err) {
       fail(err);
     }
@@ -48,26 +47,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
     }
   };
 
-  const open = tickets.filter(t => t.status !== 'resolved');
-  const stats: [string, number][] = [
-    ['Open requests', open.length],
-    ['Priority 1 open', open.filter(t => t.priority === 'critical').length],
-    ['Student loaners open', open.filter(t => t.userRole === 'student').length],
-  ];
-
   const shown = users.filter(u => u.email.includes(filter.trim().toLowerCase()));
   const field = 'border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white text-gray-900';
 
   return (
     <div className="w-full h-full overflow-y-auto space-y-4 pb-4 text-xs">
-      <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
-        {stats.map(([label, value]) => (
-          <div key={label} className="bg-white border border-gray-200 rounded-lg p-3">
-            <span className="text-gray-500 block text-xs font-medium">{label}</span>
-            <div className="text-lg font-bold text-gray-900 mt-0.5">{value}</div>
-          </div>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-gray-900">Admin</h2>
+        <div role="tablist" aria-label="Admin views" className="flex gap-1.5">
+          {([['analytics', 'Analytics'], ['people', 'People and roles']] as const).map(([key, label]) => (
+            <button
+              key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full border ${tab === key ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-800 border-gray-400 hover:bg-gray-50'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {tab === 'analytics' ? <Analytics /> : <>
 
       {error && <div role="alert" className="text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">{error}</div>}
       {message && <div className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">{message}</div>}
@@ -75,7 +74,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
       <section className="bg-white border border-gray-300 rounded-lg">
         <div className="px-4 py-3 border-b border-gray-200">
           <h2 className="text-sm font-semibold text-gray-900">People and roles</h2>
-          <p className="text-gray-500 mt-0.5">
+          <p className="text-gray-700 mt-0.5">
             Everyone with an @{domain} account is a student unless listed here. Role changes take effect immediately.
           </p>
         </div>
@@ -99,7 +98,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
 
         <div className="p-4 border-b border-gray-100 space-y-2">
           <label htmlFor="import-list" className="text-gray-700 font-medium block">Import teachers and staff</label>
-          <p className="text-gray-500">
+          <p className="text-gray-700">
             Paste a list or the contents of a Google Admin console user export. Only @{domain} addresses are added, as Teacher / staff. People who already have a role are not changed.
           </p>
           <textarea id="import-list" value={importText} onChange={e => setImportText(e.target.value)} rows={3} className={`${field} w-full font-mono`} />
@@ -121,12 +120,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
         <div className="p-4 space-y-2">
           <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Search people with a role..." className={`${field} w-full sm:w-72`} aria-label="Search" />
           {users.length === 0 ? (
-            <p className="text-gray-500 py-4">Nobody has a role yet. Everyone is a student.</p>
+            <p className="text-gray-700 py-4">Nobody has a role yet. Everyone is a student.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="text-gray-500 border-b border-gray-200">
+                  <tr className="text-gray-700 border-b border-gray-200">
                     <th className="py-1.5 pr-3 font-medium">Email</th>
                     <th className="py-1.5 pr-3 font-medium">Role</th>
                     <th className="py-1.5 pr-3 font-medium">Added by</th>
@@ -139,7 +138,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
                     const frozen = u.locked || self;
                     return (
                       <tr key={u.email} className="border-b border-gray-100">
-                        <td className="py-1.5 pr-3 text-gray-900">{u.email}{self && <span className="text-gray-400"> (you)</span>}</td>
+                        <td className="py-1.5 pr-3 text-gray-900">{u.email}{self && <span className="text-gray-600"> (you)</span>}</td>
                         <td className="py-1.5 pr-3">
                           <select
                             aria-label={`Role for ${u.email}`} value={u.role} disabled={frozen} className={field}
@@ -148,7 +147,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
                             {(Object.keys(ROLE_LABELS) as StaffRole[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                           </select>
                         </td>
-                        <td className="py-1.5 pr-3 text-gray-500">{u.locked ? 'Server setting (locked)' : u.addedBy}</td>
+                        <td className="py-1.5 pr-3 text-gray-700">{u.locked ? 'Server setting (locked)' : u.addedBy}</td>
                         <td className="py-1.5 text-right">
                           {!frozen && (
                             <button type="button" onClick={() => run(() => removeUser(u.email), `Removed ${u.email}. They are now a student.`)} className="text-red-700 hover:text-red-900 underline">
@@ -165,6 +164,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, domain }) => {
           )}
         </div>
       </section>
+      </>}
     </div>
   );
 };

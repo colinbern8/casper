@@ -103,9 +103,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
 
   return (
     <div className={embedded ? 'w-full' : 'w-full h-full flex items-center justify-center overflow-y-auto py-6'}>
-      <div className={bare ? 'w-full space-y-3 text-base' : 'w-full max-w-lg bg-white border-2 border-neutral-900 p-6 space-y-4 text-sm'}>
+      <div className={bare ? 'w-full space-y-2 sm:space-y-3 text-base' : 'w-full max-w-lg bg-white border-2 border-neutral-900 p-6 space-y-4 text-sm'}>
         <div>
-          <h2 className={`font-display font-bold tracking-tight text-neutral-900 ${bare ? "text-4xl" : "text-2xl"}`}>Sign in</h2>
+          <h2 className={`font-display font-bold tracking-tight text-neutral-900 ${bare ? "text-3xl sm:text-4xl" : "text-2xl"}`}>Sign in</h2>
           <p className="text-gray-600 mt-1">Use your @{config.domain} school account.</p>
         </div>
 

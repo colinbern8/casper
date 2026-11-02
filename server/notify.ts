@@ -12,7 +12,7 @@ export async function notifyUrgentTicket(url: string | undefined, ticket: Ticket
   const label = ticket.priority === 'critical' ? 'PRIORITY 1' : 'Priority 2';
   const text = `${label} ${ticket.ticketNumber}: ${ticket.title}\n${ticket.school}, ${ticket.room}${
     ticket.phoneOrExt ? ` (${ticket.phoneOrExt})` : ''
-  }\nRouted to: ${ticket.assignedTech ?? 'unassigned'}`;
+  }\nRouted to: ${ticket.assignedTech || `the shared ${ticket.school} queue`}`;
 
   // One retry after a short pause: a brief network blip should not swallow a Priority 1 alert.
   for (let attempt = 1; attempt <= 2; attempt++) {

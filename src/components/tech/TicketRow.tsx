@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, FileText, MapPin, Send, Tag, User } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, FileText, Hand, Mail, MapPin, Send, Tag, User } from 'lucide-react';
 import { TICKET_STATUSES, type Ticket, type TicketStatus, type TicketUpdateInput } from '../../types';
 import { allTechs } from '../../data/schools';
 import { CaseDetailPanel } from '../CaseDetailPanel';
 import { PriorityBadge, STATUS_LABELS, StatusBadge, requesterKind } from './badges';
+import { studentAlert } from '../../data/messagePreviews';
+import { isUnclaimed } from './QueueFilters';
+import { MessagePreviewDialog } from '../MessagePreviewDialog';
 
 interface TicketRowProps {
   ticket: Ticket;
@@ -11,13 +14,21 @@ interface TicketRowProps {
   onToggle: () => void;
   onUpdate: (id: string, updates: TicketUpdateInput) => Promise<void>;
   onViewDispatchSlip: (ticket: Ticket) => void;
+  /** The signed-in technician's name, and who is away, for the Claim button. */
+  me: string;
+  isAway: (name: string) => boolean;
+  onClaim: (id: string) => Promise<void>;
 }
 
 const SMALL_BUTTON = 'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-800 bg-white border border-gray-400 hover:bg-gray-50 rounded-lg';
 
 /** One ticket in the technician queue: a summary line, and the full details when expanded. */
-export const TicketRow: React.FC<TicketRowProps> = ({ ticket, expanded, onToggle, onUpdate, onViewDispatchSlip }) => {
+export const TicketRow: React.FC<TicketRowProps> = ({ ticket, expanded, onToggle, onUpdate, onViewDispatchSlip, me, isAway, onClaim }) => {
   const [note, setNote] = useState('');
+  const [alertOpen, setAlertOpen] = useState(false);
+  const mine = ticket.assignedTech === me;
+  const canClaim = ticket.status !== 'resolved' && !mine;
+  const claimLabel = isUnclaimed(ticket, isAway) ? 'Claim' : 'Take over';
   const [saving, setSaving] = useState(false);
   const isCritical = ticket.priority === 'critical' && ticket.status !== 'resolved';
   const detailsId = `ticket-${ticket.id}`;
@@ -50,11 +61,20 @@ export const TicketRow: React.FC<TicketRowProps> = ({ ticket, expanded, onToggle
             <span className="inline-flex items-center gap-1 font-medium text-gray-900"><User className="w-3 h-3" aria-hidden="true" />{ticket.userName} ({requesterKind(ticket)})</span>
             <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" aria-hidden="true" />{ticket.school} • {ticket.room}</span>
             {ticket.assetTag && <span className="inline-flex items-center gap-1 font-mono bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200"><Tag className="w-3 h-3" aria-hidden="true" /><span className="sr-only">Red tag </span>{ticket.assetTag}</span>}
-            <span>Technician: <strong>{ticket.assignedTech || 'Unassigned (shared queue)'}</strong></span>
+            <span>
+              Technician: <strong>{ticket.assignedTech || 'Unassigned (shared queue)'}</strong>
+              {mine && ' (you)'}
+              {ticket.assignedTech && isAway(ticket.assignedTech) && <span className="ml-1 font-semibold text-amber-900">· away</span>}
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          {canClaim && (
+            <button type="button" onClick={() => void onClaim(ticket.id)} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg" aria-label={`${claimLabel} ${ticket.ticketNumber}`}>
+              <Hand className="w-3.5 h-3.5" aria-hidden="true" />{claimLabel}
+            </button>
+          )}
           <button type="button" onClick={() => onViewDispatchSlip(ticket)} className={SMALL_BUTTON} aria-label={`Slip or pass for ${ticket.ticketNumber}`}>
             <FileText className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Slip / pass</span>
@@ -114,6 +134,13 @@ export const TicketRow: React.FC<TicketRowProps> = ({ ticket, expanded, onToggle
 
           {ticket.caseId && <CaseDetailPanel caseId={ticket.caseId} />}
 
+          {ticket.userRole === 'student' && (
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-gray-200">
+              <span className="text-gray-800"><span className="font-semibold">Technician alert</span> · what the Media Center desk would get for this request. Not sent.</span>
+              <button type="button" onClick={() => setAlertOpen(true)} className={SMALL_BUTTON}><Mail className="w-3.5 h-3.5" aria-hidden="true" />Preview alert</button>
+            </div>
+          )}
+
           {ticket.userRole === 'student' && ticket.status !== 'resolved' && (
             <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-gray-200">
               <div>
@@ -146,6 +173,7 @@ export const TicketRow: React.FC<TicketRowProps> = ({ ticket, expanded, onToggle
           </div>
         </div>
       )}
+      {alertOpen && <MessagePreviewDialog title="Technician alert preview" preview={studentAlert(ticket)} onClose={() => setAlertOpen(false)} />}
     </li>
   );
 };

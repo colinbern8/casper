@@ -15,6 +15,7 @@
     "test": "tsx --test tests/*.test.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "e2e": "node tests/e2e/walkthrough.mjs",
     "backup": "tsx scripts/backup.ts"
   },
   "dependencies": {

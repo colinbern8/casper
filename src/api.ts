@@ -1,6 +1,6 @@
 import type {
   DispositionValue, Language, PublicConfig, SessionUser, StudentCaseView, SupportCase, SupportIssueId,
-  Ticket, TicketCreateInput, TicketUpdateInput, UserRecord,
+  Ticket, TicketCreateInput, TicketUpdateInput, UserRecord, TechnicianStatus, TechPresence, AnalyticsSummary,
 } from './types';
 
 export class ApiError extends Error {
@@ -49,6 +49,12 @@ export const fetchMyTickets = () => request<Ticket[]>('GET', '/api/tickets/mine'
 export const fetchAllTickets = () => request<Ticket[]>('GET', '/api/tickets');
 export const updateTicket = (id: string, patch: TicketUpdateInput) => request<Ticket>('PATCH', `/api/tickets/${id}`, patch);
 
+/** Assigns the ticket to the signed-in technician. */
+export const claimTicket = (id: string) => request<Ticket>('POST', `/api/tickets/${id}/claim`, {});
+export const fetchTechs = () => request<{ me: string; technicians: TechnicianStatus[] }>('GET', '/api/techs');
+export const setAway = (away: boolean) => request<TechPresence & { name: string }>('PUT', '/api/techs/me', { away });
+export const fetchAnalytics = () => request<AnalyticsSummary>('GET', '/api/admin/analytics');
+
 export const listUsers = () => request<UserRecord[]>('GET', '/api/admin/users');
 export const setUserRole = (email: string, role: UserRecord['role']) => request<UserRecord>('PUT', `/api/admin/users/${encodeURIComponent(email)}`, { role });
 export const removeUser = (email: string) => request<{ ok: true }>('DELETE', `/api/admin/users/${encodeURIComponent(email)}`);
@@ -80,6 +86,8 @@ export const recordSupportAttempt = (id: string, stepId: string, result: 'worked
   request<StudentCaseView>('POST', `/api/support/cases/${id}/attempts`, { stepId, result });
 export const escalateSupportCase = (id: string, reason: string) =>
   request<{ case: StudentCaseView; ticket: Ticket }>('POST', `/api/support/cases/${id}/escalate`, { reason });
+/** Technician view: student chats that ended without a ticket (fixed by the steps, or blocked at the limit). */
+export const fetchSelfHelpCases = (outcome = 'resolved,blocked') => request<SupportCase[]>('GET', `/api/support/cases?outcome=${encodeURIComponent(outcome)}`);
 /** Technician view: includes the red tag, history, disposition and draft. */
 export const fetchSupportCase = (id: string) => request<SupportCase>('GET', `/api/support/cases/${id}`);
 export const recordDisposition = (id: string, value: DispositionValue, note?: string) =>

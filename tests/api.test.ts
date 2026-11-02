@@ -1,57 +1,9 @@
-import { test, after } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
-import type { Server } from 'node:http';
-import { loadConfig } from '../server/config';
-import { createApp } from '../server/app';
-import { TicketStore } from '../server/store';
-import { UserStore } from '../server/users';
-import { SlidingWindowLimiter } from '../server/rateLimit';
 import type { GoogleVerifier } from '../server/google';
-import { SpamGuard } from '../server/spamGuard';
+import { startServer } from './helpers';
 
-const servers: Server[] = [];
-after(() => servers.forEach(s => s.close()));
-
-async function start(env: Record<string, string> = {}, verifyGoogle?: GoogleVerifier, now: () => number = Date.now) {
-  const config = loadConfig({
-    DEV_LOGIN: 'true',
-    SESSION_SECRET: 'test-secret',
-    DISTRICT_DOMAIN: 'd.test',
-    ADMIN_EMAILS: 'boss@d.test',
-    ...env,
-  } as NodeJS.ProcessEnv);
-  const users = new UserStore(null, config.adminEmails);
-  const app = createApp({
-    config,
-    store: new TicketStore(null),
-    users,
-    verifyGoogle,
-    limiter: new SlidingWindowLimiter(now),
-    spamGuard: new SpamGuard(now),
-  });
-  const server: Server = await new Promise(resolve => {
-    const s = app.listen(0, () => resolve(s));
-  });
-  servers.push(server);
-  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-
-  const raw = async (method: string, path: string, body?: unknown, cookie?: string, extra: Record<string, string> = {}) => {
-    const res = await fetch(base + path, {
-      method,
-      headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}), ...extra },
-      body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-    });
-    return { status: res.status, body: (await res.json().catch(() => null)) as any, setCookie: res.headers.get('set-cookie') };
-  };
-  const call = (method: string, path: string, body?: unknown, cookie?: string) => raw(method, path, body, cookie);
-  const login = async (email: string, name?: string) => {
-    const r = await raw('POST', '/api/auth/dev', { email, name });
-    assert.equal(r.status, 200, `dev login failed for ${email}`);
-    return r.setCookie!.split(';')[0];
-  };
-  return { call, raw, login, users, base };
-}
+const start = (env: Record<string, string> = {}, verifyGoogle?: GoogleVerifier, now?: () => number) => startServer({ env, verifyGoogle, now });
 
 const ticketBody = (over: Record<string, unknown> = {}) => ({
   userRole: 'teacher_active',

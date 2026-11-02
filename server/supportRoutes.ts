@@ -133,6 +133,13 @@ export function createSupportRouter({ config, store, cases, limiter, spamGuard, 
     res.status(201).json(toStudentView(created));
   });
 
+  // Technicians: student chats that ended without a technician (fixed by the steps, or blocked at the
+  // request limit), or every case. Newest first.
+  router.get('/cases', requireRole('tech'), (req, res) => {
+    const wanted = typeof req.query.outcome === 'string' ? req.query.outcome.split(',') : ['resolved', 'blocked'];
+    res.json(cases.list().filter(c => wanted.includes('all') || wanted.includes(c.outcome)));
+  });
+
   // Technicians and admins see everything; a student only ever sees their own, without technician fields.
   router.get('/cases/:id', (req, res) => {
     const found = cases.get(req.params.id);

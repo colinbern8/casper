@@ -8,7 +8,7 @@ import {
   type Role,
   type UserRole,
 } from '../src/types';
-import { MEDIA_CENTER_DESK, findSchool, allTechs } from '../src/data/schools';
+import { MEDIA_CENTER_DESK, findSchool, allTechs, routeFor } from '../src/data/schools';
 import type { NewTicket } from './store';
 import type { Ticket } from '../src/types';
 import { isRecord } from './jsonFile';
@@ -48,7 +48,11 @@ function triage(role: UserRole): { priority: TicketPriority; reason: string } {
   }
 }
 
-export function parseTicketInput(body: unknown, who: { name: string; email: string; role: Role }): ParseResult<NewTicket> {
+/**
+ * Validates a new ticket. Identity, role, priority and routing come from the session and the server,
+ * never from `body`. `isAway` says which technicians are marked away, for routing.
+ */
+export function parseTicketInput(body: unknown, who: { name: string; email: string; role: Role }, isAway: (tech: string) => boolean = () => false): ParseResult<NewTicket> {
   if (!isRecord(body)) return fail('INVALID_BODY', 'Request body must be JSON.');
 
   const role = ticketRoleFor(who.role, body.userRole);
@@ -72,6 +76,7 @@ export function parseTicketInput(body: unknown, who: { name: string; email: stri
     : [];
 
   const { priority, reason } = triage(role);
+  const route = role === 'student' ? { tech: MEDIA_CENTER_DESK } : routeFor(school, isAway);
 
   return {
     ok: true,
@@ -92,13 +97,15 @@ export function parseTicketInput(body: unknown, who: { name: string; email: stri
       priorityReason: reason,
       // "open" = logged, not yet acknowledged by a technician. Nobody is paged by the app itself.
       status: 'open',
-      assignedTech: role === 'student' ? MEDIA_CENTER_DESK : school.leadTech,
+      assignedTech: route.tech,
+      ...(route.note ? { techNotes: `[routing] ${route.note}` } : {}),
       teacherAvailability: clean(body.teacherAvailability, 200) || undefined,
     },
   };
 }
 
-export function parseTicketUpdate(body: unknown): ParseResult<TicketUpdateInput> {
+/** `extraTechs`: other names a ticket may be assigned to (technicians who claimed or set presence). */
+export function parseTicketUpdate(body: unknown, extraTechs: string[] = []): ParseResult<TicketUpdateInput> {
   if (!isRecord(body)) return fail('INVALID_BODY', 'Request body must be JSON.');
   const out: TicketUpdateInput = {};
 
@@ -112,7 +119,7 @@ export function parseTicketUpdate(body: unknown): ParseResult<TicketUpdateInput>
   }
   if (body.assignedTech !== undefined) {
     const tech = clean(body.assignedTech, 80);
-    if (tech && !allTechs().includes(tech)) return fail('INVALID_TECH', 'Unknown technician.');
+    if (tech && !allTechs().includes(tech) && !extraTechs.includes(tech)) return fail('INVALID_TECH', 'Unknown technician.');
     out.assignedTech = tech;
   }
   if (body.addNote !== undefined) {

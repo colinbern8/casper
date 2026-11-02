@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
 import type { Ticket } from '../../types';
+import { SHARED_DESKS } from '../../data/schools';
 
 export interface Filters {
   search: string;
@@ -8,12 +9,20 @@ export interface Filters {
   status: 'active' | 'all' | Ticket['status'];
   role: 'all' | 'teacher' | 'student' | 'staff';
   school: string;
+  /** `unclaimed`: the shared queue (nobody assigned, or the assigned technician is away). */
+  who: 'anyone' | 'mine' | 'unclaimed';
 }
 
-export const DEFAULT_FILTERS: Filters = { search: '', priority: 'all', status: 'active', role: 'all', school: 'all' };
+export const DEFAULT_FILTERS: Filters = { search: '', priority: 'all', status: 'active', role: 'all', school: 'all', who: 'anyone' };
+
+/** In the shared queue: open, and nobody is assigned, it sits with a team desk, or the technician is away. */
+export const isUnclaimed = (t: Ticket, isAway: (name: string) => boolean) =>
+  t.status !== 'resolved' && (!t.assignedTech || SHARED_DESKS.includes(t.assignedTech) || isAway(t.assignedTech));
 
 /** True when a ticket passes every filter. */
-export function matchesFilters(t: Ticket, f: Filters): boolean {
+export function matchesFilters(t: Ticket, f: Filters, me = '', isAway: (name: string) => boolean = () => false): boolean {
+  if (f.who === 'mine' && t.assignedTech !== me) return false;
+  if (f.who === 'unclaimed' && !isUnclaimed(t, isAway)) return false;
   if (f.priority !== 'all' && t.priority !== f.priority) return false;
   if (f.status === 'active' ? t.status === 'resolved' : f.status !== 'all' && t.status !== f.status) return false;
   if (f.school !== 'all' && t.school !== f.school) return false;
@@ -65,6 +74,11 @@ export const QueueFilters: React.FC<{ filters: Filters; onChange: (f: Filters) =
         <option value="teacher">Teachers</option>
         <option value="student">Students</option>
         <option value="staff">Other staff</option>
+      </select>
+      <select aria-label="Assigned to" value={filters.who} onChange={e => set('who', e.target.value as Filters['who'])} className={SELECT}>
+        <option value="anyone">Assigned to anyone</option>
+        <option value="mine">Assigned to me</option>
+        <option value="unclaimed">Shared queue (unclaimed)</option>
       </select>
       <select aria-label="Status" value={filters.status} onChange={e => set('status', e.target.value as Filters['status'])} className={SELECT}>
         <option value="active">Not resolved</option>

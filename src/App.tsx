@@ -15,8 +15,10 @@ import { Phone, FileText } from 'lucide-react';
 import { ContactDialog } from './components/ContactDialog';
 import { POLL_MS } from './data/limits';
 import type { PublicConfig, Role, SessionUser, Ticket, TicketUpdateInput, UserContext, UserRole } from './types';
-import { ApiError, UNAUTHORIZED_EVENT, type SignedOutDetail, fetchAllTickets, fetchMyTickets, getConfig, getMe, logout, updateTicket } from './api';
-import { loadProfile, saveProfile, type Profile } from './profile';
+import { ApiError, UNAUTHORIZED_EVENT, claimTicket, type SignedOutDetail, fetchAllTickets, fetchMyTickets, getConfig, getMe, logout, updateTicket } from './api';
+import { loadLanguage, loadProfile, saveProfile, type Profile } from './profile';
+import { acknowledge, diffStatuses, loadSeen, saveSeen, type StatusChange } from './statusUpdates';
+import { StatusUpdates } from './components/StatusUpdates';
 
 type Page = 'student' | 'teacher' | 'tech' | 'admin';
 
@@ -50,6 +52,7 @@ export default function App() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [techError, setTechError] = useState<string | null>(null);
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
+  const [statusChanges, setStatusChanges] = useState<StatusChange[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedTicketForSlip, setSelectedTicketForSlip] = useState<Ticket | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -111,7 +114,12 @@ export default function App() {
   const refreshMine = useCallback(async () => {
     if (!email) return setMyTickets([]);
     try {
-      setMyTickets(await fetchMyTickets());
+      const mine = await fetchMyTickets();
+      setMyTickets(mine);
+      // Status changes since this person last looked (remembered in this browser). Shown in the app only.
+      const { changes, seen } = diffStatuses(loadSeen(email), mine);
+      saveSeen(email, seen);
+      setStatusChanges(changes);
     } catch {
       /* keep what we have; the next poll retries */
     }
@@ -148,7 +156,26 @@ export default function App() {
     }
   };
 
-  const handleTicketCreated = (ticket: Ticket) => setMyTickets(prev => [ticket, ...prev.filter(t => t.id !== ticket.id)]);
+  const handleClaimTicket = async (id: string) => {
+    try {
+      const updated = await claimTicket(id);
+      setTickets(prev => prev.map(t => (t.id === id ? updated : t)));
+      setTechError(null);
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 401)) setTechError(err instanceof ApiError ? err.message : 'Could not claim the ticket.');
+    }
+  };
+
+  const handleTicketCreated = (ticket: Ticket) => {
+    setMyTickets(prev => [ticket, ...prev.filter(t => t.id !== ticket.id)]);
+    // Remember its first status now, so a change made before the next refresh still shows as an update.
+    if (email) saveSeen(email, acknowledge(loadSeen(email) ?? {}, ticket));
+  };
+  const dismissChange = (ticket: Ticket) => {
+    if (!email) return;
+    saveSeen(email, acknowledge(loadSeen(email) ?? {}, ticket));
+    setStatusChanges(prev => prev.filter(c => c.ticket.id !== ticket.id));
+  };
 
   const handleSignOut = async () => {
     try {
@@ -157,6 +184,7 @@ export default function App() {
       setUser(null);
       setTickets([]);
       setMyTickets([]);
+      setStatusChanges([]);
       setNotice(null);
       navigate('/', true);
     }
@@ -181,6 +209,8 @@ export default function App() {
   }
 
   const isChatPage = page === 'student' || page === 'teacher';
+  // Students see their own updates in the language they picked; staff screens are English.
+  const requesterLanguage = user.role === 'student' ? loadLanguage(user.email) ?? 'en' : 'en';
   // Prototype: in demo mode the student page is the bilingual support flow. Teacher/staff pages are unchanged.
   const supportDemo = config.demoMode && page === 'student';
   const needsProfile = isChatPage && !supportDemo && user && (!profile || editingProfile);
@@ -270,6 +300,7 @@ export default function App() {
       </header>
 
       <main className={`flex-1 w-full mx-auto p-2 sm:p-4 flex flex-col min-h-0 overflow-hidden ${page === 'tech' || page === 'admin' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+        {isChatPage && !needsProfile && <StatusUpdates changes={statusChanges} language={requesterLanguage} onDismiss={dismissChange} />}
         {needsProfile ? (
           <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
         ) : supportDemo ? (
@@ -279,7 +310,7 @@ export default function App() {
         ) : page === 'tech' ? (
           <>
             {techError && <div role="alert" className="mb-2 text-xs text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg shrink-0">{techError}</div>}
-            <TechnicianConsole districtName={config.districtName} tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onViewDispatchSlip={setSelectedTicketForSlip} />
+            <TechnicianConsole districtName={config.districtName} tickets={tickets} onRefresh={refreshAll} onUpdateTicket={handleUpdateTicket} onClaimTicket={handleClaimTicket} onViewDispatchSlip={setSelectedTicketForSlip} showSelfHelp={config.demoMode} />
           </>
         ) : userContext ? (
           <TeacherChatBot
@@ -297,6 +328,7 @@ export default function App() {
         onClose={() => setIsDrawerOpen(false)}
         tickets={myTickets}
         userName={user?.name || ''}
+        language={requesterLanguage}
         onViewDispatchSlip={ticket => {
           setIsDrawerOpen(false);
           setSelectedTicketForSlip(ticket);
