@@ -64,6 +64,14 @@ export interface StudentStrings {
   startAnother: string;
   errors: Record<string, string>;
   genericError: string;
+  /** Spam guard. The reply to a typed message the server would not accept. */
+  notAccepted: Record<'blocked' | 'repeated' | 'too_fast' | 'EXCESSIVE_LENGTH' | 'INAPPROPRIATE_CONTENT' | 'OFF_TOPIC_OR_INJECTION' | 'SPAM_REPETITION', string>;
+  /** Short heading on that reply, so it is not told by colour alone. */
+  notAcceptedLabel: string;
+  spamWarning: (remaining: number, minutes: number) => string;
+  signedOutForSpam: (minutes: number) => string;
+  /** On the signed-out page. */
+  lockedOutNotice: (minutes: number) => string;
 }
 
 /** The language pop-up is shown before a language is known, so its text is in both languages. */
@@ -134,6 +142,19 @@ export const STRINGS: Record<Language, StudentStrings> = {
       TICKET_LIMIT_EXCEEDED: 'You already sent a request recently. Please take your Chromebook to the Media Center Tech Desk.',
     },
     genericError: 'Something went wrong. Please try again.',
+    notAccepted: {
+      blocked: 'I can only help with problems with your Chromebook or school account.',
+      INAPPROPRIATE_CONTENT: 'Please keep messages respectful. I can only help with your Chromebook or school account.',
+      OFF_TOPIC_OR_INJECTION: 'I can only help with problems with your Chromebook or school account. Please tell me what is wrong with it.',
+      SPAM_REPETITION: 'Please describe the problem in a few clear words.',
+      EXCESSIVE_LENGTH: 'That message is too long. Please describe the problem in a few words.',
+      repeated: 'You already sent that. Please tap one of the choices, or say it in different words.',
+      too_fast: 'You are sending messages very fast. Please slow down.',
+    },
+    notAcceptedLabel: 'Notice',
+    spamWarning: (n, min) => `Warning: please only send messages about your Chromebook problem. ${n === 1 ? 'One more message' : `${n} more messages`} like that and you will be signed out for ${min} minutes.`,
+    signedOutForSpam: min => `You have been signed out for ${min} minutes because of too many messages that were not about a Chromebook problem. If you need help now, go to the main office or the Media Center Tech Desk.`,
+    lockedOutNotice: min => `You were signed out because of too many messages that were not about a technology problem. You can sign in again in ${min} minutes.`,
   },
   es: {
     demoBanner: 'DEMOSTRACIÓN con datos ficticios. Nada de lo que escribas se envía a nadie.',
@@ -196,5 +217,18 @@ export const STRINGS: Record<Language, StudentStrings> = {
       TICKET_LIMIT_EXCEEDED: 'Ya enviaste una solicitud hace poco. Por favor, lleva tu Chromebook al Media Center Tech Desk.',
     },
     genericError: 'Algo salió mal. Por favor, inténtalo de nuevo.',
+    notAccepted: {
+      blocked: 'Solo puedo ayudar con problemas de tu Chromebook o de tu cuenta escolar.',
+      INAPPROPRIATE_CONTENT: 'Por favor, escribe con respeto. Solo puedo ayudar con tu Chromebook o tu cuenta escolar.',
+      OFF_TOPIC_OR_INJECTION: 'Solo puedo ayudar con problemas de tu Chromebook o de tu cuenta escolar. Por favor, dime qué le pasa.',
+      SPAM_REPETITION: 'Por favor, describe el problema con pocas palabras claras.',
+      EXCESSIVE_LENGTH: 'Ese mensaje es demasiado largo. Por favor, describe el problema en pocas palabras.',
+      repeated: 'Ya enviaste eso. Por favor, toca una de las opciones o dilo con otras palabras.',
+      too_fast: 'Estás enviando mensajes muy rápido. Por favor, ve más despacio.',
+    },
+    notAcceptedLabel: 'Aviso',
+    spamWarning: (n, min) => `Advertencia: por favor, envía solo mensajes sobre el problema de tu Chromebook. ${n === 1 ? 'Un mensaje más' : `${n} mensajes más`} así y se cerrará tu sesión por ${min} minutos.`,
+    signedOutForSpam: min => `Se cerró tu sesión por ${min} minutos por enviar demasiados mensajes que no eran sobre un problema de tu Chromebook. Si necesitas ayuda ahora, ve a la oficina principal o al Media Center Tech Desk.`,
+    lockedOutNotice: min => `Se cerró tu sesión por enviar demasiados mensajes que no eran sobre un problema de tecnología. Puedes volver a iniciar sesión en ${min} minutos.`,
   },
 };

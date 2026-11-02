@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Ticket, UserContext } from '../types';
-import { ApiError, createTicket, sendChat } from '../api';
+import { ApiError, createTicket, sendChat, signalSignedOut } from '../api';
 import { HELP_DESK } from '../data/schools';
 import { stepActions, actionKind } from '../data/stepActions';
 import { CHAT_MENU, DAMAGE_WORDS, inferCategory, matchFlow, type GuidedFlow } from '../data/staffFlows';
-import { MAX_MESSAGE_LENGTH } from '../data/limits';
+import { MAX_MESSAGE_LENGTH, SIGN_OUT_NOTICE_MS } from '../data/limits';
 import { BRAND_NAME } from '../brand';
 import { ChatBubble, ChatFrame, ChatInput, ChoiceChips, type BubbleTone, type Choice } from './chat/ChatParts';
 import { LocationDialog } from './LocationDialog';
@@ -65,6 +65,8 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  /** Signed out by the spam guard (students only): nothing more can be sent. */
+  const [ended, setEnded] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
   const [last, setLast] = useState({ text: '', at: 0 });
   const [dialog, setDialog] = useState<'location' | 'guidelines' | null>(null);
@@ -175,7 +177,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
 
   const send = async (raw: string) => {
     const text = raw.trim();
-    if (!text || loading) return;
+    if (!text || loading || ended) return;
     if (cooldown > 0) return setWarning(`Please wait ${cooldown}s before sending another message.`);
     const t = Date.now();
     if (text.toLowerCase() === last.text.toLowerCase() && t - last.at < 3000) return setWarning('Please wait a moment before sending the same message again.');
@@ -201,8 +203,16 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
     try {
       const history = [...messages.map(m => ({ role: m.from === 'user' ? ('user' as const) : ('model' as const), content: m.text })), { role: 'user' as const, content: text }];
       const data = await sendChat(history, { deviceType: userContext.deviceType });
+      if (data.signedOut) {
+        // Spam guard (students only): show why, then the signed-out page with the same reason.
+        add({ from: 'bot', text: data.message ?? data.text, tone: 'warning', label: 'Signed out' });
+        setEnded(true);
+        setTimeout(() => signalSignedOut({ code: 'LOCKED_OUT', message: data.message }), SIGN_OUT_NOTICE_MS);
+        return;
+      }
       if (data.isSafetyBlocked) {
         add({ from: 'bot', text: data.text, tone: 'warning', label: 'Policy notice', choices: (data.suggestedActions ?? CHAT_MENU[isStudent ? 'student' : 'staff']).map(asChoice) });
+        if (data.warning) add({ from: 'bot', text: data.warning, tone: 'warning', label: 'Warning' });
         return;
       }
       add({
@@ -213,8 +223,15 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
+        if (err.details?.signedOut) {
+          add({ from: 'bot', text: String(err.details.message ?? err.message), tone: 'warning', label: 'Signed out' });
+          setEnded(true);
+          setTimeout(() => signalSignedOut({ code: 'LOCKED_OUT', message: String(err.details?.message ?? '') }), SIGN_OUT_NOTICE_MS);
+          return;
+        }
         const wait = Number(err.details?.cooldownSeconds) || 15;
         setCooldown(wait);
+        if (typeof err.details?.warning === 'string') add({ from: 'bot', text: err.details.warning, tone: 'warning', label: 'Warning' });
         add({ from: 'bot', text: typeof err.details?.text === 'string' ? err.details.text : `Please wait ${wait} seconds before sending another message.`, tone: 'warning', label: 'Message limit', choices: [{ key: 'contact', label: 'Contact IT' }] });
         return;
       }
@@ -282,7 +299,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
               onChange={setInput}
               onSubmit={() => void send(input)}
               placeholder={cooldown > 0 ? `Please wait ${cooldown}s...` : isStudent ? 'Describe your Chromebook issue...' : 'Describe your classroom IT issue...'}
-              disabled={loading || cooldown > 0}
+              disabled={loading || ended || cooldown > 0}
               sendLabel="Send"
               sendText={cooldown > 0 ? `${cooldown}s` : undefined}
               maxLength={MAX_MESSAGE_LENGTH}
@@ -322,7 +339,7 @@ export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onU
           </ChatBubble>
         ))}
         {loading && <p className="text-sm sm:text-base text-gray-600 italic">Checking troubleshooting steps...</p>}
-        {!loading && latest.choices && <ChoiceChips choices={latest.choices} onPick={onPick} label="Choices" />}
+        {!loading && !ended && latest.choices && <ChoiceChips choices={latest.choices} onPick={onPick} label="Choices" />}
       </ChatFrame>
 
       {dialog === 'location' && <LocationDialog context={userContext} isStudent={isStudent} onSave={onUpdateUserContext} onClose={() => setDialog(null)} />}

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Info } from 'lucide-react';
 import type { Language, StudentCaseView, SupportIssue, SupportIssueId, Ticket } from '../../types';
-import { addSupportIssue, ApiError, createSupportCase, escalateSupportCase, getSupportLimit, recordRedTag, recordSupportAttempt } from '../../api';
+import { addSupportIssue, ApiError, checkSupportMessage, createSupportCase, type MessageCheck, escalateSupportCase, getSupportLimit, recordRedTag, recordSupportAttempt } from '../../api';
 import { findSupportIssue } from '../../data/supportContent';
 import { matchIssue } from '../../data/supportMatch';
 import { isRedTag, normalizeRedTag } from '../../data/redTag';
-import { MAX_SUPPORT_INPUT } from '../../data/limits';
+import { MAX_SUPPORT_INPUT, SIGN_OUT_NOTICE_MS, SPAM_LOCKOUT_MINUTES } from '../../data/limits';
 import { STRINGS } from '../../i18n/studentStrings';
 import { loadLanguage, saveLanguage } from '../../profile';
 import { ChatBubble, ChatFrame, ChatInput, ChoiceChips, type BubbleTone } from '../chat/ChatParts';
@@ -17,6 +17,7 @@ interface Msg {
   from: 'bot' | 'user';
   text: string;
   tone?: BubbleTone;
+  label?: string;
   /** The language the message is written in, so a screen reader pronounces it right after a language change. */
   lang: Language;
 }
@@ -24,6 +25,8 @@ interface Msg {
 interface StudentSupportProps {
   email: string;
   onTicketCreated: (ticket: Ticket) => void;
+  /** The spam guard signed the student out: show the signed-out page with this message. */
+  onSignedOut: (message: string) => void;
 }
 
 /**
@@ -37,7 +40,7 @@ interface StudentSupportProps {
  * steps, but nothing is ever sent. Instead of a technician request the bot shows who to contact, and the
  * conversation is never cleared, so the open request number stays on screen.
  */
-export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketCreated }) => {
+export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketCreated, onSignedOut }) => {
   const [lang, setLang] = useState<Language | null>(() => loadLanguage(email));
   const [choosing, setChoosing] = useState(lang === null);
   const [phase, setPhase] = useState<Phase>('issue');
@@ -52,6 +55,8 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketC
   const [error, setError] = useState<string | null>(null);
   /** Open request numbers when the student is at the request limit (limit mode); null otherwise. */
   const [limit, setLimit] = useState<string[] | null>(null);
+  /** Signed out by the spam guard: nothing more can be typed or tapped. */
+  const [ended, setEnded] = useState(false);
   const nextId = useRef(1);
   const started = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,14 +66,14 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketC
   const step = issue && !issue.escalateOnly ? issue.steps[stepIndex] : undefined;
   const listedIds = current ? idsOf(current) : [];
 
-  const inputEnabled = !busy && !choosing && lang !== null && phase !== 'done';
+  const inputEnabled = !busy && !ended && !choosing && lang !== null && phase !== 'done';
   useEffect(() => {
     if (inputEnabled) inputRef.current?.focus();
   }, [inputEnabled, phase]);
 
-  const push = (from: 'bot' | 'user', text: string, tone: BubbleTone = 'plain', in_: Language = l) => {
+  const push = (from: 'bot' | 'user', text: string, tone: BubbleTone = 'plain', in_: Language = l, label?: string) => {
     const id = nextId.current++;
-    setMessages(m => [...m, { id, from, text, tone, lang: in_ }]);
+    setMessages(m => [...m, { id, from, text, tone, lang: in_, label }]);
   };
 
   const run = async (work: () => Promise<void>) => {
@@ -286,11 +291,41 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketC
     void addIssueToRequest(id, text);
   };
 
+  /** The server would not accept a typed message: say why, warn, or end the session (spam guard). */
+  const refuse = (check: Extract<MessageCheck, { ok: false }>) => {
+    push('bot', t.notAccepted[check.screenReason ?? check.reason], 'warning', l, t.notAcceptedLabel);
+    if (check.action === 'warn') push('bot', t.spamWarning(check.remaining, SPAM_LOCKOUT_MINUTES), 'warning', l, t.notAcceptedLabel);
+    if (check.action === 'sign_out') {
+      const minutes = Math.max(1, Math.ceil((check.retryAfterSeconds ?? SPAM_LOCKOUT_MINUTES * 60) / 60));
+      push('bot', t.signedOutForSpam(minutes), 'warning', l, t.notAcceptedLabel);
+      setEnded(true);
+      setTimeout(() => onSignedOut(t.lockedOutNotice(minutes)), SIGN_OUT_NOTICE_MS);
+    }
+  };
+
   const submit = (raw: string) => {
     const text = raw.trim();
     if (!text || !inputEnabled) return;
     setInput('');
     push('user', text);
+    // Red tag digits and the yes/no confirmation are never screened or counted.
+    if (phase === 'tag' || phase === 'confirmTag') return handleTyped(text);
+    // Everything else typed is screened by the server first, which counts bad messages. Nothing is stored.
+    setBusy(true);
+    setError(null);
+    checkSupportMessage(text)
+      .then(check => {
+        setBusy(false);
+        if (check.ok) handleTyped(text);
+        else refuse(check);
+      })
+      .catch(err => {
+        setBusy(false);
+        if (!(err instanceof ApiError && err.status === 401)) setError(t.genericError);
+      });
+  };
+
+  const handleTyped = (text: string) => {
     switch (phase) {
       case 'issue': {
         const id = matchIssue(text);
@@ -373,7 +408,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketC
     else if (key === 'another') backToMenu(t.tryAnother, t.anotherPrompt);
   };
 
-  const choices = busy || !lang ? [] : choicesFor({ phase, lang, hasStep: !!step, listedIds, atLimit: !!limit }, t);
+  const choices = busy || ended || !lang ? [] : choicesFor({ phase, lang, hasStep: !!step, listedIds, atLimit: !!limit }, t);
 
   return (
     <>
@@ -383,7 +418,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketC
         scrollKey={`${messages.length}-${phase}-${busy}`}
         title={<h2 className="text-xl font-semibold text-gray-900 leading-tight">{t.headerTitle}</h2>}
         headerActions={
-          lang && (
+          lang && !ended && (
             <button type="button" onClick={() => setChoosing(true)} className="text-sm text-gray-700 underline hover:text-gray-900">{t.changeLanguage}</button>
           )
         }
@@ -415,7 +450,7 @@ export const StudentSupport: React.FC<StudentSupportProps> = ({ email, onTicketC
       >
         {messages.map(m => (
           <div key={m.id} lang={m.lang}>
-            <ChatBubble from={m.from} tone={m.tone}>{m.text}</ChatBubble>
+            <ChatBubble from={m.from} tone={m.tone} label={m.label}>{m.text}</ChatBubble>
           </div>
         ))}
         {busy && <p className="text-sm text-gray-600 italic">{t.working}</p>}

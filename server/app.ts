@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { LIMITS, type Config } from './config';
-import { attachUser, emailInDomain, requireRole, sameOriginForWrites } from './auth';
+import { attachUser, emailInDomain, lockedOutBody, requireRole, sameOriginForWrites } from './auth';
+import { SpamGuard, lockoutMessage, type StrikeResult } from './spamGuard';
 import { createSessions } from './session';
 import type { GoogleVerifier } from './google';
 import type { UserStore } from './users';
@@ -24,6 +25,8 @@ export interface AppDeps {
   /** Student-support demo cases. Defaults to an in-memory store. */
   cases?: CaseStore;
   limiter?: SlidingWindowLimiter;
+  /** Student strike counter and lockouts. Tests pass one with a fake clock. */
+  spamGuard?: SpamGuard;
   /** Throws if the server cannot do its job (for example, the data folder is not writable). Used by /api/health. */
   healthCheck?: () => void;
   /** Log one line per API request (method, path, status, time). No bodies, emails or query strings. */
@@ -32,7 +35,7 @@ export interface AppDeps {
 
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
-export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), healthCheck, accessLog = false }: AppDeps) {
+export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), spamGuard = new SpamGuard(), healthCheck, accessLog = false }: AppDeps) {
   const app = express();
   const sessions = createSessions(config.sessionSecret, config.isProduction);
 
@@ -59,7 +62,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     next();
   });
   app.use('/api', sameOriginForWrites);
-  app.use('/api', attachUser(sessions, users, config));
+  app.use('/api', attachUser(sessions, users, config, spamGuard));
 
   app.get('/api/health', (_req, res) => {
     try {
@@ -87,9 +90,22 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     res.setHeader('Set-Cookie', sessions.setCookie(sessions.create({ email, name })));
     return { email, name, role: users.roleFor(email) };
   };
+  /** A student locked out by the spam guard cannot sign in again until the lockout ends. */
+  const refuseLockedOut = (res: Response, email: string): boolean => {
+    const wait = users.roleFor(email) === 'student' ? spamGuard.retryAfterSeconds(email) : 0;
+    if (wait > 0) res.status(403).json(lockedOutBody(wait));
+    return wait > 0;
+  };
+  /** Counts a bad message for a student. At the limit the response also clears the sign-in cookie. */
+  const countStrike = (res: Response, email: string): StrikeResult => {
+    const result = spamGuard.strike(email);
+    if (result.action === 'sign_out') res.setHeader('Set-Cookie', sessions.clearCookie());
+    return result;
+  };
 
   app.get('/api/auth/me', (req, res) => {
-    res.json({ user: req.user ?? null });
+    const lockout = req.lockout && { retryAfterSeconds: req.lockout.retryAfterSeconds, message: lockoutMessage(req.lockout.retryAfterSeconds) };
+    res.json({ user: req.user ?? null, ...(lockout ? { lockout } : {}) });
   });
 
   app.post('/api/auth/google', async (req, res) => {
@@ -114,6 +130,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
         res.status(403).json({ error: 'WRONG_ACCOUNT', message: `Sign in with your @${config.domain} school account.` });
         return;
       }
+      if (refuseLockedOut(res, g.email)) return;
       res.json({ user: startSession(res, g.email, g.name) });
     } catch {
       res.status(401).json({ error: 'SIGN_IN_FAILED', message: 'Sign-in failed. Please try again.' });
@@ -132,6 +149,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       res.status(400).json({ error: 'WRONG_ACCOUNT', message: `Use an @${config.domain} address.` });
       return;
     }
+    if (refuseLockedOut(res, email)) return;
     res.json({ user: startSession(res, email, name) });
   });
 
@@ -293,38 +311,52 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     const userCheck = limiter.hit(`chat-user:${user.email}`, LIMITS.chat.perUser, LIMITS.chat.userWindowMs);
     if (!ipCheck.allowed || !userCheck.allowed) {
       const wait = Math.max(1, Math.ceil(Math.max(ipCheck.retryAfterMs, userCheck.retryAfterMs) / 1000));
+      // Too many messages too fast counts as a bad message for a student.
+      const strike = user.role === 'student' && !userCheck.allowed ? countStrike(res, user.email) : undefined;
       res.status(429).json({
         text: `Please wait ${wait} seconds before sending another message.`,
         isSafetyBlocked: true,
         cooldownSeconds: wait,
+        ...strikeFields(strike, user.email),
       });
       return;
     }
 
     const isStudent = user.role === 'student';
-
-    for (const turn of history) {
-      if (turn.role !== 'user') continue;
-      const screen = screenMessage(turn.content);
-      if (screen.blocked) {
-        res.json({
-          text: screen.message,
-          isSafetyBlocked: true,
-          needsEscalation: false,
-          suggestedActions: isStudent
-            ? ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login']
-            : ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers'],
-        });
-        return;
-      }
+    // Only the new message is screened: earlier ones were screened when they were sent.
+    const latest = history[history.length - 1].content;
+    const screen = screenMessage(latest);
+    // A student's blocked or repeated message counts toward the spam guard (staff are never counted).
+    const repeated = isStudent && spamGuard.isRepeat(user.email, latest);
+    if (screen.blocked || repeated) {
+      const strike = isStudent ? countStrike(res, user.email) : undefined;
+      res.json({
+        text: screen.blocked ? screen.message : 'You already sent that message. Please describe the problem in different words, or pick one below.',
+        isSafetyBlocked: true,
+        needsEscalation: false,
+        suggestedActions: isStudent
+          ? ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login']
+          : ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers'],
+        ...strikeFields(strike, user.email),
+      });
+      return;
     }
 
     const ctx: ChatContext = { isStudent, deviceType: typeof uc.deviceType === 'string' ? uc.deviceType : '' };
     res.json(builtInReply(ctx, history[history.length - 1].content));
   });
 
+  /** What a chat reply says about a strike, in English (the built-in chat is English only). */
+  function strikeFields(strike: StrikeResult | undefined, email: string) {
+    if (!strike || strike.action === 'none') return {};
+    if (strike.action === 'sign_out') return { signedOut: true, ...lockedOutBody(spamGuard.retryAfterSeconds(email)) };
+    return {
+      warning: `Please only send messages about a technology problem. ${strike.remaining === 1 ? 'One more' : `${strike.remaining} more`} and you will be signed out for ${Math.round(spamGuard.limits.lockoutMs / 60_000)} minutes.`,
+    };
+  }
+
   // ---- Student-support prototype (demo mode only) -------------------------
-  app.use('/api/support', createSupportRouter({ config, store, cases, limiter }));
+  app.use('/api/support', createSupportRouter({ config, store, cases, limiter, spamGuard, countStrike }));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Unknown API route.' });

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import { SPAM_LOCKOUT_MINUTES } from '../src/data/limits';
 
 dotenv.config();
 
@@ -91,7 +92,7 @@ export const LIMITS = {
   /** Student-support chat: new cases, other case changes, and typed messages. */
   support: { createPerUser: 10, actionsPerUser: 60, windowMs: 15 * MINUTE, messagesPerUser: 6, messageWindowMs: 30_000 },
   /** Student spam guard: warn at `warnAt` bad messages, sign out and lock out at `signOutAt`. */
-  spam: { warnAt: 3, signOutAt: 5, lockoutMs: 15 * MINUTE, strikeWindowMs: 15 * MINUTE, repeatWindowMs: 2 * MINUTE },
+  spam: { warnAt: 3, signOutAt: 5, lockoutMs: SPAM_LOCKOUT_MINUTES * MINUTE, strikeWindowMs: 15 * MINUTE, repeatWindowMs: 2 * MINUTE },
   /** Most distinct keys the in-memory rate limiter keeps before dropping the oldest. */
   limiterMaxKeys: 50_000,
 } as const;

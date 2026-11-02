@@ -16,17 +16,7 @@ export type Phase =
 /** Every problem on a request, the first one first. */
 export const idsOf = (c: StudentCaseView): SupportIssueId[] => [c.reported.issueId, ...(c.additionalIssues ?? []).map(i => i.issueId)];
 
-const YES = new Set(['yes', 'y', 'yep', 'yeah', 'correct', 'right', 'si', 'sí', 's', 'correcto', 'correcta', 'es correcto']);
-const NO = new Set(['no', 'n', 'nope', 'wrong', 'incorrect', 'incorrecto', 'incorrecta']);
-const NOTHING = new Set(['nothing', 'nada']);
-
-/** A short typed answer read as yes, no, or neither. */
-export function readYesNo(text: string): 'yes' | 'no' | null {
-  const word = text.toLowerCase().replace(/[.!¡¿?]/g, '').trim();
-  if (YES.has(word)) return 'yes';
-  if (NO.has(word) || NOTHING.has(word)) return 'no';
-  return null;
-}
+export { readYesNo } from '../../data/yesNo';
 
 interface ChoiceState {
   phase: Phase;

@@ -12,6 +12,14 @@ export class ApiError extends Error {
 /** Fired on any 401 so the app can send the person back to sign-in, wherever the call came from. */
 export const UNAUTHORIZED_EVENT = 'casper:unauthorized';
 
+/** Why the session ended, carried by UNAUTHORIZED_EVENT. `LOCKED_OUT` comes with a message in both languages. */
+export interface SignedOutDetail {
+  code?: string;
+  message?: string;
+}
+
+export const signalSignedOut = (detail: SignedOutDetail) => window.dispatchEvent(new CustomEvent<SignedOutDetail>(UNAUTHORIZED_EVENT, { detail }));
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
@@ -24,13 +32,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError('Could not reach the help desk server. Check your connection and try again.', 0);
   }
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== '/api/auth/me') window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  if (res.status === 401 && path !== '/api/auth/me') signalSignedOut({ code: data.error, message: data.message });
   if (!res.ok) throw new ApiError(data.message || 'The request could not be completed.', res.status, data.error, data);
   return data as T;
 }
 
 export const getConfig = () => request<PublicConfig>('GET', '/api/config');
-export const getMe = async () => (await request<{ user: SessionUser | null }>('GET', '/api/auth/me')).user;
+/** Who is signed in. A student locked out by the spam guard gets no user and the reason. */
+export const getMe = () => request<{ user: SessionUser | null; lockout?: { message: string; retryAfterSeconds: number } }>('GET', '/api/auth/me');
 export const loginGoogle = async (credential: string) => (await request<{ user: SessionUser }>('POST', '/api/auth/google', { credential })).user;
 export const loginDev = async (email: string, name?: string) => (await request<{ user: SessionUser }>('POST', '/api/auth/dev', { email, name })).user;
 export const logout = () => request<{ ok: true }>('POST', '/api/auth/logout', {});
@@ -47,6 +56,18 @@ export const importStaff = (text: string) =>
   request<{ added: number; skipped: number; ignoredOutsideDomain: number }>('POST', '/api/admin/users/import', { text });
 
 // ---- Student-support prototype (demo mode only) ---------------------------------
+/** The server's verdict on one typed message. Nothing typed is stored. */
+export type MessageCheck =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'blocked' | 'repeated' | 'too_fast';
+      screenReason?: 'EXCESSIVE_LENGTH' | 'INAPPROPRIATE_CONTENT' | 'OFF_TOPIC_OR_INJECTION' | 'SPAM_REPETITION';
+      action: 'none' | 'warn' | 'sign_out';
+      remaining: number;
+      retryAfterSeconds?: number;
+    };
+export const checkSupportMessage = (text: string) => request<MessageCheck>('POST', '/api/support/message', { text });
 export const getSupportLimit = () =>
   request<{ atLimit: boolean; openTicketNumbers: string[] }>('GET', '/api/support/limit');
 export const createSupportCase = (input: { language: Language; issueId: SupportIssueId; description?: string }) =>
@@ -70,6 +91,11 @@ export interface ChatReplyBody {
   isSafetyBlocked?: boolean;
   needsEscalation?: boolean;
   suggestedActions?: string[];
+  /** Students only: a spam-guard warning to show under the reply. */
+  warning?: string;
+  /** Students only: the spam guard signed them out; `message` says for how long. */
+  signedOut?: boolean;
+  message?: string;
 }
 /** A 429 rejects with an ApiError whose `details` carry `text` and `cooldownSeconds`. */
 export const sendChat = (messages: { role: 'user' | 'model'; content: string }[], userContext: Record<string, unknown>) =>

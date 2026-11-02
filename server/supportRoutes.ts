@@ -12,12 +12,17 @@ import { findSupportIssue } from '../src/data/supportContent';
 import { isRedTag, normalizeRedTag, RED_TAG_LENGTH } from '../src/data/redTag';
 import { DISPOSITION_VALUES, LANGUAGES, MAX_REPORTED_ISSUES, SUPPORT_ISSUE_IDS, type SupportCase } from '../src/types';
 import { HELP_DESK } from '../src/data/schools';
+import { readYesNo } from '../src/data/yesNo';
+import type { SpamGuard, StrikeReason, StrikeResult } from './spamGuard';
 
 export interface SupportDeps {
   config: Config;
   store: TicketStore;
   cases: CaseStore;
   limiter: SlidingWindowLimiter;
+  spamGuard: SpamGuard;
+  /** Counts a strike, and clears the sign-in cookie on the response when it signs the student out. */
+  countStrike: (res: Response, email: string) => StrikeResult;
 }
 
 /** "Something else" is the only free text a student can send a technician, so it must say something real. */
@@ -33,7 +38,7 @@ const bad = (res: Response, error: string, message: string, status = 400) => res
  * Bilingual student-support PROTOTYPE routes. Demo mode only; every route is a 404
  * otherwise. Nothing here contacts an outside system or sends a message.
  */
-export function createSupportRouter({ config, store, cases, limiter }: SupportDeps) {
+export function createSupportRouter({ config, store, cases, limiter, spamGuard, countStrike }: SupportDeps) {
   const router = express.Router();
 
   router.use((_req, res, next) => {
@@ -61,6 +66,34 @@ export function createSupportRouter({ config, store, cases, limiter }: SupportDe
     }
     return found;
   };
+
+  // Every message the student TYPES comes here first (taps on choices, red tag digits and yes/no do not),
+  // so the server can screen it and count bad messages. The text is checked and forgotten, never stored.
+  router.post('/message', (req, res) => {
+    const user = req.user!;
+    const text = typeof req.body?.text === 'string' ? req.body.text : '';
+    if (!text.trim()) return bad(res, 'INVALID_MESSAGE', 'Type a message.');
+    // Red tag digits and yes/no never count, even if a browser sends them.
+    if (isRedTag(text) || readYesNo(text)) return res.json({ ok: true });
+
+    const fast = !limiter.hit(`support-msg:${user.email}`, LIMITS.support.messagesPerUser, LIMITS.support.messageWindowMs).allowed;
+    const screen = screenMessage(text);
+    const repeated = spamGuard.isRepeat(user.email, text);
+    const reason: StrikeReason | null = fast ? 'too_fast' : screen.blocked ? 'blocked' : repeated ? 'repeated' : null;
+    if (!reason) return res.json({ ok: true });
+
+    const screenReason = screen.blocked ? screen.reason : undefined;
+    // Students only: staff and technicians who try the student page are never counted or signed out.
+    if (user.role !== 'student') return res.json({ ok: false, reason, screenReason, action: 'none', strikes: 0, remaining: spamGuard.limits.signOutAt });
+    const strike = countStrike(res, user.email);
+    res.json({
+      ok: false,
+      reason,
+      screenReason,
+      ...strike,
+      ...(strike.action === 'sign_out' ? { retryAfterSeconds: spamGuard.retryAfterSeconds(user.email) } : {}),
+    });
+  });
 
   // Asked as soon as the student picks a language, so a student who is at the request limit is told
   // straight away, instead of after walking through the whole conversation.

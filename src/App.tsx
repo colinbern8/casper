@@ -15,7 +15,7 @@ import { Phone, FileText } from 'lucide-react';
 import { ContactDialog } from './components/ContactDialog';
 import { POLL_MS } from './data/limits';
 import type { PublicConfig, Role, SessionUser, Ticket, TicketUpdateInput, UserContext, UserRole } from './types';
-import { ApiError, UNAUTHORIZED_EVENT, fetchAllTickets, fetchMyTickets, getConfig, getMe, logout, updateTicket } from './api';
+import { ApiError, UNAUTHORIZED_EVENT, type SignedOutDetail, fetchAllTickets, fetchMyTickets, getConfig, getMe, logout, updateTicket } from './api';
 import { loadProfile, saveProfile, type Profile } from './profile';
 
 type Page = 'student' | 'teacher' | 'tech' | 'admin';
@@ -61,7 +61,8 @@ export default function App() {
     try {
       const [c, me] = await Promise.all([getConfig(), getMe()]);
       setConfig(c);
-      setUser(me);
+      setUser(me.user);
+      if (me.lockout) setNotice(me.lockout.message);
     } catch {
       setConfigError(true);
     } finally {
@@ -74,9 +75,10 @@ export default function App() {
 
   useEffect(() => {
     const onPop = () => setPath(window.location.pathname);
-    const onUnauthorized = () => {
+    const onUnauthorized = (e: Event) => {
+      const detail = (e as CustomEvent<SignedOutDetail | undefined>).detail;
       setUser(null);
-      setNotice('Your session ended. Please sign in again.');
+      setNotice(detail?.code === 'LOCKED_OUT' && detail.message ? detail.message : 'Your session ended. Please sign in again.');
     };
     window.addEventListener('popstate', onPop);
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
@@ -271,7 +273,7 @@ export default function App() {
         {needsProfile ? (
           <ProfileSetup user={user} initial={profile} onSave={p => { handleSaveProfile(p); setEditingProfile(false); }} onCancel={profile ? () => setEditingProfile(false) : undefined} />
         ) : supportDemo ? (
-          <StudentSupport key={user.email} email={user.email} onTicketCreated={handleTicketCreated} />
+          <StudentSupport key={user.email} email={user.email} onTicketCreated={handleTicketCreated} onSignedOut={message => { setUser(null); setNotice(message); navigate('/', true); }} />
         ) : page === 'admin' ? (
           <AdminPage user={user} domain={config.domain} />
         ) : page === 'tech' ? (
