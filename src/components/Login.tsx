@@ -2,9 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { PublicConfig, SessionUser } from '../types';
 import { ApiError, loginDev, loginGoogle } from '../api';
 
+/** The small part of Google Identity Services this page uses. */
+interface GoogleIdentity {
+  accounts: {
+    id: {
+      initialize(options: { client_id: string; callback: (resp: { credential: string }) => void }): void;
+      renderButton(parent: HTMLElement, options: Record<string, unknown>): void;
+    };
+  };
+}
+
 declare global {
   interface Window {
-    google?: any;
+    google?: GoogleIdentity;
   }
 }
 
@@ -49,8 +59,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
     loadGoogleScript()
       .then(() => {
         if (cancelled || !buttonRef.current) return;
-        window.google.accounts.id.initialize({
-          client_id: config.googleClientId,
+        const gsi = window.google!.accounts.id;
+        gsi.initialize({
+          client_id: config.googleClientId!,
           callback: async (resp: { credential: string }) => {
             setBusy(true);
             setError(null);
@@ -63,7 +74,7 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
             }
           },
         });
-        window.google.accounts.id.renderButton(buttonRef.current, { theme: 'outline', size: 'large', text: 'continue_with', width: 320 });
+        gsi.renderButton(buttonRef.current, { theme: 'outline', size: 'large', text: 'continue_with', width: 320 });
       })
       .catch(() => setError('Google sign-in could not load. Check your connection, or ask IT to allow accounts.google.com.'));
     return () => {
@@ -92,9 +103,9 @@ export const Login: React.FC<LoginProps> = ({ config, notice, onSignedIn, embedd
 
   return (
     <div className={embedded ? 'w-full' : 'w-full h-full flex items-center justify-center overflow-y-auto py-6'}>
-      <div className={bare ? 'w-full space-y-3 text-base' : 'w-full max-w-lg bg-white border-2 border-neutral-900 p-6 space-y-4 text-sm'}>
+      <div className={bare ? 'w-full space-y-2 sm:space-y-3 text-base' : 'w-full max-w-lg bg-white border-2 border-neutral-900 p-6 space-y-4 text-sm'}>
         <div>
-          <h2 className={`font-display font-bold tracking-tight text-neutral-900 ${bare ? "text-4xl" : "text-2xl"}`}>Sign in</h2>
+          <h2 className={`font-display font-bold tracking-tight text-neutral-900 ${bare ? "text-3xl sm:text-4xl" : "text-2xl"}`}>Sign in</h2>
           <p className="text-gray-600 mt-1">Use your @{config.domain} school account.</p>
         </div>
 

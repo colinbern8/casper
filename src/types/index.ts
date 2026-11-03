@@ -15,6 +15,7 @@ export interface UserRecord {
   role: Exclude<Role, 'student'>;
   addedBy: string;
   addedAt: string;
+  /** Set for admins defined in ADMIN_EMAILS; they cannot be changed in the app. */
   locked?: boolean;
 }
 
@@ -110,6 +111,19 @@ export interface TicketUpdateInput {
   priority?: TicketPriority;
   /** Student tickets only: let the student send another request while this one is open. */
   allowAnother?: boolean;
+}
+
+/** Whether a technician is marked away, and since when. */
+export interface TechPresence {
+  away: boolean;
+  since?: string;
+}
+
+/** A technician in the coverage list: who they are, which schools they lead or back up, and if they are away. */
+export interface TechnicianStatus extends TechPresence {
+  name: string;
+  leads: string[];
+  backs: string[];
 }
 
 export interface PublicConfig {
@@ -245,3 +259,18 @@ export interface SupportCase {
 
 /** What the student's own browser may see: no technician fields. */
 export type StudentCaseView = Omit<SupportCase, 'disposition' | 'notificationDraft' | 'history'>;
+
+// ---- Admin analytics (computed on the server from tickets and student-support cases) ------------
+
+export interface AnalyticsSummary {
+  /** The period covered, in days, ending at `generatedAt`. */
+  days: number;
+  generatedAt: string;
+  totals: { tickets: number; open: number; resolved: number; medianHoursToResolve: number | null };
+  perSchool: Array<{ school: string; open: number; resolved: number }>;
+  /** Hours from opened to resolved, for tickets resolved in the period. */
+  timeToResolve: Array<{ priority: TicketPriority; resolved: number; medianHours: number | null; p90Hours: number | null }>;
+  topCategories: Array<{ category: IssueCategory; count: number }>;
+  /** Student-support chats in the period, by how they ended. `selfResolvedRate` is fixed / finished (0 to 1). */
+  selfHelp: { resolved: number; escalated: number; blocked: number; open: number; selfResolvedRate: number | null };
+}

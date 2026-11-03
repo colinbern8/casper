@@ -1,3 +1,5 @@
+import { problemLabels } from '../src/data/commonProblems';
+
 /**
  * Built-in answers for the free-text help chat. There is no AI or language model
  * anywhere in this app: every reply is fixed text chosen by keyword matching.
@@ -21,8 +23,8 @@ export interface ChatReply {
   suggestedActions: string[];
 }
 
-export const STUDENT_TOPICS = ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login', 'Chromebook is broken or damaged'];
-export const STAFF_TOPICS = ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers', 'Cannot sign in to my account'];
+/** The common problems offered when nothing matched: the same list the chats show. */
+export const topicsFor = (isStudent: boolean) => problemLabels(isStudent ? 'student' : 'staff');
 
 const MAX_HISTORY = 10;
 const MAX_MODEL_TURN_CHARS = 1500;
@@ -52,9 +54,10 @@ export function normalizeHistory(raw: unknown): ChatTurn[] | null {
   return merged;
 }
 
-export function suggestedActionsFor(isStudent: boolean, needsEscalation: boolean): string[] {
+function suggestedActionsFor(isStudent: boolean, needsEscalation: boolean): string[] {
   const escalate = isStudent ? 'Request loaner device' : 'Submit IT ticket';
-  return needsEscalation ? [escalate, 'Issue resolved', 'Contact IT'] : ['Issue resolved', 'Try next step', escalate];
+  // Built-in answers list every step at once, so there is never a "next step" to offer.
+  return needsEscalation ? [escalate, 'Issue resolved', 'Contact IT'] : ['Issue resolved', escalate, 'Contact IT'];
 }
 
 /** The reply to a free-text question: fixed text chosen by keyword matching. */
@@ -78,7 +81,7 @@ export function builtInReply(ctx: ChatContext, query: string): ChatReply {
     text = `Audio:\n\n1. Click the speaker icon and choose the correct output device.\n2. Push the audio cable in firmly at both ends.\n3. Check that the speaker or wall-plate power is on and volume is up.`;
   } else {
     // Nothing matched: only fixes are on offer, so point at the topics instead of guessing.
-    const topics = ctx.isStudent ? STUDENT_TOPICS : STAFF_TOPICS;
+    const topics = topicsFor(ctx.isStudent);
     return {
       text: `I can only help with school technology problems. Pick one of these, or describe it with words like "Wi-Fi", "will not turn on", "password", or "display".`,
       needsEscalation: false,

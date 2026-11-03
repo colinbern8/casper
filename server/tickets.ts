@@ -8,9 +8,13 @@ import {
   type Role,
   type UserRole,
 } from '../src/types';
-import { MEDIA_CENTER_DESK, findSchool, allTechs } from '../src/data/schools';
+import { MEDIA_CENTER_DESK, findSchool, allTechs, routeFor } from '../src/data/schools';
 import type { NewTicket } from './store';
 import type { Ticket } from '../src/types';
+import { isRecord } from './jsonFile';
+
+/** True when `value` is one of `list`. Narrows an untrusted value to the list's type. */
+export const oneOf = <T>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 
 export const clean = (v: unknown, max: number): string =>
   typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
@@ -26,12 +30,12 @@ const fail = (error: string, message: string): { ok: false; error: string; messa
  * class right now or on a planning period (self-reported by nature), and
  * defaults to the planning-period level when they say nothing sensible.
  */
-export function ticketRoleFor(sessionRole: Role, requested: unknown): UserRole {
+function ticketRoleFor(sessionRole: Role, requested: unknown): UserRole {
   if (sessionRole === 'student') return 'student';
   return requested === 'teacher_active' || requested === 'teacher_prep' || requested === 'staff' ? requested : 'teacher_prep';
 }
 
-export function triage(role: UserRole): { priority: TicketPriority; reason: string } {
+function triage(role: UserRole): { priority: TicketPriority; reason: string } {
   switch (role) {
     case 'teacher_active':
       return { priority: 'critical', reason: 'Priority 1: teacher reports a class in session (self-reported)' };
@@ -44,8 +48,12 @@ export function triage(role: UserRole): { priority: TicketPriority; reason: stri
   }
 }
 
-export function parseTicketInput(body: any, who: { name: string; email: string; role: Role }): ParseResult<NewTicket> {
-  if (!body || typeof body !== 'object') return fail('INVALID_BODY', 'Request body must be JSON.');
+/**
+ * Validates a new ticket. Identity, role, priority and routing come from the session and the server,
+ * never from `body`. `isAway` says which technicians are marked away, for routing.
+ */
+export function parseTicketInput(body: unknown, who: { name: string; email: string; role: Role }, isAway: (tech: string) => boolean = () => false): ParseResult<NewTicket> {
+  if (!isRecord(body)) return fail('INVALID_BODY', 'Request body must be JSON.');
 
   const role = ticketRoleFor(who.role, body.userRole);
   const userName = clean(who.name, 80) || who.email.split('@')[0];
@@ -62,12 +70,13 @@ export function parseTicketInput(body: any, who: { name: string; email: string; 
   if (title.length < 3) return fail('INVALID_TITLE', 'A short title is required.');
   if (!description) return fail('INVALID_DESCRIPTION', 'A description is required.');
 
-  const category: IssueCategory = ISSUE_CATEGORIES.includes(body.category) ? body.category : 'other';
+  const category: IssueCategory = oneOf(ISSUE_CATEGORIES, body.category) ? body.category : 'other';
   const steps = Array.isArray(body.troubleshootStepsAttempted)
     ? body.troubleshootStepsAttempted.slice(0, 20).map((s: unknown) => clean(s, 200)).filter(Boolean)
     : [];
 
   const { priority, reason } = triage(role);
+  const route = role === 'student' ? { tech: MEDIA_CENTER_DESK } : routeFor(school, isAway);
 
   return {
     ok: true,
@@ -88,27 +97,29 @@ export function parseTicketInput(body: any, who: { name: string; email: string; 
       priorityReason: reason,
       // "open" = logged, not yet acknowledged by a technician. Nobody is paged by the app itself.
       status: 'open',
-      assignedTech: role === 'student' ? MEDIA_CENTER_DESK : school.leadTech,
+      assignedTech: route.tech,
+      ...(route.note ? { techNotes: `[routing] ${route.note}` } : {}),
       teacherAvailability: clean(body.teacherAvailability, 200) || undefined,
     },
   };
 }
 
-export function parseTicketUpdate(body: any): ParseResult<TicketUpdateInput> {
-  if (!body || typeof body !== 'object') return fail('INVALID_BODY', 'Request body must be JSON.');
+/** `extraTechs`: other names a ticket may be assigned to (technicians who claimed or set presence). */
+export function parseTicketUpdate(body: unknown, extraTechs: string[] = []): ParseResult<TicketUpdateInput> {
+  if (!isRecord(body)) return fail('INVALID_BODY', 'Request body must be JSON.');
   const out: TicketUpdateInput = {};
 
   if (body.status !== undefined) {
-    if (!TICKET_STATUSES.includes(body.status)) return fail('INVALID_STATUS', 'Unknown status.');
+    if (!oneOf(TICKET_STATUSES, body.status)) return fail('INVALID_STATUS', 'Unknown status.');
     out.status = body.status;
   }
   if (body.priority !== undefined) {
-    if (!TICKET_PRIORITIES.includes(body.priority)) return fail('INVALID_PRIORITY', 'Unknown priority.');
+    if (!oneOf(TICKET_PRIORITIES, body.priority)) return fail('INVALID_PRIORITY', 'Unknown priority.');
     out.priority = body.priority;
   }
   if (body.assignedTech !== undefined) {
     const tech = clean(body.assignedTech, 80);
-    if (tech && !allTechs().includes(tech)) return fail('INVALID_TECH', 'Unknown technician.');
+    if (tech && !allTechs().includes(tech) && !extraTechs.includes(tech)) return fail('INVALID_TECH', 'Unknown technician.');
     out.assignedTech = tech;
   }
   if (body.addNote !== undefined) {

@@ -1,7 +1,6 @@
-import fs from 'fs';
-import path from 'path';
 import crypto from 'crypto';
 import type { SupportCase } from '../src/types';
+import { isRecord, readJsonFile, writeJsonFile } from './jsonFile';
 
 export type NewCase = Omit<SupportCase, 'id' | 'caseNumber' | 'createdAt' | 'updatedAt'>;
 
@@ -9,6 +8,9 @@ interface CaseFile {
   counter: number;
   cases: SupportCase[];
 }
+
+const isCaseFile = (v: unknown): v is CaseFile =>
+  isRecord(v) && Number.isInteger(v.counter) && Array.isArray(v.cases) && v.cases.every(c => isRecord(c) && typeof c.id === 'string');
 
 /**
  * Student-support demo cases in a JSON file, written atomically after every change.
@@ -18,20 +20,16 @@ export class CaseStore {
   private data: CaseFile = { counter: 0, cases: [] };
 
   constructor(private file: string | null) {
-    if (file && fs.existsSync(file)) {
-      try {
-        const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as CaseFile;
-        if (Array.isArray(parsed.cases) && typeof parsed.counter === 'number') this.data = parsed;
-      } catch (err) {
-        const backup = `${file}.corrupt-${Date.now()}`;
-        fs.renameSync(file, backup);
-        console.error(`Case file was unreadable; moved to ${backup}. Starting empty.`, err);
-      }
-    }
+    this.data = readJsonFile(file, isCaseFile, 'Case') ?? this.data;
   }
 
   get size(): number {
     return this.data.cases.length;
+  }
+
+  /** Newest first. */
+  list(): SupportCase[] {
+    return [...this.data.cases].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   get(id: string): SupportCase | undefined {
@@ -63,10 +61,6 @@ export class CaseStore {
   }
 
   private persist() {
-    if (!this.file) return;
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    const tmp = `${this.file}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
-    fs.renameSync(tmp, this.file);
+    writeJsonFile(this.file, this.data);
   }
 }

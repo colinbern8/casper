@@ -1,64 +1,15 @@
-import { test, after } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { AddressInfo } from 'node:net';
-import type { Server } from 'node:http';
-import { loadConfig } from '../server/config';
-import { createApp } from '../server/app';
-import { TicketStore } from '../server/store';
 import { CaseStore } from '../server/cases';
-import { UserStore } from '../server/users';
-import { SlidingWindowLimiter } from '../server/rateLimit';
 import { DEMO_STUDENTS } from '../server/supportFixtures';
+import { startServer } from './helpers';
 import { SUPPORT_ISSUES } from '../src/data/supportContent';
 import { SUPPORT_ISSUE_IDS } from '../src/types';
 
-const servers: Server[] = [];
-after(() => servers.forEach(s => s.close()));
-
-async function start(env: Record<string, string> = { DEMO_MODE: 'true' }) {
-  const config = loadConfig({
-    DEV_LOGIN: 'true',
-    SESSION_SECRET: 'test-secret',
-    DISTRICT_DOMAIN: 'd.test',
-    ADMIN_EMAILS: 'boss@d.test',
-    ...env,
-  } as NodeJS.ProcessEnv);
-  const users = new UserStore(null, config.adminEmails);
-  const store = new TicketStore(null);
-  const app = createApp({
-    config,
-    store,
-    users,
-    cases: new CaseStore(null),
-    limiter: new SlidingWindowLimiter(),
-  });
-  const server: Server = await new Promise(resolve => {
-    const s = app.listen(0, () => resolve(s));
-  });
-  servers.push(server);
-  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const call = async (method: string, p: string, body?: unknown, cookie?: string) => {
-    const res = await fetch(base + p, {
-      method,
-      headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    return { status: res.status, body: (await res.json().catch(() => null)) as any };
-  };
-  const login = async (email: string, name?: string) => {
-    const res = await fetch(base + '/api/auth/dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name }),
-    });
-    assert.equal(res.status, 200);
-    return res.headers.get('set-cookie')!.split(';')[0];
-  };
-  return { call, login, users, store };
-}
+const start = (env: Record<string, string> = { DEMO_MODE: 'true' }) => startServer({ env });
 
 const S = '/api/support/cases';
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'fs';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -10,7 +11,8 @@ import { UserStore } from './server/users';
 import { createGoogleVerifier } from './server/google';
 import { TicketStore } from './server/store';
 import { CaseStore } from './server/cases';
-import { seedDemoTickets, seedDemoUsers } from './server/demoData';
+import { seedDemoData, seedDemoUsers } from './server/demoData';
+import { PresenceStore } from './server/presence';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,20 +23,24 @@ async function main() {
   const store = new TicketStore(path.join(config.dataDir, 'tickets.json'), config.ticketPrefix);
   const cases = new CaseStore(path.join(config.dataDir, 'cases.json'));
   const users = new UserStore(path.join(config.dataDir, 'users.json'), config.adminEmails);
+  const presence = new PresenceStore(path.join(config.dataDir, 'presence.json'));
   if (config.demoMode) {
-    seedDemoTickets(store, config);
+    seedDemoData({ store, cases, presence, cfg: config });
     seedDemoUsers(users, config);
   }
   const verifyGoogle = config.googleClientId ? createGoogleVerifier(config.googleClientId) : undefined;
   const healthCheck = () => fs.accessSync(config.dataDir, fs.constants.R_OK | fs.constants.W_OK);
-  const app = createApp({ config, store, users, verifyGoogle, cases, healthCheck, accessLog: true });
+  const app = createApp({ config, store, users, verifyGoogle, cases, presence, healthCheck, accessLog: true });
 
   if (!config.googleClientId && !config.devLogin) console.warn('Neither GOOGLE_CLIENT_ID nor DEV_LOGIN is set: nobody can sign in.');
   if (config.devLogin) console.warn('DEV_LOGIN is on: anyone can sign in as any district address. Development only.');
   if (config.adminEmails.length === 0) console.warn('ADMIN_EMAILS not set: nobody can reach the admin page.');
 
+  const server = http.createServer(app);
   if (!config.isProduction) {
-    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
+    // Hot reload runs on this server's own port, so two dev servers on one machine never collide.
+    const hmr = process.env.DISABLE_HMR === 'true' ? false : { server };
+    const vite = await createViteServer({ server: { middlewareMode: true, hmr }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {
     const dist = path.resolve(__dirname, 'dist');
@@ -42,7 +48,7 @@ async function main() {
     app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
   }
 
-  app.listen(config.port, '0.0.0.0', () => {
+  server.listen(config.port, '0.0.0.0', () => {
     console.log(`${BRAND_NAME} help desk running on http://0.0.0.0:${config.port} (${config.isProduction ? 'production' : 'development'})`);
   });
 }

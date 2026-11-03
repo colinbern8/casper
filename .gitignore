@@ -3,6 +3,7 @@ build/
 dist/
 coverage/
 /data/
+/data-demo/
 /backups/
 .DS_Store
 *.log
@@ -10,3 +11,4 @@ coverage/
 !.env.example
 !.env.demo
 .taste-skill/
+tests/e2e/screenshots/

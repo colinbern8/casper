@@ -1,7 +1,8 @@
 import crypto from 'crypto';
+import { LIMITS } from './config';
 
 const COOKIE = 'casper_session';
-const TTL_MS = 8 * 60 * 60 * 1000;
+const TTL_MS = LIMITS.sessionTtlMs;
 
 export interface SessionIdentity {
   email: string;

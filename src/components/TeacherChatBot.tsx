@@ -1,36 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { UserContext, Ticket, IssueCategory } from '../types';
-import { ApiError, createTicket, sendChat } from '../api';
-import { HELP_DESK, SCHOOLS } from '../data/schools';
-import { stepActions, actionKind, ACTION_CLASS } from '../data/stepActions';
+import React, { useEffect, useRef, useState } from 'react';
+import type { Ticket, UserContext } from '../types';
+import { ApiError, createTicket, sendChat, signalSignedOut } from '../api';
+import { HELP_DESK } from '../data/schools';
+import { stepActions, actionKind } from '../data/stepActions';
+import { DAMAGE_WORDS, flowById, inferCategory, matchFlow, type FlowId, type GuidedFlow } from '../data/staffFlows';
+import { COMMON_PROBLEMS, type CommonProblem } from '../data/commonProblems';
+import { MAX_MESSAGE_LENGTH, SIGN_OUT_NOTICE_MS } from '../data/limits';
 import { BRAND_NAME } from '../brand';
-
-const MAX_MESSAGE_LENGTH = 1000;
-
-function inferCategory(text: string): IssueCategory {
-  const t = text.toLowerCase();
-  if (/(smartboard|promethean|projector|board|hdmi|display|no signal)/.test(t)) return 'smartboard';
-  if (/(sound|audio|speaker|microphone|headphone)/.test(t)) return 'audio_video';
-  if (/(copier|printer|print|badge)/.test(t)) return 'printer';
-  if (/(wi-?fi|network|internet)/.test(t)) return 'network';
-  if (/(password|login|log in|account|clever)/.test(t)) return 'account';
-  if (/(chromebook|laptop)/.test(t)) return 'chromebook';
-  return 'other';
-}
+import { ChatBubble, ChatFrame, ChatInput, ChoiceChips, type BubbleTone, type Choice } from './chat/ChatParts';
+import { LocationDialog } from './LocationDialog';
+import { GuidelinesDialog } from './GuidelinesDialog';
 
 interface Message {
-  id: string;
-  sender: 'bot' | 'user';
-  content: string;
-  timestamp: string;
-  stepsList?: string[];
-  kbSource?: { title: string; url?: string };
-  actionCallout?: string;
-  note?: string;
-  suggestedActions?: string[];
-  escalationTicket?: Ticket;
-  isSafetyBlocked?: boolean;
-  isRateLimited?: boolean;
+  id: number;
+  from: 'bot' | 'user';
+  text: string;
+  time: string;
+  tone?: BubbleTone;
+  label?: string;
+  step?: { action: string; instruction: string; detail?: string };
+  ticket?: Ticket;
+  choices?: Choice[];
 }
 
 interface TeacherChatBotProps {
@@ -38,915 +28,344 @@ interface TeacherChatBotProps {
   onUpdateUserContext: (ctx: UserContext) => void;
   onTicketCreated: (ticket: Ticket) => void;
   onViewDispatchSlip: (ticket: Ticket) => void;
-  onContactIT?: () => void;
+  onContactIT: () => void;
 }
 
-export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({
-  userContext,
-  onUpdateUserContext,
-  onTicketCreated,
-  onViewDispatchSlip,
-  onContactIT
-}) => {
-  const isStudent = userContext.role === 'student';
+const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const getInitialMessages = (): Message[] => [
-    {
-      id: 'msg-welcome',
-      sender: 'bot',
-      content: "Describe your IT issue, and I'll help you find the next step.",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestedActions: isStudent ? [
-        'Chromebook will not turn on',
-        'Cannot connect to school Wi-Fi',
-        'Forgot account password or login',
-        'Headphones or microphone not working',
-        'Chromebook damaged or need loaner'
-      ] : [
-        'Smartboard or display shows "No Signal"',
-        'Student Chromebook cannot connect to Wi-Fi',
-        'Audio playing from laptop instead of room speakers',
-        'Copier badge reader not responding',
-        'Student locked out of district Google account'
-      ]
-    }
+/** The student support issues as staff-chat flows, for the student chat when demo mode is off. */
+const ISSUE_FLOW: Partial<Record<string, FlowId>> = { wifi: 'wifi', power: 'power', login: 'account' };
+
+/** A button label (from the step list, the problem list or the server) as a choice with its colour. */
+const asChoice = (label: string): Choice => {
+  const problem = [...COMMON_PROBLEMS.student, ...COMMON_PROBLEMS.staff].findIndex(p => p.label.en === label);
+  if (problem >= 0) return { key: `problem:${problem}`, label };
+  const kind = actionKind(label);
+  if (kind === 'resolved') return { key: 'resolved', label, tone: 'resolved' };
+  if (kind === 'next') return { key: 'next', label, tone: 'next' };
+  if (kind === 'escalate') return { key: 'escalate', label, tone: 'escalate' };
+  if (label === 'Contact IT') return { key: 'contact', label };
+  return { key: `text:${label}`, label };
+};
+
+/**
+ * Teacher and staff help chat (also the student chat when demo mode is off). Guided steps come
+ * from src/data/staffFlows.ts; anything else typed gets a built-in answer from the server. No AI.
+ */
+export const TeacherChatBot: React.FC<TeacherChatBotProps> = ({ userContext, onUpdateUserContext, onTicketCreated, onViewDispatchSlip, onContactIT }) => {
+  const isStudent = userContext.role === 'student';
+  const escalateLabel = isStudent ? 'Request loaner device' : 'Submit IT ticket';
+  const nextId = useRef(1);
+  const menu = () => COMMON_PROBLEMS[isStudent ? 'student' : 'staff'].map(p => asChoice(p.label.en));
+
+  const welcome = (): Message[] => [
+    { id: 0, from: 'bot', text: "Describe your IT issue, and I'll help you find the next step.", time: now(), choices: menu() },
   ];
 
-  const [messages, setMessages] = useState<Message[]>(getInitialMessages);
-  const [inputValue, setInputValue] = useState('');
+  const [messages, setMessages] = useState<Message[]>(welcome);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
-  const [lastSentText, setLastSentText] = useState<string>('');
-  const [lastSentTimestamp, setLastSentTimestamp] = useState<number>(0);
-  const [spamWarning, setSpamWarning] = useState<string | null>(null);
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showPolicyModal, setShowPolicyModal] = useState(false);
-  const [tempContext, setTempContext] = useState<UserContext>(userContext);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const [currentTroubleshootFlow, setCurrentTroubleshootFlow] = useState<{
-    topic: string;
-    stepIndex: number;
-    steps: {
-      action: string;
-      instruction: string;
-      detail?: string;
-    }[];
-    kbSource?: { title: string; url?: string };
-    stepsAttempted: string[];
-  } | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  /** Signed out by the spam guard (students only): nothing more can be sent. */
+  const [ended, setEnded] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [last, setLast] = useState({ text: '', at: 0 });
+  const [dialog, setDialog] = useState<'location' | 'guidelines' | null>(null);
+  const [flow, setFlow] = useState<{ flow: GuidedFlow; index: number; tried: string[] } | null>(null);
 
   useEffect(() => {
-    if (cooldownRemaining <= 0) return;
-    const interval = setInterval(() => {
-      setCooldownRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cooldownRemaining]);
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   useEffect(() => {
-    setMessages(getInitialMessages());
-    setCurrentTroubleshootFlow(null);
-    setCooldownRemaining(0);
-    setSpamWarning(null);
+    if (!warning) return;
+    const t = setTimeout(() => setWarning(null), 3500);
+    return () => clearTimeout(t);
+  }, [warning]);
+
+  // A different person or situation starts a fresh conversation.
+  useEffect(() => {
+    setMessages(welcome());
+    setFlow(null);
+    setCooldown(0);
+    setWarning(null);
   }, [userContext.role, userContext.userName]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  const add = (...msgs: Omit<Message, 'id' | 'time'>[]) =>
+    setMessages(prev => [...prev, ...msgs.map(m => ({ ...m, id: nextId.current++, time: now() }))]);
 
-  const startGuidedFlow = (topicKey: string) => {
-    let flowData: {
-      topic: string;
-      steps: { action: string; instruction: string; detail?: string }[];
-      kbSource?: { title: string; url?: string };
-    };
-
-    if (topicKey.includes('turn on') || topicKey.includes('black screen') || (isStudent && topicKey.includes('Chromebook will not turn on'))) {
-      flowData = {
-        topic: 'Chromebook Power & Display Reset',
-        kbSource: { title: 'District KB #102: Student Chromebook Power Troubleshooting' },
-        steps: [
-          {
-            action: 'Verify charging connection',
-            instruction: 'Connect the power adapter to the charging port. Check if the small LED indicator light beside the port turns on.',
-            detail: 'If the battery is completely discharged, leave the adapter connected for at least 60 seconds.'
-          },
-          {
-            action: 'Perform a hardware refresh',
-            instruction: 'Press and hold the circular Refresh key (located along the top row of keys), then press the Power button once. Release both keys when the screen flickers.',
-            detail: 'This resets internal hardware controllers and will not erase saved schoolwork or Google Drive files.'
-          },
-          {
-            action: 'Inspect for physical damage or loose keys',
-            instruction: 'Check the screen and chassis for physical cracks or liquid damage. If damaged, a replacement loaner is required.',
-            detail: 'The Media Center library desk provides replacement devices.'
-          }
-        ]
-      };
-    } else if (topicKey.includes('Wi-Fi') || topicKey.includes('internet') || topicKey.includes('connect')) {
-      flowData = {
-        topic: 'District Wi-Fi Connection',
-        kbSource: { title: 'District KB #108: Campus Wireless Authentication & Certificate Sync' },
-        steps: [
-          {
-            action: 'Toggle Wi-Fi connection',
-            instruction: 'Select the bottom-right clock area, turn Wi-Fi off, wait 5 seconds, and turn it back on. Select "District-Secure".',
-            detail: 'Verify the device is not connected to a personal phone hotspot.'
-          },
-          {
-            action: 'Forget and rejoin the district network',
-            instruction: 'Click "Known networks", select "District-Secure", and choose "Forget". Re-select it and authenticate using your district email and password.',
-            detail: 'Ensure the EAP method is set to PEAP and Phase 2 authentication is set to MSCHAPv2.'
-          },
-          {
-            action: 'Restart device network stack',
-            instruction: 'Hold the circular Refresh key and press Power once to clear temporary network leases.',
-            detail: 'If DHCP fails repeatedly, the unit may require a network certificate re-enrollment.'
-          }
-        ]
-      };
-    } else if (topicKey.includes('No Signal') || topicKey.includes('Smartboard') || topicKey.includes('display')) {
-      flowData = {
-        topic: 'Classroom Display & Smartboard Connection',
-        kbSource: { title: 'District KB #204: Promethean ActivPanel & Teacher Laptop Routing' },
-        steps: [
-          {
-            action: 'Reseat the video cable',
-            instruction: 'Unplug the HDMI or USB-C display cable from the laptop, wait 3 seconds, and firmly reconnect it.',
-            detail: 'Ensure the other end is securely plugged into the classroom wall plate or panel input.'
-          },
-          {
-            action: 'Set display mode to Duplicate',
-            instruction: 'Press the Windows key and tap P. In the project sidebar on the right, select "Duplicate".',
-            detail: 'If set to "PC screen only", the classroom projector or panel will show No Signal.'
-          },
-          {
-            action: 'Verify input source on panel',
-            instruction: 'Use the front panel Source button or remote to verify the selected input matches the cable port (e.g. HDMI 1 or Front HDMI).',
-            detail: 'Also verify the panel freeze function is toggled off.'
-          }
-        ]
-      };
-    } else if (topicKey.includes('speakers') || topicKey.includes('Sound') || topicKey.includes('Audio') || topicKey.includes('Headphones')) {
-      flowData = {
-        topic: 'Audio Output Configuration',
-        kbSource: { title: 'District KB #305: Classroom Sound & Headphone Troubleshooting' },
-        steps: [
-          {
-            action: 'Select correct audio output device',
-            instruction: 'Click the speaker volume icon in the bottom-right taskbar. Click the audio device selector and choose the classroom speakers or display rather than laptop speakers.',
-            detail: 'Classroom amplifiers are typically labeled "Extron Audio" or "Display Audio".'
-          },
-          {
-            action: 'Check physical cable connection',
-            instruction: 'Ensure the 3.5mm green audio wire is firmly plugged into the laptop headphone jack and classroom wall port.',
-            detail: 'Ensure volume knobs on classroom wall plates or speakers are turned up.'
-          }
-        ]
-      };
-    } else if (topicKey.includes('badge') || topicKey.includes('Copier') || topicKey.includes('Printer')) {
-      flowData = {
-        topic: 'PaperCut Copier Badge Scanner',
-        kbSource: { title: 'District KB #410: PaperCut MFP Authentication & PIN Workaround' },
-        steps: [
-          {
-            action: 'Use manual PIN login',
-            instruction: 'Touch "ID Number / PIN" on the copier screen and enter your 4-digit district staff PIN.',
-            detail: 'This allows immediate printing while the RFID badge reader is inspected.'
-          },
-          {
-            action: 'Check badge scanner USB cable',
-            instruction: 'Ensure the small black tap-box cable connected to the rear USB port of the copier is firmly inserted.',
-            detail: 'If the scanner light remains red, the driver service requires an administrative restart.'
-          }
-        ]
-      };
-    } else if (topicKey.includes('password') || topicKey.includes('login') || topicKey.includes('account')) {
-      flowData = {
-        topic: 'District Account & Password Reset',
-        kbSource: { title: 'District KB #101: Student Google Workspace & Clever Login Recovery' },
-        steps: [
-          {
-            action: 'Check caps lock and username format',
-            instruction: 'Ensure Caps Lock is turned off. Verify the username is the full district email address.',
-            detail: 'Make sure no trailing spaces were copied into the login box.'
-          },
-          {
-            action: 'Reset password via Clever or Teacher Portal',
-            instruction: 'Teachers can reset student passwords instantly from Clever Portal -> My Students -> Reset Password.',
-            detail: 'If the student is locked out of Google 2-Step Verification, an administrator ticket is required.'
-          }
-        ]
-      };
-    } else {
-      flowData = {
-        topic: 'Hardware & System Diagnostic',
-        kbSource: { title: 'District KB #100: General Equipment Checklist' },
-        steps: [
-          {
-            action: 'Inspect cables and power',
-            instruction: 'Verify power cords and peripheral cables are connected securely to working outlets.',
-            detail: 'Check for physical power switch status on equipment.'
-          },
-          {
-            action: 'Restart device',
-            instruction: 'Save current documents and perform a full device restart to clear pending system updates.',
-            detail: 'Avoid holding the power button unless standard shut down does not respond.'
-          }
-        ]
-      };
-    }
-
-    const firstStep = flowData.steps[0];
-    setCurrentTroubleshootFlow({
-      topic: flowData.topic,
-      stepIndex: 0,
-      steps: flowData.steps,
-      kbSource: flowData.kbSource,
-      stepsAttempted: [firstStep.action]
+  const showStep = (f: GuidedFlow, index: number) => {
+    const step = f.steps[index];
+    add({
+      from: 'bot',
+      text: `Troubleshooting: ${f.topic} (step ${index + 1} of ${f.steps.length})`,
+      step,
+      choices: stepActions({ isLastStep: index + 1 >= f.steps.length, isStudent }).map(asChoice),
     });
-
-    const botMsg: Message = {
-      id: `bot-${Date.now()}`,
-      sender: 'bot',
-      content: `Troubleshooting: ${flowData.topic} (Step 1 of ${flowData.steps.length})`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      stepsList: [firstStep.instruction],
-      actionCallout: firstStep.action,
-      note: firstStep.detail,
-      kbSource: flowData.kbSource,
-      suggestedActions: stepActions({ isLastStep: flowData.steps.length <= 1, isStudent })
-    };
-
-    setMessages(prev => [...prev, botMsg]);
   };
 
-  const handleNextStep = () => {
-    if (!currentTroubleshootFlow) return;
+  const startFlow = (f: GuidedFlow) => {
+    setFlow({ flow: f, index: 0, tried: [f.steps[0].action] });
+    showStep(f, 0);
+  };
 
-    const nextIndex = currentTroubleshootFlow.stepIndex + 1;
-    if (nextIndex < currentTroubleshootFlow.steps.length) {
-      const nextStep = currentTroubleshootFlow.steps[nextIndex];
-      const updatedStepsAttempted = [...currentTroubleshootFlow.stepsAttempted, nextStep.action];
-
-      setCurrentTroubleshootFlow({
-        ...currentTroubleshootFlow,
-        stepIndex: nextIndex,
-        stepsAttempted: updatedStepsAttempted
-      });
-
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        content: `Troubleshooting: ${currentTroubleshootFlow.topic} (Step ${nextIndex + 1} of ${currentTroubleshootFlow.steps.length})`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        stepsList: [nextStep.instruction],
-        actionCallout: nextStep.action,
-        note: nextStep.detail,
-        kbSource: currentTroubleshootFlow.kbSource,
-        suggestedActions: stepActions({ isLastStep: nextIndex + 1 >= currentTroubleshootFlow.steps.length, isStudent })
-      };
-      setMessages(prev => [...prev, botMsg]);
-    } else {
-      handleEscalateTicket('Troubleshooting steps completed without resolution.');
+  const nextStep = () => {
+    if (!flow) return;
+    const index = flow.index + 1;
+    if (index >= flow.flow.steps.length) {
+      void escalate('Troubleshooting steps completed without resolution.');
+      return;
     }
+    setFlow({ ...flow, index, tried: [...flow.tried, flow.flow.steps[index].action] });
+    showStep(flow.flow, index);
   };
 
-  const handleIssueResolved = () => {
-    setCurrentTroubleshootFlow(null);
-    const botMsg: Message = {
-      id: `bot-${Date.now()}`,
-      sender: 'bot',
-      content: 'The issue is marked as resolved. No service request is required.',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestedActions: [
-        'Start new request',
-        'Close'
-      ]
-    };
-    setMessages(prev => [...prev, botMsg]);
+  const resolved = () => {
+    setFlow(null);
+    add({ from: 'bot', text: 'The issue is marked as resolved. No service request is required.', tone: 'success', choices: [{ key: 'new', label: 'Start new request', tone: 'primary' }] });
   };
 
-  const handleEscalateTicket = async (reason?: string) => {
-    const isUrgentTeacher = userContext.role === 'teacher_active';
-    const topic = currentTroubleshootFlow?.topic || '';
-    const userText = messages
-      .filter(m => m.sender === 'user')
-      .slice(-3)
-      .map(m => m.content)
-      .join(' | ')
-      .slice(0, 600);
+  const escalate = async (reason: string) => {
+    const topic = flow?.flow.topic ?? '';
+    const userText = messages.filter(m => m.from === 'user').slice(-3).map(m => m.text).join(' | ').slice(0, 600);
     const summary = topic || userText.slice(0, 80) || (isStudent ? 'Student device issue' : 'Classroom technology issue');
-    const time = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     try {
-      // The server decides role, priority, routing, and the ticket number. We show what it returns.
+      // The server decides role, priority, routing and the ticket number. We show what it returns.
       const ticket = await createTicket({
         userRole: userContext.role,
         school: userContext.school,
         room: userContext.room,
         phoneOrExt: userContext.phoneOrExt,
-        category: inferCategory(`${topic} ${userText}`),
+        category: flow?.flow.category ?? inferCategory(userText),
         assetTag: userContext.assetTag,
         title: isStudent ? `Loaner request: ${summary}` : `${summary} (${userContext.room})`,
-        description:
-          [reason || 'Troubleshooting did not resolve the issue.', userText && `Reported: ${userText}`].filter(Boolean).join('\n\n'),
-        troubleshootStepsAttempted: currentTroubleshootFlow?.stepsAttempted || [],
-        teacherAvailability: isStudent
-          ? 'Will visit the Media Center'
-          : isUrgentTeacher
-          ? `In ${userContext.room} now`
-          : 'Available during planning period',
+        description: [reason, userText && `Reported: ${userText}`].filter(Boolean).join('\n\n'),
+        troubleshootStepsAttempted: flow?.tried ?? [],
+        teacherAvailability: isStudent ? 'Will visit the Media Center' : userContext.role === 'teacher_active' ? `In ${userContext.room} now` : 'Available during planning period',
       });
-
       onTicketCreated(ticket);
-      setCurrentTroubleshootFlow(null);
-
+      setFlow(null);
       const lines = isStudent
-        ? [
-            'Your loaner request is logged.',
-            `Ticket number: ${ticket.ticketNumber}`,
-            'Go to: Media Center Tech Desk',
-            'Bring your Chromebook so a technician can swap it.',
-          ]
+        ? ['Your loaner request is logged.', `Ticket number: ${ticket.ticketNumber}`, 'Go to: Media Center Tech Desk', 'Bring your Chromebook so a technician can swap it.']
         : [
             'Your service request is logged.',
             `Ticket number: ${ticket.ticketNumber}`,
-            ticket.priority === 'critical' ? 'Priority 1: flagged at the top of the technician queue.' : `Priority: ${ticket.priority}`,
+            ticket.priority === 'critical' ? 'Priority 1: flagged at the top of the technician queue.' : `Priority: ${ticket.priority === 'high' ? '2' : '3'}`,
             `Location: ${ticket.room} (${ticket.school})`,
-            `Routed to: ${ticket.assignedTech}`,
+            `Routed to: ${ticket.assignedTech || `the shared ${ticket.school} queue`}`,
             `Notes from troubleshooting are attached. If it is urgent and nobody arrives, call ${HELP_DESK.ext}.`,
           ];
-
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `bot-${Date.now()}`,
-          sender: 'bot',
-          content: lines.join('\n\n'),
-          timestamp: time(),
-          escalationTicket: ticket,
-          suggestedActions: [isStudent ? 'Print Loaner Pass' : 'Print Dispatch Slip', 'Start new request'],
-        },
-      ]);
+      add({
+        from: 'bot',
+        text: lines.join('\n'),
+        tone: 'info',
+        ticket,
+        choices: [{ key: 'print', label: isStudent ? 'Print loaner pass' : 'Print dispatch slip' }, { key: 'new', label: 'Start new request', tone: 'primary' }],
+      });
     } catch (err) {
       const limited = err instanceof ApiError && err.status === 429;
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `bot-${Date.now()}`,
-          sender: 'bot',
-          content: `${limited ? 'Notice: ' : 'The request was not submitted. '}${
-            err instanceof ApiError ? err.message : 'Something went wrong.'
-          }\n\nNothing was logged. You can try again, or call ${HELP_DESK.ext}.`,
-          timestamp: time(),
-          isSafetyBlocked: limited,
-          suggestedActions: limited ? ['Start new request', 'Contact IT'] : [isStudent ? 'Request loaner device' : 'Submit IT ticket', 'Contact IT'],
-        },
-      ]);
+      add({
+        from: 'bot',
+        text: `${err instanceof ApiError ? err.message : 'Something went wrong.'}\n\nNothing was logged. You can try again, or call ${HELP_DESK.ext}.`,
+        tone: 'warning',
+        label: limited ? 'Limit reached' : 'Not sent',
+        choices: limited ? [{ key: 'new', label: 'Start new request' }, { key: 'contact', label: 'Contact IT' }] : [asChoice(escalateLabel), { key: 'contact', label: 'Contact IT' }],
+      });
     }
   };
 
-  const handleSendMessage = async (customText?: string) => {
-    const text = (customText || inputValue).trim();
-    if (!text || loading) return;
+  /** Physical damage cannot be fixed with steps. */
+  const damaged = () =>
+    add({
+      from: 'bot',
+      text: isStudent
+        ? 'Damaged devices cannot be fixed with troubleshooting steps. A technician at the Media Center Tech Desk will swap it for a loaner so you do not miss assignments.\n\nSelect "Request loaner device" to log it, then bring your Chromebook to the desk.'
+        : 'Physically damaged equipment needs a technician or a replacement.\n\nSelect "Submit IT ticket" and a technician will follow up.',
+      choices: [asChoice(escalateLabel), { key: 'contact', label: 'Contact IT' }],
+    });
 
-    if (cooldownRemaining > 0) {
-      setSpamWarning(`Rate limit active. Please wait ${cooldownRemaining}s.`);
-      setTimeout(() => setSpamWarning(null), 3000);
-      return;
+  /** A tapped common problem: starts its steps directly, no keyword guessing. */
+  const startProblem = (p: CommonProblem) => {
+    add({ from: 'user', text: p.label.en });
+    if ('flow' in p.start) return startFlow(flowById(p.start.flow));
+    if ('describe' in p.start || p.start.issue === 'other') return add({ from: 'bot', text: 'Tell me what is wrong in a few words.' });
+    if (p.start.issue === 'damaged') return damaged();
+    const flow = ISSUE_FLOW[p.start.issue];
+    if (flow) startFlow(flowById(flow));
+  };
+
+  const send = async (raw: string) => {
+    const text = raw.trim();
+    if (!text || loading || ended) return;
+    if (cooldown > 0) return setWarning(`Please wait ${cooldown}s before sending another message.`);
+    const t = Date.now();
+    if (text.toLowerCase() === last.text.toLowerCase() && t - last.at < 3000) return setWarning('Please wait a moment before sending the same message again.');
+    if (text.length > MAX_MESSAGE_LENGTH) return setWarning(`Please keep messages under ${MAX_MESSAGE_LENGTH} characters.`);
+    setLast({ text, at: t });
+    setInput('');
+    add({ from: 'user', text });
+
+    const matched = matchFlow(text);
+    // Staff text that matches is answered here. A student's typed text always goes to the server first,
+    // so it is screened and counted by the spam guard; nothing is stored.
+    if (!isStudent) {
+      if (DAMAGE_WORDS.test(text)) return damaged();
+      if (matched) return startFlow(matched);
     }
 
-    const now = Date.now();
-    if (text.toLowerCase() === lastSentText.toLowerCase() && now - lastSentTimestamp < 3000) {
-      setSpamWarning('Please wait a moment before sending the same message again.');
-      setTimeout(() => setSpamWarning(null), 3000);
-      return;
-    }
-
-    if (text.length > MAX_MESSAGE_LENGTH) {
-      setSpamWarning(`Please keep messages under ${MAX_MESSAGE_LENGTH} characters.`);
-      setTimeout(() => setSpamWarning(null), 3500);
-      return;
-    }
-
-    setLastSentText(text);
-    setLastSentTimestamp(now);
-
-    const lower = text.toLowerCase();
-
-    if (/(broken|cracked|crack|spill|spilled|water|dropped|key missing|damaged|loaner)/.test(lower)) {
-      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setMessages(prev => [
-        ...prev,
-        { id: `user-${Date.now()}`, sender: 'user', content: text, timestamp: time },
-        {
-          id: `bot-${Date.now() + 1}`,
-          sender: 'bot',
-          content: isStudent
-            ? 'Damaged devices cannot be fixed with troubleshooting steps. A technician at the Media Center Tech Desk will swap it for a loaner so you do not miss assignments.\n\nSelect "Request loaner device" to log it, then bring your Chromebook to the desk.'
-            : 'Physically damaged equipment needs a technician or a replacement.\n\nSelect "Submit IT ticket" and a technician will follow up.',
-          timestamp: time,
-          suggestedActions: [isStudent ? 'Request loaner device' : 'Submit IT ticket', 'Contact IT'],
-        },
-      ]);
-      setInputValue('');
-      return;
-    }
-
-    const matchingCommon = [
-      'no signal', 'smartboard', 'display', 'screen is blank', 'turn on',
-      'black screen', 'broken', 'loaner', 'password', 'login', 'headphones',
-      'microphone', 'chromebook', 'internet', 'wi-fi', 'sound', 'speakers',
-      'copier', 'badge'
-    ];
-
-    if (matchingCommon.some(kw => lower.includes(kw))) {
-      const userMsg: Message = {
-        id: `user-${Date.now()}`,
-        sender: 'user',
-        content: text,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, userMsg]);
-      setInputValue('');
-      startGuidedFlow(text);
-      return;
-    }
-
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setInputValue('');
     setLoading(true);
-
     try {
-      const data = await sendChat(
-        [...messages, userMsg].map(m => ({ role: m.sender === 'user' ? 'user' : 'model', content: m.content })),
-        {
-          role: userContext.role,
-          school: userContext.school,
-          room: userContext.room,
-          deviceType: userContext.deviceType,
-          assetTag: userContext.assetTag,
-        },
-      );
-
-      if (data.isSafetyBlocked) {
-        const botMsg: Message = {
-          id: `bot-${Date.now()}`,
-          sender: 'bot',
-          content: data.text,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isSafetyBlocked: true,
-          suggestedActions: data.suggestedActions || (isStudent ? [
-            'Chromebook will not turn on',
-            'Cannot connect to school Wi-Fi',
-            'Forgot account password or login'
-          ] : [
-            'Smartboard or display shows "No Signal"',
-            'Student Chromebook cannot connect to Wi-Fi',
-            'Audio playing from laptop instead of room speakers'
-          ])
-        };
-        setMessages(prev => [...prev, botMsg]);
+      const history = [...messages.map(m => ({ role: m.from === 'user' ? ('user' as const) : ('model' as const), content: m.text })), { role: 'user' as const, content: text }];
+      const data = await sendChat(history, { deviceType: userContext.deviceType });
+      if (data.signedOut) {
+        // Spam guard (students only): show why, then the signed-out page with the same reason.
+        add({ from: 'bot', text: data.message ?? data.text, tone: 'warning', label: 'Signed out' });
+        setEnded(true);
+        setTimeout(() => signalSignedOut({ code: 'LOCKED_OUT', message: data.message }), SIGN_OUT_NOTICE_MS);
         return;
       }
-
-      // Clean out any lingering emojis
-      const cleanText = (data.text || '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
-
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        content: cleanText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedActions: data.needsEscalation ? [
-          isStudent ? 'Request loaner device' : 'Submit IT ticket',
-          'Issue resolved',
-          'Contact IT'
-        ] : stepActions({ isLastStep: false, isStudent })
-      };
-      setMessages(prev => [...prev, botMsg]);
+      if (data.isSafetyBlocked) {
+        add({ from: 'bot', text: data.text, tone: 'warning', label: 'Policy notice', choices: data.suggestedActions?.map(asChoice) ?? menu() });
+        if (data.warning) add({ from: 'bot', text: data.warning, tone: 'warning', label: 'Warning' });
+        return;
+      }
+      if (DAMAGE_WORDS.test(text)) return damaged();
+      if (matched) return startFlow(matched);
+      add({
+        from: 'bot',
+        text: data.text,
+        // Built-in answers list every step at once, so there is no "next step" to offer.
+        choices: data.needsEscalation ? [asChoice(escalateLabel), asChoice('Issue resolved'), { key: 'contact', label: 'Contact IT' }] : (data.suggestedActions ?? []).map(asChoice),
+      });
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
-        const waitSec = Number(err.details?.cooldownSeconds) || 15;
-        setCooldownRemaining(waitSec);
-        const text = typeof err.details?.text === 'string' ? err.details.text : `Rate limit active: Please wait ${waitSec} seconds before sending another message.`;
-        const limitedMsg: Message = {
-          id: `bot-${Date.now()}`,
-          sender: 'bot',
-          content: text,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isSafetyBlocked: true,
-          isRateLimited: true,
-          suggestedActions: [
-            isStudent ? 'Chromebook will not turn on' : 'Smartboard or display shows "No Signal"',
-            'Contact IT',
-          ],
-        };
-        setMessages(prev => [...prev, limitedMsg]);
+        if (err.details?.signedOut) {
+          add({ from: 'bot', text: String(err.details.message ?? err.message), tone: 'warning', label: 'Signed out' });
+          setEnded(true);
+          setTimeout(() => signalSignedOut({ code: 'LOCKED_OUT', message: String(err.details?.message ?? '') }), SIGN_OUT_NOTICE_MS);
+          return;
+        }
+        const wait = Number(err.details?.cooldownSeconds) || 15;
+        setCooldown(wait);
+        if (typeof err.details?.warning === 'string') add({ from: 'bot', text: err.details.warning, tone: 'warning', label: 'Warning' });
+        add({ from: 'bot', text: typeof err.details?.text === 'string' ? err.details.text : `Please wait ${wait} seconds before sending another message.`, tone: 'warning', label: 'Message limit', choices: [{ key: 'contact', label: 'Contact IT' }] });
         return;
       }
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        content: (isStudent
-          ? "Troubleshooting steps for your Chromebook:\n\n1. Check the power light: Plug in the charger and verify the indicator light turns on.\n2. Hardware refresh: Hold the circular refresh key and press the power button once.\n3. Need a loaner? Visit the Media Center Tech Desk for a replacement."
-          : `Troubleshooting steps for ${userContext.room}:\n\n1. Check the display cable: Ensure the HDMI cord is connected firmly between your laptop and the wall plate.\n2. Display setting: Press Windows + P and select "Duplicate".\n3. If unresolved, submit a request for an on-campus technician visit.`) + `\n\n(${BRAND_NAME} could not reach the help desk server, so these are general steps.)`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedActions: stepActions({ isLastStep: false, isStudent })
-      };
-      setMessages(prev => [...prev, botMsg]);
+      add({
+        from: 'bot',
+        text: `${BRAND_NAME} could not reach the help desk server. Check your connection and try again, or call ${HELP_DESK.ext}.`,
+        tone: 'warning',
+        label: 'Connection problem',
+        choices: [{ key: 'contact', label: 'Contact IT' }],
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleActionClick = (action: string) => {
-    if (action.includes('resolved') || action.includes('Close')) {
-      handleIssueResolved();
-    } else if (action.includes('next step') || action.includes('Next step')) {
-      handleNextStep();
-    } else if (action.includes('Submit IT ticket') || action.includes('loaner device') || action.includes('Request loaner')) {
-      handleEscalateTicket(currentTroubleshootFlow ? 'Troubleshooting completed without resolution.' : 'User requested a technician or loaner.');
-    } else if (action.includes('Print') || action.includes('Slip') || action.includes('Pass')) {
-      const lastTicket = [...messages].reverse().find(m => m.escalationTicket)?.escalationTicket;
-      if (lastTicket) {
-        onViewDispatchSlip(lastTicket);
-      }
-    } else if (action.includes('Contact IT')) {
-      if (onContactIT) onContactIT();
-      else handleEscalateTicket('User requested direct technician dispatch.');
-    } else if (action.includes('Start new request')) {
-      setCurrentTroubleshootFlow(null);
-      setMessages(getInitialMessages());
-    } else {
-      handleSendMessage(action);
-    }
+  const onPick = (key: string) => {
+    if (key === 'resolved') resolved();
+    else if (key === 'next') nextStep();
+    else if (key === 'escalate') void escalate(flow ? 'Troubleshooting completed without resolution.' : 'User requested a technician or loaner.');
+    else if (key === 'print') {
+      const ticket = [...messages].reverse().find(m => m.ticket)?.ticket;
+      if (ticket) onViewDispatchSlip(ticket);
+    } else if (key === 'contact') onContactIT();
+    else if (key === 'new') {
+      setFlow(null);
+      setMessages(welcome());
+    } else if (key.startsWith('problem:')) startProblem([...COMMON_PROBLEMS.student, ...COMMON_PROBLEMS.staff][Number(key.slice(8))]);
+    else if (key.startsWith('text:')) void send(key.slice(5));
   };
 
-  return (
-    <div className="w-full h-full max-w-2xl mx-auto flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      {/* Context Subheader - Room & Status */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 text-sm sm:text-base text-gray-600 shrink-0">
-        <div className="flex items-center gap-2 truncate">
-          <span className="font-medium text-gray-900">{userContext.school}</span>
-          <span className="text-gray-300">•</span>
-          <span>{userContext.room}</span>
-          <button
-            type="button"
-            onClick={() => {
-              setTempContext(userContext);
-              setShowLocationModal(true);
-            }}
-            className="text-gray-600 hover:text-gray-900 underline text-sm sm:text-base"
-          >
-            Change
-          </button>
-        </div>
+  const latest = messages[messages.length - 1];
 
-        <div className="flex items-center gap-2">
-          {!isStudent && (
+  return (
+    <>
+      <ChatFrame
+        logLabel="Conversation"
+        scrollKey={`${messages.length}-${loading}`}
+        title={
+          <>
+          <h2 className="text-xl font-semibold text-gray-900 leading-tight">{isStudent ? 'Student help' : 'Teacher and staff help'}</h2>
+          <p className="flex flex-wrap items-center gap-x-2 text-sm text-gray-700 mt-0.5">
+            <span className="font-semibold text-gray-900">{userContext.school}</span>
+            <span aria-hidden="true" className="text-gray-400">•</span>
+            <span>{userContext.room}</span>
+            <button type="button" onClick={() => setDialog('location')} className="underline text-gray-700 hover:text-gray-900">Change<span className="sr-only"> location</span></button>
+          </p>
+          </>
+        }
+        headerActions={
+          !isStudent && (
             <select
               aria-label="Your situation"
               value={userContext.role}
               onChange={e => onUpdateUserContext({ ...userContext, role: e.target.value as UserContext['role'] })}
-              className={`px-2 py-0.5 rounded-lg text-sm font-medium border ${
-                userContext.role === 'teacher_active' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-700 border-gray-200'
-              }`}
+              className={`px-2 py-1 rounded-lg text-sm font-medium border ${userContext.role === 'teacher_active' ? 'bg-red-50 text-red-800 border-red-300' : 'bg-white text-gray-800 border-gray-400'}`}
             >
               <option value="teacher_active">Class in session (Priority 1)</option>
               <option value="teacher_prep">Planning period (Priority 2)</option>
               <option value="staff">Not teaching (standard)</option>
             </select>
-          )}
-        </div>
-      </div>
-
-      {/* Message Feed - Single Column */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-        {messages.map((msg, msgIdx) => (
-          <div
-            key={msg.id}
-            className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
-          >
-            <div
-              className={`max-w-[88%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed px-4 py-2.5 rounded-lg ${
-                msg.sender === 'user'
-                  ? 'bg-gray-800 text-white'
-                  : msg.isSafetyBlocked
-                  ? 'bg-amber-50/70 border border-amber-300 text-gray-900'
-                  : 'bg-gray-50 border border-gray-200 text-gray-800'
-              }`}
-            >
-              {/* Safety notice indicator */}
-              {msg.isSafetyBlocked && (
-                <div className="text-xs font-semibold text-amber-900 pb-1 mb-2 border-b border-amber-200">
-                  {msg.isRateLimited ? 'Rate Limit Notice' : 'Policy Notice'}
-                </div>
-              )}
-
-              {/* Action Callout if provided */}
-              {msg.actionCallout && (
-                <div className="mb-2.5 p-2 bg-white border border-gray-300 rounded-lg text-sm sm:text-base font-medium text-gray-900">
-                  <span className="font-semibold text-gray-700 text-xs block text-gray-500 mb-0.5">
-                    Recommended Action
-                  </span>
-                  {msg.actionCallout}
-                </div>
-              )}
-
-              {/* Text Content */}
-              <div className="whitespace-pre-line space-y-1.5">
-                {msg.content.split('\n\n').map((para, i) => (
-                  <p key={i}>{para}</p>
-                ))}
+          )
+        }
+        footer={
+          <>
+            {cooldown > 0 && <p role="status" className="mb-2 text-sm text-amber-900 bg-amber-50 border border-amber-300 px-3 py-1.5 rounded-lg">Please wait <strong>{cooldown}s</strong> before sending another message.</p>}
+            {warning && <p role="alert" className="mb-2 text-sm text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">{warning}</p>}
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSubmit={() => void send(input)}
+              placeholder={cooldown > 0 ? `Please wait ${cooldown}s...` : isStudent ? 'Describe your Chromebook issue...' : 'Describe your classroom IT issue...'}
+              disabled={loading || ended || cooldown > 0}
+              sendLabel="Send"
+              sendText={cooldown > 0 ? `${cooldown}s` : undefined}
+              maxLength={MAX_MESSAGE_LENGTH}
+            />
+            <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setDialog('guidelines')} className="underline hover:text-gray-900">IT support guidelines</button>
+                <span aria-hidden="true">•</span>
+                <button type="button" onClick={onContactIT} className="underline hover:text-gray-900">Help desk: {HELP_DESK.ext}</button>
               </div>
-
-              {/* Numbered Steps List */}
-              {msg.stepsList && msg.stepsList.length > 0 && (
-                <ol className="mt-2.5 list-decimal list-inside space-y-1 text-sm sm:text-base text-gray-700 bg-white p-2.5 rounded-lg border border-gray-200">
-                  {msg.stepsList.map((step, idx) => (
-                    <li key={idx} className="leading-snug">{step}</li>
-                  ))}
-                </ol>
-              )}
-
-              {/* Understated Note */}
-              {msg.note && (
-                <p className="mt-2 text-sm sm:text-base text-gray-500 italic">
-                  Note: {msg.note}
-                </p>
-              )}
-
-              {/* Reference link: only shown when a real article URL is configured */}
-              {msg.kbSource?.url && (
-                <div className="mt-2 pt-2 border-t border-gray-200/80 text-xs text-gray-500">
-                  <span className="text-gray-400">Reference: </span>
-                  <a href={msg.kbSource.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">
-                    {msg.kbSource.title}
-                  </a>
-                </div>
-              )}
-
-              {/* Escalation Ticket Details Box */}
-              {msg.escalationTicket && (
-                <div className="mt-3 p-3 bg-white border border-gray-300 rounded-lg text-sm sm:text-base space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-900">
-                      {isStudent ? 'Media Center Loaner Request' : 'Technician Work Order'}
-                    </span>
-                    <span className="font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">
-                      {msg.escalationTicket.ticketNumber}
-                    </span>
-                  </div>
-                  <p className="text-gray-600">
-                    Location: {msg.escalationTicket.room} • Status: {msg.escalationTicket.status}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onViewDispatchSlip(msg.escalationTicket!)}
-                    className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium text-sm sm:text-base text-center border border-gray-300 transition"
-                  >
-                    {isStudent ? 'Print Loaner Pass' : 'Print Dispatch Slip'}
-                  </button>
-                </div>
-              )}
-
-              <span className={`block text-xs mt-1.5 text-right ${msg.sender === 'user' ? 'text-gray-300' : 'text-gray-400'}`}>
-                {msg.timestamp}
+              <span className="font-mono" aria-label={`${input.length} of ${MAX_MESSAGE_LENGTH} characters`}>{input.length}/{MAX_MESSAGE_LENGTH}</span>
+            </div>
+          </>
+        }
+      >
+        {messages.map(m => (
+          <ChatBubble key={m.id} from={m.from} tone={m.tone} label={m.label} meta={m.time}>
+            {m.step && (
+              <span className="block mb-2.5 p-2 bg-white border border-gray-300 rounded-lg font-medium text-gray-900">
+                <span className="block text-xs font-semibold text-gray-600 mb-0.5">Recommended action</span>
+                {m.step.action}
               </span>
-            </div>
-
-            {/* Suggested Action Buttons */}
-            {msgIdx === messages.length - 1 && msg.suggestedActions && msg.suggestedActions.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 max-w-[88%] sm:max-w-[80%]">
-                {msg.suggestedActions.map((action, idx) => {
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleActionClick(action)}
-                      className={`text-sm sm:text-base px-4 py-2 rounded-full border font-medium text-left transition ${ACTION_CLASS[actionKind(action)]}`}
-                    >
-                      {action}
-                    </button>
-                  );
-                })}
-              </div>
             )}
-          </div>
+            {m.text}
+            {m.step && (
+              <>
+                <span className="block mt-2.5 bg-white p-2.5 rounded-lg border border-gray-200 text-gray-800">{m.step.instruction}</span>
+                {m.step.detail && <span className="block mt-2 text-gray-600 italic">Note: {m.step.detail}</span>}
+              </>
+            )}
+            {m.ticket && (
+              <span className="mt-3 p-3 bg-white border border-gray-300 rounded-lg flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold text-gray-900">{isStudent ? 'Media Center loaner request' : 'Technician work order'}</span>
+                <span className="font-mono text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded-lg border border-gray-200">{m.ticket.ticketNumber}</span>
+              </span>
+            )}
+          </ChatBubble>
         ))}
+        {loading && <p className="text-sm sm:text-base text-gray-600 italic">Checking troubleshooting steps...</p>}
+        {!loading && !ended && latest.choices && <ChoiceChips choices={latest.choices} onPick={onPick} label="Choices" />}
+      </ChatFrame>
 
-        {loading && (
-          <div className="text-sm sm:text-base text-gray-500 italic">
-            Checking troubleshooting steps...
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Message Input Area */}
-      <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 shrink-0">
-        {/* Rate limit warning */}
-        {cooldownRemaining > 0 && (
-          <div className="mb-2 text-sm sm:text-base text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-            Rate limit active. Please wait <strong>{cooldownRemaining}s</strong> before sending another message.
-          </div>
-        )}
-
-        {/* Spam warning */}
-        {spamWarning && (
-          <div className="mb-2 text-sm sm:text-base text-red-800 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">
-            {spamWarning}
-          </div>
-        )}
-
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            handleSendMessage();
-          }}
-          className="flex items-center gap-2"
-        >
-          <input
-            type="text"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            maxLength={MAX_MESSAGE_LENGTH}
-            placeholder={
-              cooldownRemaining > 0
-                ? `Please wait ${cooldownRemaining}s...`
-                : isStudent
-                ? 'Describe your Chromebook issue...'
-                : 'Describe your classroom IT issue...'
-            }
-            disabled={loading || cooldownRemaining > 0}
-            className="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
-          />
-
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || loading || cooldownRemaining > 0}
-            className="px-4 py-2.5 text-sm sm:text-base font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:hover:bg-blue-700 rounded-lg transition shrink-0"
-          >
-            {cooldownRemaining > 0 ? `${cooldownRemaining}s` : 'Send'}
-          </button>
-        </form>
-
-        {/* Quiet Footer Links */}
-        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowPolicyModal(true)}
-              className="text-gray-500 hover:text-gray-700 underline text-left"
-            >
-              IT Support Guidelines
-            </button>
-            <span className="text-gray-300">•</span>
-            {onContactIT && (
-              <button
-                type="button"
-                onClick={onContactIT}
-                className="text-gray-500 hover:text-gray-700 underline text-left"
-              >
-                Help Desk: {HELP_DESK.ext}
-              </button>
-            )}
-          </div>
-          <span className="font-mono text-gray-400">
-            {inputValue.length}/{MAX_MESSAGE_LENGTH}
-          </span>
-        </div>
-      </div>
-
-      {/* Edit Location Dialog */}
-      {showLocationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white border border-gray-200 rounded-lg max-w-sm w-full p-5 text-gray-900 shadow-md">
-            <h3 className="text-base font-semibold text-gray-900 mb-1">
-              {isStudent ? 'Student Profile' : 'Classroom Location'}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Technicians dispatch based on your specified room.
-            </p>
-
-            <div className="space-y-3 text-sm sm:text-base">
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">School</label>
-                <select
-                  value={tempContext.school}
-                  onChange={e => setTempContext({ ...tempContext, school: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm sm:text-base text-gray-900"
-                >
-                  {SCHOOLS.map(sc => (
-                    <option key={sc.id} value={sc.name}>{sc.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Room</label>
-                <input
-                  type="text"
-                  value={tempContext.room}
-                  onChange={e => setTempContext({ ...tempContext, room: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm sm:text-base text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Phone or Ext</label>
-                <input
-                  type="text"
-                  value={tempContext.phoneOrExt}
-                  onChange={e => setTempContext({ ...tempContext, phoneOrExt: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm sm:text-base text-gray-900"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2 text-sm sm:text-base">
-              <button
-                type="button"
-                onClick={() => setShowLocationModal(false)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onUpdateUserContext(tempContext);
-                  setShowLocationModal(false);
-                }}
-                className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Guidelines Modal */}
-      {showPolicyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full p-5 text-gray-900 shadow-md space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">District IT Help Desk Guidelines</h3>
-              <button
-                type="button"
-                onClick={() => setShowPolicyModal(false)}
-                className="text-gray-400 hover:text-gray-700 p-1"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2.5 text-sm sm:text-base text-gray-600 leading-relaxed">
-              <p>
-                <strong>Scope:</strong> {BRAND_NAME} is designed strictly for school district technology troubleshooting (Chromebooks, classroom displays, network connectivity, and district accounts).
-              </p>
-              <p>
-                <strong>Rate Limiting:</strong> Requests are limited to 5 messages per 30-second window to prevent system flooding.
-              </p>
-              <p>
-                <strong>Student Loaner Passes:</strong> Students can only have a limited number of open requests at once. If you reach the limit, contact the main office or a technician.
-              </p>
-              <p>
-                <strong>Privacy:</strong> Do not enter passwords or confidential student records. Free-text questions are answered from built-in help text on the help desk server. Nothing you type is sent to an outside service.
-              </p>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowPolicyModal(false)}
-                className="px-3.5 py-1.5 text-sm sm:text-base font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {dialog === 'location' && <LocationDialog context={userContext} isStudent={isStudent} onSave={onUpdateUserContext} onClose={() => setDialog(null)} />}
+      {dialog === 'guidelines' && <GuidelinesDialog onClose={() => setDialog(null)} />}
+    </>
   );
 };

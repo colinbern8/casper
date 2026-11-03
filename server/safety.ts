@@ -1,7 +1,9 @@
 // Screens free-text chat before it gets a built-in answer. Pattern-based and
 // English-only, so it is a courtesy filter for students, not a security boundary.
 
-export const MAX_MESSAGE_LENGTH = 1000;
+import { MAX_MESSAGE_LENGTH } from '../src/data/limits';
+
+export { MAX_MESSAGE_LENGTH };
 
 const INJECTION_PATTERNS: RegExp[] = [
   /ignore (?:(?:all|any|previous|prior|above|system|your|the) )*(instructions|prompts|rules|commands|directives)/i,

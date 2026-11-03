@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import type { Config } from './config';
-import { attachUser, emailInDomain, requireRole, sameOriginForWrites } from './auth';
+import { LIMITS, type Config } from './config';
+import { attachUser, emailInDomain, lockedOutBody, requireRole, sameOriginForWrites } from './auth';
+import { SpamGuard, lockoutMessage, type StrikeResult } from './spamGuard';
 import { createSessions } from './session';
 import type { GoogleVerifier } from './google';
 import type { UserStore } from './users';
@@ -8,12 +9,15 @@ import { SlidingWindowLimiter } from './rateLimit';
 import { screenMessage } from './safety';
 import { TicketStore } from './store';
 import { openTicketLimitBody, parseTicketInput, parseTicketUpdate } from './tickets';
-import { builtInReply, normalizeHistory, type ChatContext } from './chat';
+import { builtInReply, normalizeHistory, topicsFor, type ChatContext } from './chat';
 import { notifyUrgentTicket } from './notify';
 import { CaseStore } from './cases';
 import { createSupportRouter } from './supportRoutes';
-import { HELP_DESK } from '../src/data/schools';
-import type { PublicConfig } from '../src/types';
+import { HELP_DESK, SCHOOLS, allTechs } from '../src/data/schools';
+import type { PublicConfig, TechnicianStatus } from '../src/types';
+import { PresenceStore } from './presence';
+import { computeAnalytics } from './analytics';
+import { demoNameFor } from './demoData';
 
 export interface AppDeps {
   config: Config;
@@ -24,22 +28,25 @@ export interface AppDeps {
   /** Student-support demo cases. Defaults to an in-memory store. */
   cases?: CaseStore;
   limiter?: SlidingWindowLimiter;
+  /** Student strike counter and lockouts. Tests pass one with a fake clock. */
+  spamGuard?: SpamGuard;
+  /** Which technicians are marked away. Defaults to an in-memory store. */
+  presence?: PresenceStore;
   /** Throws if the server cannot do its job (for example, the data folder is not writable). Used by /api/health. */
   healthCheck?: () => void;
   /** Log one line per API request (method, path, status, time). No bodies, emails or query strings. */
   accessLog?: boolean;
 }
 
-const FIFTEEN_MIN = 15 * 60_000;
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
-export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), healthCheck, accessLog = false }: AppDeps) {
+export function createApp({ config, store, users, verifyGoogle, cases = new CaseStore(null), limiter = new SlidingWindowLimiter(), spamGuard = new SpamGuard(), presence = new PresenceStore(null), healthCheck, accessLog = false }: AppDeps) {
   const app = express();
   const sessions = createSessions(config.sessionSecret, config.isProduction);
 
   if (config.trustProxy) app.set('trust proxy', config.trustProxy);
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '200kb' }));
+  app.use(express.json({ limit: LIMITS.bodyLimit }));
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -48,9 +55,11 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   if (accessLog) {
     app.use('/api', (req, res, next) => {
       const started = Date.now();
+      // Read the path now: once routing finishes, req.path no longer has the /api mount stripped.
+      const route = req.path;
       res.on('finish', () => {
-        if (req.path === '/health') return;
-        console.log(`${req.method} /api${req.path} ${res.statusCode} ${Date.now() - started}ms`);
+        if (route === '/health') return;
+        console.log(`${req.method} /api${route} ${res.statusCode} ${Date.now() - started}ms`);
       });
       next();
     });
@@ -60,7 +69,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     next();
   });
   app.use('/api', sameOriginForWrites);
-  app.use('/api', attachUser(sessions, users, config));
+  app.use('/api', attachUser(sessions, users, config, spamGuard));
 
   app.get('/api/health', (_req, res) => {
     try {
@@ -88,13 +97,26 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     res.setHeader('Set-Cookie', sessions.setCookie(sessions.create({ email, name })));
     return { email, name, role: users.roleFor(email) };
   };
+  /** A student locked out by the spam guard cannot sign in again until the lockout ends. */
+  const refuseLockedOut = (res: Response, email: string): boolean => {
+    const wait = users.roleFor(email) === 'student' ? spamGuard.retryAfterSeconds(email) : 0;
+    if (wait > 0) res.status(403).json(lockedOutBody(wait));
+    return wait > 0;
+  };
+  /** Counts a bad message for a student. At the limit the response also clears the sign-in cookie. */
+  const countStrike = (res: Response, email: string): StrikeResult => {
+    const result = spamGuard.strike(email);
+    if (result.action === 'sign_out') res.setHeader('Set-Cookie', sessions.clearCookie());
+    return result;
+  };
 
   app.get('/api/auth/me', (req, res) => {
-    res.json({ user: req.user ?? null });
+    const lockout = req.lockout && { retryAfterSeconds: req.lockout.retryAfterSeconds, message: lockoutMessage(req.lockout.retryAfterSeconds) };
+    res.json({ user: req.user ?? null, ...(lockout ? { lockout } : {}) });
   });
 
   app.post('/api/auth/google', async (req, res) => {
-    const hit = limiter.hit(`auth-ip:${req.ip || 'unknown'}`, 30, 10 * 60_000);
+    const hit = limiter.hit(`auth-ip:${req.ip || 'unknown'}`, LIMITS.signIn.perIp, LIMITS.signIn.windowMs);
     if (!hit.allowed) {
       res.status(429).json({ error: 'TOO_MANY_ATTEMPTS', message: 'Too many sign-in attempts. Try again in a few minutes.' });
       return;
@@ -115,6 +137,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
         res.status(403).json({ error: 'WRONG_ACCOUNT', message: `Sign in with your @${config.domain} school account.` });
         return;
       }
+      if (refuseLockedOut(res, g.email)) return;
       res.json({ user: startSession(res, g.email, g.name) });
     } catch {
       res.status(401).json({ error: 'SIGN_IN_FAILED', message: 'Sign-in failed. Please try again.' });
@@ -128,11 +151,14 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       return;
     }
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const name = typeof req.body?.name === 'string' && req.body.name.trim() ? req.body.name.trim().slice(0, 80) : email.split('@')[0];
+    const given = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 80) : '';
+    // Demo accounts get their fictional name, so screens show a person rather than "demo.tech".
+    const name = given || (config.demoMode ? demoNameFor(email, config.domain) : undefined) || email.split('@')[0];
     if (!emailInDomain(email, config.domain)) {
       res.status(400).json({ error: 'WRONG_ACCOUNT', message: `Use an @${config.domain} address.` });
       return;
     }
+    if (refuseLockedOut(res, email)) return;
     res.json({ user: startSession(res, email, name) });
   });
 
@@ -144,7 +170,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   // ---- Tickets ---------------------------------------------------------
   app.post('/api/tickets', requireRole('student'), (req, res) => {
     const user = req.user!;
-    const parsed = parseTicketInput(req.body, user);
+    const parsed = parseTicketInput(req.body, user, presence.isAway);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
@@ -158,8 +184,9 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
         return;
       }
     }
-    const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? 2 : 3, FIFTEEN_MIN);
-    const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, 60, FIFTEEN_MIN);
+    const { perStudent, perStaff, perIp: ipMax, windowMs } = LIMITS.tickets;
+    const perUser = limiter.hit(`ticket-user:${user.email}`, v.userRole === 'student' ? perStudent : perStaff, windowMs);
+    const perIp = limiter.hit(`ticket-ip:${req.ip || 'unknown'}`, ipMax, windowMs);
     if (!perUser.allowed || !perIp.allowed) {
       res.status(429).json({
         error: 'TICKET_LIMIT_EXCEEDED',
@@ -185,7 +212,7 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
   });
 
   app.patch('/api/tickets/:id', requireRole('tech'), (req, res) => {
-    const parsed = parseTicketUpdate(req.body);
+    const parsed = parseTicketUpdate(req.body, [req.user!.name]);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error, message: parsed.message });
       return;
@@ -216,6 +243,59 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
       return;
     }
     res.json(updated);
+  });
+
+  // A technician takes a ticket: it is assigned to them (from the session, never the body).
+  app.post('/api/tickets/:id/claim', requireRole('tech'), (req, res) => {
+    const target = store.get(req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Ticket not found.' });
+      return;
+    }
+    if (target.status === 'resolved') {
+      res.status(409).json({ error: 'RESOLVED', message: 'This ticket is already resolved. Reopen it first.' });
+      return;
+    }
+    const me = req.user!.name;
+    if (target.assignedTech === me) {
+      res.json(target);
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const entry = `[${stamp} UTC, ${me}] Claimed this ticket${target.assignedTech ? ` from ${target.assignedTech}` : ' from the shared queue'}.`;
+    res.json(
+      store.update(target.id, {
+        assignedTech: me,
+        status: target.status === 'open' ? 'assigned' : target.status,
+        techNotes: target.techNotes ? `${target.techNotes}\n${entry}` : entry,
+      }),
+    );
+  });
+
+  // ---- Technician coverage: who is away -----------------------------------
+  app.get('/api/techs', requireRole('tech'), (req, res) => {
+    const names = Array.from(new Set([...allTechs().filter(n => SCHOOLS.some(s => s.leadTech === n || s.backupTech === n)), req.user!.name])).sort();
+    const list: TechnicianStatus[] = names.map(name => ({
+      name,
+      leads: SCHOOLS.filter(s => s.leadTech === name).map(s => s.name),
+      backs: SCHOOLS.filter(s => s.backupTech === name).map(s => s.name),
+      ...presence.get(name),
+    }));
+    res.json({ me: req.user!.name, technicians: list });
+  });
+
+  // Technicians mark only themselves away or back.
+  app.put('/api/techs/me', requireRole('tech'), (req, res) => {
+    if (typeof req.body?.away !== 'boolean') {
+      res.status(400).json({ error: 'INVALID_AWAY', message: 'away must be true or false.' });
+      return;
+    }
+    res.json({ name: req.user!.name, ...presence.set(req.user!.name, req.body.away) });
+  });
+
+  // ---- Admin: analytics ----------------------------------------------------
+  app.get('/api/admin/analytics', requireRole('admin'), (_req, res) => {
+    res.json(computeAnalytics(store.list(), cases.list()));
   });
 
   // ---- Admin: who has which role ----------------------------------------
@@ -289,42 +369,54 @@ export function createApp({ config, store, users, verifyGoogle, cases = new Case
     const uc = req.body?.userContext && typeof req.body.userContext === 'object' ? req.body.userContext : {};
 
     // Schools share one public IP, so the per-IP ceiling is generous; the per-user limit is the tight one.
-    const ipCheck = limiter.hit(`chat-ip:${req.ip || 'unknown'}`, 120, 60_000);
-    const userCheck = limiter.hit(`chat-user:${user.email}`, 5, 30_000);
+    const ipCheck = limiter.hit(`chat-ip:${req.ip || 'unknown'}`, LIMITS.chat.perIp, LIMITS.chat.ipWindowMs);
+    const userCheck = limiter.hit(`chat-user:${user.email}`, LIMITS.chat.perUser, LIMITS.chat.userWindowMs);
     if (!ipCheck.allowed || !userCheck.allowed) {
       const wait = Math.max(1, Math.ceil(Math.max(ipCheck.retryAfterMs, userCheck.retryAfterMs) / 1000));
+      // Too many messages too fast counts as a bad message for a student.
+      const strike = user.role === 'student' && !userCheck.allowed ? countStrike(res, user.email) : undefined;
       res.status(429).json({
         text: `Please wait ${wait} seconds before sending another message.`,
         isSafetyBlocked: true,
         cooldownSeconds: wait,
+        ...strikeFields(strike, user.email),
       });
       return;
     }
 
     const isStudent = user.role === 'student';
-
-    for (const turn of history) {
-      if (turn.role !== 'user') continue;
-      const screen = screenMessage(turn.content);
-      if (screen.blocked) {
-        res.json({
-          text: screen.message,
-          isSafetyBlocked: true,
-          needsEscalation: false,
-          suggestedActions: isStudent
-            ? ['Chromebook will not turn on', 'Cannot connect to school Wi-Fi', 'Forgot account password or login']
-            : ['Smartboard or display shows "No Signal"', 'Student Chromebook cannot connect to Wi-Fi', 'Audio playing from laptop instead of room speakers'],
-        });
-        return;
-      }
+    // Only the new message is screened: earlier ones were screened when they were sent.
+    const latest = history[history.length - 1].content;
+    const screen = screenMessage(latest);
+    // A student's blocked or repeated message counts toward the spam guard (staff are never counted).
+    const repeated = isStudent && spamGuard.isRepeat(user.email, latest);
+    if (screen.blocked || repeated) {
+      const strike = isStudent ? countStrike(res, user.email) : undefined;
+      res.json({
+        text: screen.blocked ? screen.message : 'You already sent that message. Please describe the problem in different words, or pick one below.',
+        isSafetyBlocked: true,
+        needsEscalation: false,
+        suggestedActions: topicsFor(isStudent),
+        ...strikeFields(strike, user.email),
+      });
+      return;
     }
 
     const ctx: ChatContext = { isStudent, deviceType: typeof uc.deviceType === 'string' ? uc.deviceType : '' };
     res.json(builtInReply(ctx, history[history.length - 1].content));
   });
 
+  /** What a chat reply says about a strike, in English (the built-in chat is English only). */
+  function strikeFields(strike: StrikeResult | undefined, email: string) {
+    if (!strike || strike.action === 'none') return {};
+    if (strike.action === 'sign_out') return { signedOut: true, ...lockedOutBody(spamGuard.retryAfterSeconds(email)) };
+    return {
+      warning: `Please only send messages about a technology problem. ${strike.remaining === 1 ? 'One more' : `${strike.remaining} more`} and you will be signed out for ${Math.round(spamGuard.limits.lockoutMs / 60_000)} minutes.`,
+    };
+  }
+
   // ---- Student-support prototype (demo mode only) -------------------------
-  app.use('/api/support', createSupportRouter({ config, store, cases, limiter }));
+  app.use('/api/support', createSupportRouter({ config, store, cases, limiter, spamGuard, countStrike }));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Unknown API route.' });

@@ -1,6 +1,6 @@
 export type ActionKind = 'resolved' | 'next' | 'escalate' | 'other';
 
-export const ACTION = {
+const ACTION = {
   resolved: 'Issue resolved',
   next: 'Try next step',
   ticket: 'Submit IT ticket',

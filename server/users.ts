@@ -1,18 +1,12 @@
-import fs from 'fs';
-import path from 'path';
-import type { Role } from '../src/types';
+import type { Role, UserRecord } from '../src/types';
+import { isRecord, readJsonFile, writeJsonFile } from './jsonFile';
 
 export type StaffRole = Exclude<Role, 'student'>;
 export const RANK: Record<Role, number> = { student: 0, staff: 1, tech: 2, admin: 3 };
 
-export interface UserRecord {
-  email: string;
-  role: StaffRole;
-  addedBy: string;
-  addedAt: string;
-  /** Set for admins defined in ADMIN_EMAILS; they cannot be changed in the app. */
-  locked?: boolean;
-}
+const STAFF_ROLES: StaffRole[] = ['staff', 'tech', 'admin'];
+const isUserFile = (v: unknown): v is UserRecord[] =>
+  Array.isArray(v) && v.every(r => isRecord(r) && typeof r.email === 'string' && STAFF_ROLES.includes(r.role as StaffRole));
 
 /**
  * Who is more than a student. Anyone in the district domain who is NOT listed
@@ -22,16 +16,7 @@ export class UserStore {
   private records = new Map<string, UserRecord>();
 
   constructor(private file: string | null, private adminEmails: string[]) {
-    if (file && fs.existsSync(file)) {
-      try {
-        const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as UserRecord[];
-        for (const r of parsed) this.records.set(r.email, r);
-      } catch (err) {
-        const backup = `${file}.corrupt-${Date.now()}`;
-        fs.renameSync(file, backup);
-        console.error(`User file was unreadable; moved to ${backup}. Starting empty.`, err);
-      }
-    }
+    for (const r of readJsonFile(file, isUserFile, 'User') ?? []) this.records.set(r.email.toLowerCase(), r);
   }
 
   isLocked(email: string): boolean {
@@ -88,10 +73,6 @@ export class UserStore {
   }
 
   private persist() {
-    if (!this.file) return;
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    const tmp = `${this.file}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify([...this.records.values()], null, 2));
-    fs.renameSync(tmp, this.file);
+    writeJsonFile(this.file, [...this.records.values()]);
   }
 }

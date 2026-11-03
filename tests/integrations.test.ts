@@ -6,7 +6,11 @@ import { notifyUrgentTicket } from '../server/notify';
 import { createApp } from '../server/app';
 import { loadConfig } from '../server/config';
 import { UserStore } from '../server/users';
-import { seedDemoTickets } from '../server/demoData';
+import { demoNameFor, seedDemoData } from '../server/demoData';
+import { CaseStore } from '../server/cases';
+import { PresenceStore } from '../server/presence';
+import { findSchool } from '../src/data/schools';
+import { computeAnalytics } from '../server/analytics';
 import { TicketStore } from '../server/store';
 import type { Ticket } from '../src/types';
 
@@ -40,12 +44,43 @@ test('webhook: urgent staff tickets notify without personal data; students and l
   await assert.doesNotReject(notifyUrgentTicket('http://127.0.0.1:1/dead', ticket()));
 });
 
-test('demo seed data uses valid schools and only seeds an empty store', () => {
-  const store = new TicketStore(null);
-  seedDemoTickets(store, { domain: 'a.org' });
-  assert.equal(store.size, 3);
-  seedDemoTickets(store, { domain: 'a.org' });
-  assert.equal(store.size, 3);
+test('demo seed data: valid, the same every time, fills every screen, and only seeds empty stores', () => {
+  const now = new Date('2026-11-02T15:00:00Z');
+  const make = () => {
+    const store = new TicketStore(null);
+    const cases = new CaseStore(null);
+    const presence = new PresenceStore(null);
+    seedDemoData({ store, cases, presence, cfg: { domain: 'a.org' }, now });
+    return { store, cases, presence };
+  };
+  const { store, cases, presence } = make();
+  const tickets = store.list();
+  assert.ok(tickets.length > 40 && cases.size > 40);
+  assert.deepEqual(make().store.list().map(t => [t.ticketNumber, t.title, t.status]), tickets.map(t => [t.ticketNumber, t.title, t.status]), 'deterministic');
+  for (const t of tickets) {
+    assert.ok(findSchool(t.school), `unknown school ${t.school}`);
+    assert.ok(t.createdAt <= now.toISOString() && (!t.resolvedAt || (t.resolvedAt >= t.createdAt && t.resolvedAt <= now.toISOString())), t.ticketNumber);
+    assert.equal(t.status === 'resolved', !!t.resolvedAt, t.ticketNumber);
+    if (t.caseId) assert.equal(cases.get(t.caseId)?.ticketId, t.id);
+  }
+  // Something for each new screen: shared queue, the demo teacher's requests, students waiting, self-help, coverage.
+  assert.ok(tickets.some(t => t.status !== 'resolved' && !t.assignedTech), 'an unclaimed ticket in a shared queue');
+  assert.ok(tickets.some(t => t.userEmail === 'demo.teacher@a.org' && t.status !== 'resolved'));
+  assert.ok(tickets.some(t => t.userRole === 'student' && t.status === 'open' && t.caseId));
+  assert.ok(!tickets.some(t => t.userEmail.startsWith('demo.student')), 'the demo students start with no open request');
+  assert.ok(cases.list().some(c => c.outcome === 'resolved') && cases.list().some(c => c.outcome === 'blocked'));
+  assert.ok(cases.list().every(c => c.createdAt <= now.toISOString() && c.updatedAt <= now.toISOString()), 'nothing in the future');
+  assert.equal(presence.isAway('Leo Ortiz'), true);
+  const a = computeAnalytics(tickets, cases.list(), now);
+  assert.ok(a.perSchool.length >= 4 && a.timeToResolve.length >= 3 && a.topCategories.length >= 5);
+  assert.ok(a.selfHelp.selfResolvedRate! > 0.3 && a.selfHelp.selfResolvedRate! < 0.8);
+
+  const size = store.size;
+  seedDemoData({ store, cases, presence, cfg: { domain: 'a.org' }, now });
+  assert.equal(store.size, size, 'never seeds a store that has data');
+  assert.equal(demoNameFor('demo.tech@a.org', 'a.org'), 'Sam Okafor');
+  assert.equal(demoNameFor('demo.student@a.org', 'a.org'), 'Alex Sample');
+  assert.equal(demoNameFor('someone@a.org', 'a.org'), undefined);
 });
 
 test('webhook: a failed first attempt is retried once', async () => {
